@@ -372,26 +372,38 @@ function itemCard(c,compact){
    '<div class="acts"><button class="btn red" data-a="done" data-id="'+it.id+'">סמן כבוצע</button></div>'+
   '</div>';
 }
-function gauge(frac,odo){
-  var cx=110,cy=108,r=88,a0=135,a1=405;
+function gauge(frac,odo,intKm){
+  var cx=110,cy=102,r=84,a0=135,a1=405,iv=intKm||10000;
   function pt(a,rr){var t=a*Math.PI/180;return [cx+rr*Math.cos(t),cy+rr*Math.sin(t)];}
   function arc(f,t,rr){var p0=pt(f,rr),p1=pt(t,rr);return 'M'+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' A'+rr+' '+rr+' 0 '+((t-f)>180?1:0)+' 1 '+p1[0].toFixed(1)+' '+p1[1].toFixed(1);}
-  var f=clamp(frac,0,1),ang=a0+(a1-a0)*f,tk='';
-  for(var i=0;i<=30;i++){var a=a0+(a1-a0)*i/30,maj=i%5===0,p0=pt(a,r-(maj?20:14)),p1=pt(a,r-6);
-    tk+='<line x1="'+p0[0].toFixed(1)+'" y1="'+p0[1].toFixed(1)+'" x2="'+p1[0].toFixed(1)+'" y2="'+p1[1].toFixed(1)+'" stroke="'+(maj?'#c9a45a':'#4a4d57')+'" stroke-width="'+(maj?2:1.2)+'"/>';}
-  var n=pt(ang,r-26);
-  return '<svg class="gauge" viewBox="0 0 220 200" aria-label="מד ק״מ">'+
-   '<defs><linearGradient id="gr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8e0f1f"/><stop offset="1" stop-color="#ff4a5c"/></linearGradient>'+
-   '<radialGradient id="gb" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1d1f26"/><stop offset="1" stop-color="#0b0c0f"/></radialGradient></defs>'+
-   '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+10)+'" fill="url(#gb)" stroke="#2a2d35" stroke-width="2"/>'+
-   '<path d="'+arc(a0,a1,r)+'" stroke="#23252c" stroke-width="9" fill="none" stroke-linecap="round"/>'+
-   (f>0.004?'<path d="'+arc(a0,a0+(a1-a0)*f,r)+'" stroke="url(#gr)" stroke-width="9" fill="none" stroke-linecap="round"/>':'')+
-   tk+
-   '<line x1="'+cx+'" y1="'+cy+'" x2="'+n[0].toFixed(1)+'" y2="'+n[1].toFixed(1)+'" stroke="#e23446" stroke-width="3.2" stroke-linecap="round"/>'+
-   '<circle cx="'+cx+'" cy="'+cy+'" r="9" fill="#15161a" stroke="#c9a45a" stroke-width="2"/>'+
-   '<rect x="52" y="140" width="116" height="34" rx="8" fill="#08090b" stroke="#2a2d35"/>'+
-   '<text x="110" y="164" text-anchor="middle" font-size="22" font-weight="600" fill="#eeeae3" font-family="Rubik,sans-serif" letter-spacing="1">'+fmtN(odo)+'</text>'+
-   '<text x="110" y="190" text-anchor="middle" font-size="11" fill="#9a9ca4" font-family="Rubik,sans-serif">ק״מ</text>'+
+  var f=clamp(frac,0,1.04),ang=a0+(a1-a0)*Math.min(f,1.04),tk='',lb='';
+  for(var i=0;i<=50;i++){
+    var a=a0+(a1-a0)*i/50,maj=i%10===0,mid=i%5===0&&!maj,hot=i>=40;
+    var p0=pt(a,r-(maj?15:mid?11:7)),p1=pt(a,r-2);
+    tk+='<line x1="'+p0[0].toFixed(1)+'" y1="'+p0[1].toFixed(1)+'" x2="'+p1[0].toFixed(1)+'" y2="'+p1[1].toFixed(1)+'" stroke="'+(hot?'#e0202f':'#f2f2f2')+'" stroke-width="'+(maj?2.4:mid?1.6:1)+'" stroke-linecap="butt"/>';
+  }
+  for(var k=0;k<=5;k++){
+    var a2=a0+(a1-a0)*k/5,q=pt(a2,r-29),v=Math.round(iv*k/5/100)/10;
+    lb+='<text x="'+q[0].toFixed(1)+'" y="'+(q[1]+4).toFixed(1)+'" text-anchor="middle" font-size="12" font-weight="500" fill="'+(k===5?'#ff3b4a':'#f4f4f4')+'" font-family="Rubik,sans-serif">'+v+'</text>';
+  }
+  var tip=pt(ang,r-6),tail=pt(ang+180,16),b1=pt(ang+90,3.2),b2=pt(ang-90,3.2);
+  return '<svg class="gauge" viewBox="0 0 220 204" aria-label="מד ק״מ">'+
+   '<defs>'+
+   '<linearGradient id="gch" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f4f4"/><stop offset=".35" stop-color="#8d9097"/><stop offset=".6" stop-color="#e9e9ea"/><stop offset="1" stop-color="#55585f"/></linearGradient>'+
+   '<radialGradient id="gb" cx="50%" cy="42%" r="62%"><stop offset="0" stop-color="#16171b"/><stop offset=".8" stop-color="#08090b"/><stop offset="1" stop-color="#000"/></radialGradient>'+
+   '<radialGradient id="gcap" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#f1f1f1"/><stop offset="1" stop-color="#4b4e55"/></radialGradient></defs>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+13)+'" fill="url(#gch)"/>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+9)+'" fill="#050506"/>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+6)+'" fill="url(#gb)"/>'+
+   '<path d="'+arc(a0+(a1-a0)*.8,a1,r+1.5)+'" stroke="#c4162a" stroke-width="3" fill="none"/>'+
+   tk+lb+
+   '<text x="'+cx+'" y="'+(cy-26)+'" text-anchor="middle" font-size="8" letter-spacing="1.2" fill="#9a9ca4" font-family="Rubik,sans-serif">x1000 KM</text>'+
+   '<polygon points="'+b1[0].toFixed(1)+','+b1[1].toFixed(1)+' '+tip[0].toFixed(1)+','+tip[1].toFixed(1)+' '+b2[0].toFixed(1)+','+b2[1].toFixed(1)+' '+tail[0].toFixed(1)+','+tail[1].toFixed(1)+'" fill="#e3202f" stroke="#7a0b16" stroke-width=".6" stroke-linejoin="round"/>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="8" fill="url(#gcap)" stroke="#202227" stroke-width="1.5"/>'+
+   '<rect x="80" y="122" width="60" height="25" rx="6" fill="#020203" stroke="#3a3d45"/>'+
+   '<rect x="80" y="143" width="60" height="2.5" rx="1.2" fill="#c4162a"/>'+
+   '<text x="110" y="139" text-anchor="middle" font-size="13.5" font-weight="500" fill="#f5f5f5" font-family="Rubik,sans-serif" letter-spacing="1">'+fmtN(odo)+'</text>'+
+   '<text x="110" y="160" text-anchor="middle" font-size="9" fill="#9a9ca4" font-family="Rubik,sans-serif">ק״מ</text>'+
   '</svg>';
 }
 function ring(frac,main,sub,label,color){
@@ -434,7 +446,7 @@ function viewDash(){
   var upcoming=cs.filter(function(c){return c.status==='ok'||c.status==='soon';}).sort(function(a,b){return a.eff-b.eff;});
   var nx=upcoming[0];
   var h='';
-  h+='<div class="card"><div class="gwrap">'+gauge(oilKm/oil.it.intKm,S.odo)+
+  h+='<div class="card"><div class="gwrap">'+gauge(oilKm/oil.it.intKm,S.odo,oil.it.intKm)+
    '<div class="gside">'+
    '<div class="kv"><small>ק״מ בטיפול האחרון (שמן)</small><b><span class="num">'+(oil.it.est?'~':'')+fmtN(oil.it.lastKm)+'</span> <i>'+fmtD(pd(oil.it.lastDate))+'</i></b></div>'+
    '<div class="kv"><small>נסיעה מאז</small><b><span class="num">'+fmtN(Math.max(0,oilKm))+'</span> <i>ק״מ</i></b></div>'+
@@ -1059,7 +1071,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 יד · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 טו · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":הסכום הכולל לתשלום עבור כל תקופת הביטוח (פרמיה / סה״כ לתשלום / אגרה כולל), כמספר בלי סימנים, או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
