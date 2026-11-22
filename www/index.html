@@ -175,7 +175,7 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
     <h1>ג'ולייטה <span>●</span></h1>
     <div class="sub">יומן טיפולים ומעקב · 1.4 טורבו</div>
   </div>
-  <div class="pill" id="todayPill"></div>
+  <div class="row" style="gap:8px"><div class="pill" id="todayPill"></div><button class="pill" data-tab="set" aria-label="הגדרות">⚙️</button></div>
 </header>
 <main id="view"></main>
 
@@ -184,8 +184,8 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
   <button data-tab="km"><span>🛣️</span>לפי ק״מ</button>
   <button data-tab="year"><span>📅</span>לפי שנה</button>
   <button data-tab="hist"><span>📜</span>היסטוריה</button>
+  <button data-tab="manual"><span>📖</span>ספר רכב</button>
   <button data-tab="bot"><span>🤖</span>עוזר</button>
-  <button data-tab="set"><span>⚙️</span>הגדרות</button>
 </nav>
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
 <div class="toast" id="toast"></div>
@@ -215,14 +215,14 @@ function num(v){return v===''||v==null?null:Number(v);}
 /* ---------- data ---------- */
 var CATS={all:'הכול',service:'טיפולים',brakes:'בלמים',engine:'מנוע',susp:'מתלים',ac:'מזגן',elec:'חשמל',body:'פחחות וחיצוני',other:'אחר'};
 var DEFS=[
- {id:'oil',ico:'🛢️',name:'שמן מנוע + מסנן שמן',intKm:10000,intMonths:12,lastKm:109700,lastDate:'2026-11-09',est:true,soonKm:1000,soonDays:30,
-  note:'מנוע MultiAir רגיש למרווח ולסוג השמן. במוסך השתמשו ב-0W30 (C2). חלק מהבעלים מחליפים כל 10,000 ק״מ או שנה, גם כשהיצרן מאפשר יותר. ק״מ בהחלפה האחרונה הוא הערכה – עדכן לפי החשבונית.'},
+ {id:'oil',ico:'🛢️',name:'שמן מנוע + מסנן שמן',intKm:15000,intMonths:12,lastKm:109700,lastDate:'2026-11-09',est:true,soonKm:1000,soonDays:30,
+  note:'לפי ספר הרכב: כל 15,000 ק״מ או שנה, ופעם בשנה בשימוש עירוני או מתחת ל-10,000 ק״מ בשנה. מנוע MultiAir רגיש למרווח ולסוג השמן (0W30). חלק מהבעלים מחליפים כל 10,000 ק״מ. ק״מ בהחלפה האחרונה הוא הערכה – עדכן לפי החשבונית.'},
  {id:'airf',ico:'🌬️',name:'מסנן אוויר מנוע',intKm:20000,intMonths:24,lastKm:103500,lastDate:'2025-11-22',est:true,note:'מוחלף בדרך כלל בטיפול השנתי. התאריך משוער לפי הטיפול שדיווחת לפני כשנה.'},
  {id:'cabin',ico:'😮‍💨',name:'מסנן מזגן (פולן)',intKm:15000,intMonths:12,lastKm:103500,lastDate:'2025-11-22',est:true,note:'מומלץ אחת לשנה, במיוחד באקלים אבק וחום.'},
  {id:'bfl',ico:'💧',name:'נוזל בלמים DOT4',intKm:null,intMonths:24,lastKm:103500,lastDate:'2025-11-22',est:true,note:'מוחלף כל שנתיים לפי הזמן (סופג לחות). ברישומים הוחלף ב-2017, 2018, 2020 ו-2022. הנחתי שהוחלף עם הבלמים לפני שנה.'},
  {id:'plug',ico:'⚡',name:'מצתים',intKm:30000,intMonths:60,lastKm:58586,lastDate:'2020-11-11',est:false,verify:'ברישומי המוסך המצתים הוחלפו ב-2018 וב-2020 (בערך כל 26,000 ק״מ). אין רישום אחרי 2020. אם הוחלפו בטיפולים של 2023–2025 – סמן "בוצע" ותקבל סטטוס אמיתי.',
   note:'מרווח מקובל ל-1.4 טורבו: כ-30,000 ק״מ. מצת שבור או שחוק יכול לגרום לפיספוסים.'},
- {id:'belt',ico:'⛓️',name:'רצועת תזמון + משאבת מים',intKm:100000,intMonths:60,lastKm:103500,lastDate:'2025-11-22',est:true,note:'היצרן: עד 120,000 ק״מ / 6 שנים. מומחים ממליצים על 5 שנים (4 בשימוש עירוני), כי המנוע interference. בהחלפה הקודמת (11/2019, 45,632 ק״מ) הוחלפה גם רצועת עזר.'},
+ {id:'belt',ico:'⛓️',name:'רצועת תזמון + משאבת מים',intKm:100000,intMonths:60,lastKm:103500,lastDate:'2025-11-22',est:true,note:'ספר הרכב: כל 6 שנים או 120,000 ק״מ (לא מאובק); בשימוש קשה/מאובק 4 שנים או 60,000 ק״מ. הגדרתי 5 שנים / 100,000 ק״מ כפשרה, כי המנוע interference. בהחלפה הקודמת (11/2019, 45,632 ק״מ) הוחלפה גם רצועת עזר.'},
  {id:'aux',ico:'🔄',name:'רצועת עזר (5PK1150) + מותח',intKm:100000,intMonths:72,lastKm:83834,lastDate:'2022-11-14',est:true,note:'ברישום 14.11.2022 יש שורת "חגורת/רצועת מנוע" – לא קריאה לגמרי. אם הוחלפה עם הטיימינג ב-2025 עדכן.'},
  {id:'brk',ico:'🛑',name:'רפידות + דיסקי בלמים',intKm:50000,intMonths:60,lastKm:103500,lastDate:'2025-11-22',est:true,note:'הוחלפו לפני כשנה. בדיקת עובי רפידות פעם בשנה בטיפול. בעבר הוחלפו ב-2018 וב-2021.'},
  {id:'bat',ico:'🔋',name:'מצבר 60Ah (סטופ-סטארט)',intKm:null,intMonths:60,lastKm:84071,lastDate:'2022-11-27',est:false,soonDays:400,
@@ -273,7 +273,7 @@ var DEFAULT_RATE=25829/1456; /* km/day: 84,071 (27.11.2022) -> 109,900 (22.11.20
 var S=load();
 function pick(d){return {lastKm:d.lastKm,lastDate:d.lastDate,intKm:d.intKm,intMonths:d.intMonths,est:!!d.est,verified:false};}
 function fresh(){
-  var s={odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[]};
+  var s={apiKey:'',model:'claude-sonnet-5-5',web:true,odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[]};
   DEFS.forEach(function(d){s.items[d.id]=pick(d);});
   return s;
 }
@@ -283,6 +283,9 @@ function load(){
     var r=localStorage.getItem(KEY);
     if(r){var o=JSON.parse(r);
       if(o&&typeof o==='object'){
+        if(typeof o.apiKey==='string')base.apiKey=o.apiKey;
+        if(o.model)base.model=o.model;
+        if(typeof o.web==='boolean')base.web=o.web;
         if(typeof o.odo==='number')base.odo=o.odo;
         if(o.odoDate)base.odoDate=o.odoDate;
         if(typeof o.rate==='number'&&o.rate>0)base.rate=o.rate;
@@ -490,7 +493,8 @@ var GROUPS=[
  {id:'cool',w:['נוזל קירור','קירור','רדיאטור','מצנן']},
  {id:'ac',w:['מזגן','קונדנסר','condenser']},
  {id:'shk',w:['בולמים','בולם','זעזועים','מתלים','משולש']},
- {id:'tire',w:['צמיג','גלגל']}
+ {id:'tire',w:['צמיג','גלגל']},
+ {id:'wip',name:'מגבים',w:['מגב','מגבים'],rec:'מומלץ להחליף להבי מגבים אחת לשנה (לפני החורף), או מוקדם יותר אם יש רעידות, פסים או רעש.'}
 ];
 function norm(s){return String(s||'').toLowerCase().replace(/[״"'’׳]/g,'').replace(/\s+/g,' ').trim();}
 function findGroup(q){
@@ -534,8 +538,9 @@ function histList(){
 }
 
 /* ---------- local assistant ---------- */
-var chat=[{r:'b',h:'שלום! אני העוזר של ג׳ולייטה. אני עונה לפי הנתונים שבאפליקציה: מועדי טיפול, החלפות חלקים, הטסט וההיסטוריה. אפשר לשאול למשל <b>"מתי הוחלפו המצתים?"</b> או <b>"מה עשיתי ב-2021?"</b>.'}];
-var SUGS=['מה דחוף עכשיו?','מתי הטיפול הבא?','כמה ימים לטסט?','מתי הוחלפו המצתים?','מה מצב המצבר?','מה עשיתי ב-2021?','מתי הוחלפה רצועת התזמון?'];
+var chat=[{r:'b',h:'שלום! אני העוזר של ג׳ולייטה. אפשר לשאול אותי כל שאלה על הרכב והטיפולים: מתי הוחלפו בלמים או מגבים, מה להחליף ומתי, מה פירוש נורית בלוח, איזה שמן או לחץ אוויר, ועוד. אפשר גם לכתוב רק שם חלק, כמו <b>"צמיגים"</b>.',t:'שלום! אני העוזר של ג׳ולייטה.'}];
+var busy=false;
+var SUGS=['מתי הוחלפו הבלמים?','מתי הוחלפו המגבים?','צמיגים','מה דחוף עכשיו?','מה לחץ האוויר הנכון?','נורית שמן מהבהבת – מה עושים?','מה עשיתי ב-2021?'];
 function li(s){return '<span class="li">• '+s+'</span>';}
 function entryLine(x){return li(esc(fmtD(pd(x.d)))+(x.km!=null?' · '+(x.kmEst?'~':'')+fmtN(x.km)+' ק״מ':'')+' – '+esc(x.t));}
 function dueLine(c){
@@ -549,6 +554,10 @@ function botReply(q0){
   if(/טסט|רישוי/.test(q)&&!g){
     var d=dd(T,pd(S.test.due));
     return 'הטסט צריך להתבצע עד <b>'+esc(fmtD(pd(S.test.due)))+'</b>. '+(d>=0?'נשארו <b>'+d+' ימים</b>.':'עברו <b>'+(-d)+' ימים</b> מהמועד – יש לבצע מיד.')+' האגרה '+(S.test.paid?'שולמה ✓':'טרם שולמה')+'.';
+  }
+  if(g&&!cs.some(function(x){return x.it.id===g.id;})){
+    var e0=all.filter(function(x){return matches(x,g.w.map(norm));});
+    return '<b>'+esc(g.name)+'</b><br>'+(e0.length?'רישומים:<br>'+e0.slice(0,8).map(entryLine).join(''):'אין רישום בנתונים.')+'<br>המלצה: '+esc(g.rec||'');
   }
   if(g){
     var c=cs.filter(function(x){return x.it.id===g.id;})[0],it=c.it,terms=g.w.map(norm);
@@ -595,23 +604,145 @@ function botReply(q0){
     var f=all.filter(function(x){return words.some(function(w){return entryText(x).indexOf(w)>=0;});});
     if(f.length)return 'מצאתי '+f.length+' רישומים שקשורים לשאלה:<br>'+f.slice(0,8).map(entryLine).join('');
   }
+  var mscore=function(m){var t=norm(m.t+' '+m.k);return words.filter(function(w){return t.indexOf(w)>=0;}).length*3+words.filter(function(w){return norm(m.b).indexOf(w)>=0;}).length;};
+  var mm=MANUAL.filter(function(m){return mscore(m)>0;}).sort(function(a,b){return mscore(b)-mscore(a);}).slice(0,2);
+  if(mm.length)return 'מספר הרכב:<br>'+mm.map(function(m){return '<b>'+esc(m.t)+'</b><br>'+esc(m.b);}).join('<br><br>');
   return 'לא הבנתי את השאלה. נסה לשאול על חלק (מצתים, בלמים, מצבר, שמן, טיימינג…), על שנה, על הטסט או "מה דחוף עכשיו?".';
+}
+/* ---------- owner's manual (summary, own words) ---------- */
+var MCATS={all:'הכול',maint:'תחזוקה',fluids:'נוזלים',tyres:'צמיגים',battery:'מצבר',emergency:'חירום',dash:'לוח מחוונים',drive:'נהיגה',specs:'נתונים'};
+var PDF_URL='https://aftersales.fiat.com/eLumData/EN/83/191_GIULIETTA/83_191_GIULIETTA_604.38.735_EN_04_09.15_L_LG/83_191_GIULIETTA_604.38.735_EN_04_09.15_L_LG.pdf';
+var MANUAL=[
+{c:'maint',t:'לוח הטיפולים התקופתיים (בנזין)',b:'הטיפולים חוזרים בצעדים של 15,000 ק״מ או שנה (המוקדם). בכל טיפול בודקים מצב ולחץ צמיגים, תאורה, מפלסי נוזלים, פליטה, שקע האבחון ורפידות בלם קדמיות. אחרי 120,000 ק״מ או 8 שנים התוכנית חוזרת מהצעד הראשון.',k:'טיפול תקופתי מרווח 15000 שנה'},
+{c:'maint',t:'שמן מנוע ומסנן שמן – מתי להחליף',b:'מוחלפים בנקודות הטיפול המתוכננות, ופעם בשנה אם הנסיעה בעיקר עירונית או מתחת ל-10,000 ק״מ בשנה. נורית שמן אדומה מהבהבת פירושה שהשמן התבלה (לא שהמפלס נמוך): לא מוסיפים שמן, מחליפים בהקדם ולכל היותר תוך 500 ק״מ.',k:'שמן פילטר שמן נורית'},
+{c:'maint',t:'מצתים',b:'מוחלפים בנקודות הטיפול המתוכננות, כולם מאותו סוג. בגרסת 1.4 טורבו מצוין מצת NGK IKR9J8.',k:'מצת מצתים ngk'},
+{c:'maint',t:'נוזל בלמים, מסנן אוויר ומסנן מזגן',b:'נוזל הבלמים ומסנן האוויר מוחלפים בנקודות הטיפול המתוכננות. באזורים מאובקים מחליפים מסנן אוויר כל 15,000 ק״מ. מסנן תא הנוסעים (מזגן): בספר מומלץ בכל טיפול שני; בפועל נהוג להחליף אחת לשנה.',k:'נוזל בלמים מסנן אוויר מסנן מזגן פולן'},
+{c:'maint',t:'רצועת תזמון ורצועת עזר',b:'מוחלפות כל 6 שנים או 120,000 ק״מ (סביבה לא מאובקת). בשימוש קשה או באזור מאובק: כל 4 שנים או 60,000 ק״מ. המנוע מסוג interference – קריעת רצועה גורמת לנזק חמור.',k:'טיימינג תזמון רצועה'},
+{c:'maint',t:'רפידות בלם',b:'רפידות הבלם הקדמיות נבדקות בכל טיפול. נורית כתומה של שחיקת רפידות מחייבת בדיקה בהקדם.',k:'בלמים ברקסים רפידות דיסקים'},
+{c:'maint',t:'מגבים',b:'הספר מפנה להחלפת להבי המגבים בפרק התחזוקה ואינו קובע מרווח קבוע. ההמלצה המקובלת: להחליף אחת לשנה, או כשיש רעידות, פסים או רעש.',k:'מגב מגבים להב'},
+{c:'fluids',t:'שמן מנוע – מפרט וכמות',b:'ב-1.4 טורבו MultiAir משתמשים בשמן SAE 0W-30 (במוסך השתמשו ב-0W30 C2). בגרסת 1.4 טורבו 120 כ״ח המפרט הוא 5W-40 ACEA C3. כמות באגן כ-2.75 ליטר, ועם מסנן כ-3.1 ליטר.',k:'שמן 0W30 כמות ליטר'},
+{c:'fluids',t:'נוזל קירור',b:'תערובת 50/50 של מים מזוקקים ו-PARAFLU UP. נפח המערכת כ-5.7 ליטר (עם מיזוג).',k:'קירור פרפלו'},
+{c:'fluids',t:'נוזל בלמים',b:'סינתטי DOT 4. נפח המערכת עם ABS: כ-0.83 ליטר.',k:'נוזל בלמים dot4'},
+{c:'fluids',t:'דלק',b:'בנזין נטול עופרת 95 אוקטן לפחות (EN228). נפח המיכל 60 ליטר, מתוכם 8–10 ליטר רזרבה.',k:'דלק אוקטן מיכל 95'},
+{c:'tyres',t:'מידות צמיגים',b:'מידות מקוריות: 195/55 R16, 205/55 R16, 225/45 R17 ו-225/40 R18. גלגל חילוף זמני (Space-saver): T135/70 R16 או T125/80 R17 בלחץ 4.2 בר.',k:'צמיגים מידות גלגל חילוף'},
+{c:'tyres',t:'לחצי אוויר (צמיגים קרים)',b:'ל-1.4 טורבו 115/120 כ״ח, קדמי/אחורי בבר. 205/55 R16 ו-225/45 R17: 2.3/2.1 בעומס רגיל, 2.7/2.3 בעומס מלא. 195/55 R16 ו-225/40 R18: 2.6/2.2 ו-3.0/2.6. בגרסאות אחרות ייתכנו הבדלים – כדאי לבדוק את המדבקה ברכב אם קיימת.',k:'לחץ אוויר צמיגים בר'},
+{c:'tyres',t:'בדיקת צמיגים וחיישן לחץ (iTPMS)',b:'לבדוק לחץ לפחות אחת לארבעה שבועות כשהצמיגים קרים. המערכת מזהה ירידת לחץ לפי מהירות הגלגלים ואינה מחליפה בדיקה ידנית. אחרי החלפה, רוטציה או שינוי לחץ יש לאפס: לנפח ללחץ הנכון, להפעיל הצתה ולהחזיק את כפתור האיפוס כשתי שניות; הלימוד נמשך כ-20 דקות בנסיעה ישרה ב-80 קמ״ש.',k:'צמיגים חיישן לחץ איפוס'},
+{c:'battery',t:'מצבר – טיפול והחלפה',b:'אין צורך במילוי מים מזוקקים. מחליפים רק במצבר מקורי באותו מפרט (HEAVY DUTY), עדיף במוסך. לחכות דקה לפחות אחרי כיבוי לפני ניתוק. טעינה: איטית בזרם נמוך כ-24 שעות. בחניה ממושכת מעל חודש: לנתק קוטב שלילי ולבדוק טעינה כל 3 חודשים. לא להשאיר מפתח במצב MAR עם מנוע כבוי.',k:'מצבר סוללה טעינה'},
+{c:'battery',t:'התנעה בכבלים',b:'להשתמש במצבר עזר באותה קיבולת או גדולה במעט. הקוטב החיובי של מצבר העזר מחובר רק לנקודה המסומנת OK במצבר הרכב; השלילי לנקודת הארקה במנוע או בתיבה, לא למצבר המרוקן. אחרי ההתנעה מסירים בסדר הפוך. אסור להתניע בדחיפה, גרירה או בירידה, ואסור מטען מהיר.',k:'כבלים התנעה מצבר ריק'},
+{c:'emergency',t:'החלפת גלגל',b:'לחנות במקום בטוח, בלם יד, הילוך ראשון או אחורי, אורות חירום ומשולש. לשחרר את הברגים סיבוב אחד לפני ההגבהה, להגביה, להחליף, לחזק בצורת צלב ורק אז להוריד. גלגל חילוף זמני: עד 80 קמ״ש ולנסוע רק עד תיקון. לבדוק חיזוק ברגים במוסך.',k:'גלגל תקר ג׳ק'},
+{c:'emergency',t:'ערכת תיקון Fix&Go',b:'הערכה כוללת חומר איטום ומדחס, לתיקון זמני של פנצ׳ר בסוליה או בכתף עד 4 מ״מ (לא בדופן). אם הלחץ לא מגיע ל-1.8 בר תוך חמש דקות – לא לנסוע. אחרי התיקון עד 80 קמ״ש. לא להפעיל את המדחס יותר מ-20 דקות ברצף.',k:'פנצר איטום מדחס'},
+{c:'emergency',t:'נתיכים',b:'לוחות נתיכים: בתא המנוע ליד המצבר (מתחת לכיסוי מוברג), בלוח המחוונים (מאחורי פקק) ובתא המטען (גישה למוסך בלבד). מחליפים רק בנתיך באותו אמפר, בלי חוט מתכת, כשההצתה כבויה. נתיך ראשי שנשרף – למוסך.',k:'נתיך פיוז'},
+{c:'emergency',t:'נורות',b:'לבדוק נתיך ומגעים לפני החלפת נורה, ולהשתמש בנורה זהה. נורות הלוגן מחזיקים רק במתכת. אחרי החלפת נורת ראש יש ליישר אורות. יחידות LED ו-Bi-Xenon – במוסך בלבד. דוגמאות: אור נמוך H7 55W, אור גבוה H1 55W, ערפל אחורי H21W, לוחית רישוי W5W.',k:'נורה H7 פנס'},
+{c:'dash',t:'נוריות אזהרה: אדום מול כתום',b:'אדום = דחוף: לחץ שמן נמוך, נוזל בלמים נמוך, התחממות, תקלת תיבת TCT, תקלות EBD והגה. בלחץ שמן נמוך בנסיעה – לעצור ולכבות מיד. כתום = פחות דחוף, לבדיקה בהקדם: ABS, רזרבת דלק, שחיקת רפידות, תקלת הזרקה, לחץ אוויר בצמיגים.',k:'נורה אזהרה לוח מחוונים'},
+{c:'dash',t:'הודעת Service',b:'הודעת Service מופיעה כ-2,000 ק״מ (או 30 יום) לפני הטיפול המתוכנן, ואחריה הודעת טיפול כשמגיעים למועד. המוסך מאפס את ההודעה.',k:'service טיפול הודעה'},
+{c:'drive',t:'Start&Stop',b:'המנוע נכבה בעצירה כשהרכב בניוטרל והמצמד משוחרר, ונדלק בלחיצה על המצמד. אפשר לכבות בכפתור. לא יפעל כשהמנוע קר, המצבר חלש, דלת הנהג פתוחה או החגורה לא חגורה. אחרי יותר מ-3 דקות בעמידה נדרש מפתח להתנעה מחדש.',k:'start stop סטופ סטארט'},
+{c:'drive',t:'תיבת TCT (אוטומטית)',b:'נורית TCT אדומה מהבהבת עם הודעה וזמזם פירושה תקלה בתיבה. היא יכולה להופיע גם אחרי עומס חם (התחממות) ומגבילה ביצועים. לפנות למוסך בהקדם.',k:'tct תיבה אוטומטית'},
+{c:'drive',t:'מזגן',b:'להפעיל את המזגן כ-10 דקות לפחות פעם בחודש גם בחורף, ולבדוק אותו במוסך לפני הקיץ.',k:'מזגן קיץ חורף'},
+{c:'specs',t:'משקלים וגרירה',b:'משקל עצמי כ-1,280 ק״ג (1.4 טורבו), עומס מותר כולל נהג 505 ק״ג, משקל כולל מותר 1,785 ק״ג. גרירה: 1,300 ק״ג עם בלם, 500 ק״ג בלי. עומס גג 50 ק״ג.',k:'משקל גרירה'},
+{c:'specs',t:'חלקי חילוף מקוריים',b:'היצרן ממליץ על חלקי חילוף מקוריים לבלמים, מצתים, מזרקים, מצברים, מתלים ומגבים.',k:'חלקים מקוריים מגבים'}
+];
+var mq='',mc='all';
+function manualList(){
+  var q=norm(mq),terms=q?expand(q):null,ws=q.split(' ').filter(function(w){return w.length>=2;});
+  var list=MANUAL.filter(function(m){
+    if(mc!=='all'&&m.c!==mc)return false;if(!q)return true;
+    var t=norm(m.t+' '+m.b+' '+m.k);
+    return terms.some(function(w){return w&&t.indexOf(w)>=0;})||ws.every(function(w){return t.indexOf(w)>=0;});
+  });
+  var o='<h2>'+list.length+' נושאים</h2>';
+  list.forEach(function(m){o+='<div class="card hcard"><div class="top"><b>'+esc(m.t)+'</b><span class="tag">'+MCATS[m.c]+'</span></div><p style="margin:8px 0 10px;font-size:14px;color:#d7d4cd">'+esc(m.b)+'</p><button class="btn" data-a="askm" data-q="'+esc('ספר הרכב: '+m.t)+'">שאל את העוזר על זה</button></div>';});
+  if(!list.length)o+='<div class="card mut">לא נמצא בספר. נסה מילה אחרת, או שאל את העוזר – הוא יודע גם מעבר למה שבתקציר.</div>';
+  return o;
+}
+function viewManual(){
+  return '<div class="card"><b>ספר הרכב – ג׳ולייטה</b><p class="mut" style="font-size:12.5px;margin:6px 0 8px">תקציר בניסוח שלי מספר הרכב הרשמי (מהדורת 09/2015). הספר מכסה את כל הגרסאות והנתונים בו "מנחים", לכן ייתכנו הבדלים בגרסה שלך.</p><a href="'+PDF_URL+'" target="_blank" rel="noopener" style="color:var(--gold);font-size:13px">לספר המלא (PDF, אנגלית) ↗</a></div>'+
+   '<div class="card"><div class="field" style="margin:0"><label>חיפוש בספר</label><input type="search" id="m_q" placeholder="שמן, לחץ אוויר, נורית, נתיך…" value="'+esc(mq)+'"></div></div>'+
+   '<div class="chips">'+Object.keys(MCATS).map(function(k){return '<button class="fchip '+(k===mc?'on':'')+'" data-a="mcat" data-k="'+k+'">'+MCATS[k]+'</button>';}).join('')+'</div>'+
+   '<div id="mlist">'+manualList()+'</div>';
+}
+
+/* ---------- smart assistant (Claude) ---------- */
+var SYSTEM='אתה "עוזר ג׳ולייטה": עוזר אישי לבעל רכב אלפא רומיאו ג׳ולייטה (1.4 טורבו, כנראה MultiAir). ענה בעברית, קצר וענייני (עד כ-8 שורות), בטון ידידותי.\n'+
+ 'כללים:\n'+
+ '1. כששואלים מתי הוחלף/נעשה משהו – חפש ברישומי ההיסטוריה למטה (גם כשהפריט היה חלק מטיפול, למשל מגבים או נוזל בלמים), וציין את התאריך האחרון והק״מ. סמן במפורש אם הערך משוער או אם אין רישום. אל תמציא רישומים.\n'+
+ '2. תמיד סיים בהמלצה: מתי כדאי להחליף/לבדוק, לפי ספר הרכב (למטה) וידע מקצועי כללי. הבעלים נוסע מעט (~6,500 ק״מ בשנה), ולכן בדרך כלל הזמן קובע ולא הק״מ. חשב מועדים ביחס לתאריך היום.\n'+
+ '3. אם המשתמש כתב רק שם חלק (למשל "צמיגים" או "ברקסים") – ענה כאילו שאל מתי הוחלף ומתי להחליף.\n'+
+ '4. לשאלות כלליות על הרכב, תקלות, נוריות, נהיגה, נוזלים, חלקים או עלויות – ענה מהספר ומהידע שלך. כשאתה לא בטוח או שהדבר תלוי בגרסה, אמור זאת. לתקלות בטיחותיות המלץ לפנות למוסך.\n'+
+ '5. נושאים שאינם קשורים לרכב – סרב בנימוס והחזר לנושא הרכב.\n'+
+ '6. אתה לא מחליף מוסך מוסמך; לא לתת הוראות פירוק מסוכנות.';
+function ctx(){
+  var T=today(),cs=allCalc(),L=[];
+  L.push('תאריך היום: '+iso(T)+'. ק״מ נוכחי: '+S.odo+' (עודכן '+S.odoDate+'). קצב נסיעה ממוצע: כ-'+Math.round(S.rate*365)+' ק״מ בשנה.');
+  L.push('טסט שנתי: עד '+S.test.due+', אגרה '+(S.test.paid?'שולמה':'טרם שולמה')+'.');
+  L.push('--- מצב מעקב הפריטים (מחושב) ---');
+  cs.forEach(function(c){var it=c.it;L.push('- '+it.name+': סטטוס '+LABEL[c.status]+'; אחרון: '+(it.lastDate||'לא ידוע')+(it.lastKm!=null?' ב-'+(it.est?'~':'')+it.lastKm+' ק״מ':'')+(it.est?' (משוער)':'')+'; מרווח: '+intervalText(it)+'; יעד: '+(c.dueDate?iso(c.dueDate):'-')+' / '+(c.dueKm!=null?c.dueKm+' ק״מ':'-')+(c.status==='verify'&&it.verify?'; הערה: '+it.verify:''));});
+  L.push('--- רישומי טיפולים והיסטוריה (מהישן לחדש) ---');
+  histAll().slice().reverse().forEach(function(x){L.push(x.d+' | '+(x.km!=null?(x.kmEst?'~':'')+x.km+' ק״מ':'-')+' | '+x.t+(x.i&&x.i.length?': '+x.i.join('; '):'')+(x.src==='user'?' [דיווח הבעלים]':''));});
+  L.push('--- תקציר ספר הרכב ---');
+  MANUAL.forEach(function(m){L.push('['+m.t+'] '+m.b);});
+  return L.join('\n');
+}
+function strip(s){return String(s||'').replace(/<br>/g,'\n').replace(/<[^>]+>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');}
+function transcript(){
+  var prev=chat.slice(0,-2).slice(-8);
+  return prev.map(function(m){return (m.r==='u'?'משתמש: ':'עוזר: ')+(m.t||strip(m.h));}).join('\n');
+}
+function md(t){
+  var s=esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>'),o='';
+  s.split('\n').forEach(function(l){
+    var m=l.match(/^\s*(?:[-•]|\*)\s+(.*)/);
+    if(m)o+='<span class="li">• '+m[1]+'</span>';
+    else if(/^\s*#+\s*/.test(l))o+='<b>'+l.replace(/^\s*#+\s*/,'')+'</b><br>';
+    else if(l.trim())o+=l+'<br>';
+  });
+  return o;
+}
+async function callAnthropic(sys,userText){
+  var body={model:S.model||'claude-sonnet-5-5',max_tokens:1500,system:sys,messages:[{role:'user',content:userText}]};
+  if(S.web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
+  async function go(b){
+    return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(b)});
+  }
+  var r=await go(body);
+  if(!r.ok&&body.tools&&(r.status===400||r.status===403||r.status===404)){delete body.tools;r=await go(body);}
+  if(!r.ok){var tx='';try{tx=await r.text();}catch(e){}throw new Error('שגיאה '+r.status+(r.status===401?' – מפתח API שגוי':'')+' '+tx.slice(0,100));}
+  var j=await r.json();
+  return (j.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+}
+async function getSample(){try{if(window.claude&&window.claude.use){var s=await window.claude.use('sample');return s||null;}}catch(e){}return null;}
+async function llm(q){
+  var tr=transcript();
+  var user=(tr?'השיחה עד כה:\n'+tr+'\n\n':'')+'שאלת המשתמש: '+q;
+  var sample=await getSample();
+  if(sample){var r=await sample(SYSTEM+'\n\n'+ctx()+'\n\n'+user,{cache:false,modelTier:'default'});return r.text;}
+  if(S.apiKey)return await callAnthropic(SYSTEM+'\n\n'+ctx(),user);
+  var e=new Error('nokey');e.nokey=true;throw e;
 }
 function viewBot(){
   var h='<div class="msgs">'+chat.map(function(m){return '<div class="bub '+m.r+'">'+(m.r==='u'?esc(m.t):m.h)+'</div>';}).join('')+'</div>';
   h+='<div class="sugs">'+SUGS.map(function(s){return '<button class="fchip" data-a="ask" data-q="'+esc(s)+'">'+esc(s)+'</button>';}).join('')+'</div>';
-  h+='<div class="askbar"><input type="text" id="b_in" placeholder="שאל על טיפול, חלק או מועד…" autocomplete="off"><button class="btn red" data-a="send">שלח</button></div>';
+  h+='<div class="askbar"><input type="text" id="b_in" placeholder="שאל כל דבר על הרכב והטיפולים…" autocomplete="off"><button class="btn red" data-a="send">שלח</button></div>';
   return h;
 }
+function toBottom(){setTimeout(function(){try{window.scrollTo(0,document.body.scrollHeight);}catch(e){}},30);}
 function ask(q){
-  q=String(q||'').trim();if(!q)return;
-  chat.push({r:'u',t:q});chat.push({r:'b',h:botReply(q)});
-  render();window.scrollTo(0,document.body.scrollHeight);
-  var i=document.getElementById('b_in');if(i&&i.focus)i.focus();
+  q=String(q||'').trim();if(!q||busy)return;
+  var m={r:'b',h:'<span class="mut">⏳ חושב…</span>',pending:true};
+  chat.push({r:'u',t:q});chat.push(m);busy=true;render();toBottom();
+  llm(q).then(function(t){m.t=t;m.h=md(t);})
+   .catch(function(e){
+     m.t='';
+     m.h=botReply(q)+'<br><span class="li">'+(e&&e.nokey?'💡 זו תשובה מהנתונים שבאפליקציה. כדי שהעוזר יענה על כל שאלה, הוסף מפתח API ב-⚙️ הגדרות.':'⚠ העוזר החכם לא זמין כרגע ('+esc(String((e&&e.message)||e).slice(0,140))+'). זו תשובה מהנתונים המקומיים.')+'</span>';
+   })
+   .then(function(){m.pending=false;busy=false;render();toBottom();var i=document.getElementById('b_in');if(i&&i.focus)i.focus();});
 }
 
 function viewSet(){
-  var h='<h2>הרכב</h2><div class="card">'+
+  var h='<h2>עוזר חכם (Claude)</h2><div class="card"><p class="mut" style="font-size:12.5px;margin:0 0 10px">כדי שהעוזר יענה על כל שאלה, הדבק מפתח API של Anthropic (מ-console.anthropic.com). המפתח נשמר רק במכשיר הזה. בגרסה שבאתר Claude אין צורך במפתח. עלות שאלה אחת: סנטים בודדים.</p>'+
+   '<div class="field"><label>מפתח API</label><input type="password" id="f_key" autocomplete="off" placeholder="sk-ant-…" value="'+esc(S.apiKey)+'"></div>'+
+   '<div class="field"><label>מודל</label><select id="f_model"><option value="claude-sonnet-5-5"'+(S.model==='claude-sonnet-5-5'?' selected':'')+'>Sonnet 5.5 (מומלץ)</option><option value="claude-haiku-5-5"'+(S.model==='claude-haiku-5-5'?' selected':'')+'>Haiku 5.5 (מהיר וזול)</option><option value="claude-opus-5-5"'+(S.model==='claude-opus-5-5'?' selected':'')+'>Opus 5.5 (מדויק)</option></select></div>'+
+   '<label class="chk"><input type="checkbox" id="f_web" '+(S.web?'checked':'')+'> אפשר לעוזר לחפש ברשת (אם החשבון תומך)</label></div>'+
+   '<h2>הרכב</h2><div class="card">'+
    '<div class="g2"><div class="field"><label>ק״מ נוכחי</label><input type="number" inputmode="numeric" id="f_odo" value="'+S.odo+'"></div>'+
    '<div class="field"><label>תאריך הקריאה</label><input type="date" id="f_odod" value="'+S.odoDate+'"></div></div>'+
    '<div class="field"><label>קצב נסיעה (ק״מ בשנה) – משמש להערכת תאריכים</label><input type="number" inputmode="numeric" id="f_rate" value="'+Math.round(S.rate*365)+'"></div></div>'+
@@ -634,7 +765,7 @@ function viewSet(){
 var tab='dash',catF='all';
 function render(){
   var v=document.getElementById('view');
-  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,bot:viewBot,set:viewSet})[tab]();
+  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,manual:viewManual,bot:viewBot,set:viewSet})[tab]();
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'),function(b){b.classList.toggle('on',b.getAttribute('data-tab')===tab);});
   document.getElementById('todayPill').textContent=fmtD(today());
 }
@@ -699,6 +830,8 @@ document.addEventListener('click',function(e){
   else if(a==='submitLog')submitLog();
   else if(a==='cat'){catF=b.getAttribute('data-k');render();}
   else if(a==='ask'){ask(b.getAttribute('data-q'));}
+  else if(a==='askm'){tab='bot';render();window.scrollTo(0,0);ask(b.getAttribute('data-q'));}
+  else if(a==='mcat'){mc=b.getAttribute('data-k');render();}
   else if(a==='send'){var bi=document.getElementById('b_in');ask(bi?bi.value:'');}
   else if(a==='testdone'){
     openSheet('<h3>הטסט בוצע?</h3><p class="mut">המועד הבא יוזז שנה קדימה והאגרה תסומן כלא שולמה.</p><div class="row"><button class="btn red grow" data-a="testdone2">כן, בוצע</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
@@ -714,6 +847,7 @@ document.addEventListener('click',function(e){
   else if(a==='reset2'){S=fresh();save();closeSheet();render();toast('אופס');}
 });
 document.addEventListener('input',function(e){
+  if(e.target.id==='m_q'){mq=e.target.value;var ml=document.getElementById('mlist');if(ml)ml.innerHTML=manualList();}
   if(e.target.id==='h_q'){hq=e.target.value;var hl=document.getElementById('hlist');if(hl)hl.innerHTML=histList();}
 });
 document.addEventListener('keydown',function(e){
@@ -729,7 +863,7 @@ document.addEventListener('change',function(e){
     save();toast('נשמר ✓');return;
   }
   var m={f_odo:function(){var v=num(el.value);if(v>0){S.odo=v;}},f_odod:function(){if(el.value)S.odoDate=el.value;},f_rate:function(){var v=num(el.value);if(v>0)S.rate=v/365;},
-         f_test:function(){if(el.value)S.test.due=el.value;},f_paid:function(){S.test.paid=el.checked;}};
+         f_test:function(){if(el.value)S.test.due=el.value;},f_key:function(){S.apiKey=el.value.trim();},f_model:function(){S.model=el.value;},f_web:function(){S.web=el.checked;},f_paid:function(){S.test.paid=el.checked;}};
   if(m[el.id]){m[el.id]();save();toast('נשמר ✓');}
 });
 
