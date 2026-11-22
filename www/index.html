@@ -139,7 +139,7 @@ details.set .body{padding:0 13px 12px}
 .chk input{width:20px;height:20px;accent-color:var(--rosso)}
 
 /* nav */
-nav{position:fixed;inset:auto 0 0 0;background:rgba(14,15,18,.93);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
+nav{position:fixed;inset:auto 0 0 0;background:rgba(14,15,18,.93);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(7,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
 nav button{background:none;border:0;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;padding:5px 0;border-radius:10px}
 nav button span{font-size:19px;line-height:1.1}
 nav button.on{color:#fff}
@@ -202,6 +202,7 @@ a.btn{display:inline-block;text-align:center;text-decoration:none}
   <button data-tab="year"><span>📅</span>לפי שנה</button>
   <button data-tab="hist"><span>📜</span>היסטוריה</button>
   <button data-tab="manual"><span>📖</span>ספר רכב</button>
+  <button data-tab="docs"><span>📇</span>מסמכים</button>
   <button data-tab="bot"><span>🤖</span>עוזר</button>
 </nav>
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
@@ -439,6 +440,8 @@ function viewDash(){
 
   h+=nextService();
   h+=insBrief();
+  var ec=D.contacts.filter(function(c){return c.phone;});
+  h+='<div class="card"><div class="row between"><b>🆘 אנשי קשר לחירום</b><button class="btn" data-tab="docs">עריכה</button></div><div class="acts" style="margin-top:8px">'+(ec.length?ec.map(function(c){return '<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.role)+'</a>';}).join(''):'<span class="mut" style="font-size:12.5px">עוד לא הוזנו מספרים</span>')+'</div></div>';
   h+='<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';
   h+='<div class="card test '+(urgent?'':'calm')+(urgent&&!S.test.paid?' pulse':'')+'">'+
    '<div class="row between"><div><div class="mut" style="font-size:12.5px">טסט שנתי · עד '+fmtD(pd(S.test.due))+'</div>'+
@@ -904,11 +907,12 @@ function fileToImg(file){
 }
 /* ---------- documents, insurance, contacts ---------- */
 var DKEY='giulietta-docs-v1';
-var DCON=[{id:'c_ins',role:'חברת ביטוח'},{id:'c_tow',role:'גרר (ביטוח)'},{id:'c_glass',role:'שמשות'},{id:'c_talatan',role:'מוסך תלתן'},{id:'c_piaut',role:'פיאוט'}];
+var DCON=[{id:'c_ins',role:'חברת ביטוח'},{id:'c_tow',role:'גרר (ביטוח)'},{id:'c_glass',role:'שמשות'},{id:'c_talatan',role:'מוסך תלתן',ph:'053-888-3038'},{id:'c_piaut',role:'פיאוט'}];
 function dload(){
   var d={imgs:{license:null,insurance:null},lic:{},pols:[],contacts:[]};
   try{var o=JSON.parse(localStorage.getItem(DKEY)||'null');if(o){d.imgs=Object.assign(d.imgs,o.imgs||{});d.lic=o.lic||{};d.pols=o.pols||[];d.contacts=o.contacts||[];}}catch(e){}
-  DCON.forEach(function(c){if(!d.contacts.some(function(x){return x.id===c.id;}))d.contacts.push({id:c.id,role:c.role,name:'',phone:''});});
+  d.contacts.forEach(function(x){if(x.id==='c_talatan'&&!x.phone&&!x.seeded){x.phone='053-888-3038';}x.seeded=1;});
+  DCON.forEach(function(c){if(!d.contacts.some(function(x){return x.id===c.id;}))d.contacts.push({id:c.id,role:c.role,name:'',phone:c.ph||''});});
   return d;
 }
 var D=dload();
@@ -945,7 +949,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 ב · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
