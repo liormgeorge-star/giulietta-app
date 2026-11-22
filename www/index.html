@@ -206,7 +206,7 @@ a.btn{display:inline-block;text-align:center;text-decoration:none}
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
 <div class="toast" id="toast"></div>
 <input type="file" accept="image/*" capture="environment" id="d_ins_cam" hidden><input type="file" accept="image/*" id="d_ins_gal" multiple hidden><input type="file" accept="image/*" capture="environment" id="d_lic_cam" hidden><input type="file" accept="image/*" id="d_lic_gal" hidden>
-<input type="file" accept="image/*,application/pdf" id="s_files" multiple hidden>
+<input type="file" accept="image/*,application/pdf" id="s_files" multiple hidden><input type="file" accept="image/*,application/pdf" id="d_spec" multiple hidden>
 <input type="file" accept="image/*" capture="environment" id="s_cam" hidden>
 <input type="file" accept="image/*" capture="environment" id="r_cam" hidden><input type="file" accept="image/*" id="r_gal" hidden>
 
@@ -1009,7 +1009,7 @@ function insBrief(){
   var cp=curPol();
   if(!cp)return '<div class="card"><div class="row between"><div><b>ביטוח ומסמכים</b><div class="mut" style="font-size:12.5px">הוסף טופס ביטוח ורישוי: מועד סיום, עלויות ואנשי קשר לחירום</div></div></div><div class="acts"><button class="btn red" data-tab="docs">📇 למסמכים</button></div></div>';
   var n=insDays(cp),bad=n<0,warn=n>=0&&n<=30;
-  return '<div class="card"><div class="row between"><div><div class="mut" style="font-size:12.5px">ביטוח'+(cp.insurer?' · '+esc(cp.insurer):'')+' · עד '+esc(fmtD(pd(cp.end)))+'</div><div class="big" style="'+(bad?'color:var(--over)':'')+'">'+(bad?(-n):n)+'<small>'+(bad?'ימי איחור':'ימים')+'</small></div></div><div style="text-align:left;display:flex;flex-direction:column;gap:7px;align-items:flex-end">'+(cp.premium?'<span class="mut" style="font-size:12px">פרמיה ₪'+fmtN(cp.premium)+'</span>':'')+'<span class="chip '+(bad?'warn':warn?'warn':'ok')+'">'+(bad?'⚠ פג תוקף':warn?'⏰ לחדש בקרוב':'✓ בתוקף')+'</span><button class="btn" data-tab="docs">📇 מסמכים וחירום</button></div></div></div>';
+  return '<div class="card"><div class="row between"><div><div class="mut" style="font-size:12.5px">ביטוח'+(cp.insurer?' · '+esc(cp.insurer):'')+' · עד '+esc(fmtD(pd(cp.end)))+'</div><div class="big" style="'+(bad?'color:var(--over)':'')+'">'+(bad?(-n):n)+'<small>'+(bad?'ימי איחור':'ימים')+'</small></div></div><div style="text-align:left;display:flex;flex-direction:column;gap:7px;align-items:flex-end">'+(cp.premium?'<span class="mut" style="font-size:12px">פרמיה ₪'+fmtN(cp.premium)+'</span>':'')+'<span class="chip '+(bad?'warn':warn?'warn':'ok')+'">'+(bad?'⚠ פג תוקף':warn?'⏰ לחדש בקרוב':'✓ בתוקף')+'</span><button class="btn" data-tab="docs">📇 מסמכים וחירום</button>'+(cp.cov&&cp.cov.length?'<button class="btn" data-a="covview" data-id="'+cp.id+'">📋 פירוט הכיסויים</button>':'')+'</div></div></div>';
 }
 function contactCard(c){
   return '<div class="card compact" data-del="con:'+c.id+'"><div class="row between" style="gap:8px"><div style="min-width:0"><b>'+esc(c.role)+'</b>'+(c.name?'<div class="mut" style="font-size:12.5px">'+esc(c.name)+'</div>':'')+'</div><div class="row" style="gap:6px">'+(c.phone?'<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.phone)+'</a>':'<span class="mut" style="font-size:12.5px">אין מספר</span>')+'<button class="btn" data-a="dcedit" data-id="'+c.id+'" aria-label="עריכה">✏️</button></div></div></div>';
@@ -1032,7 +1032,7 @@ function insDash(ps){
   by.forEach(function(p,i){
     var pv=null;for(var k=i-1;k>=0;k--){if(by[k].premium){pv=by[k];break;}}
     var c=p.premium&&pv?Math.round((p.premium-pv.premium)/pv.premium*100):null;
-    o+='<tr data-del="pol:'+p.id+'" style="border-top:1px solid var(--line)"><td style="padding:8px 0"><b>'+esc(polYear(p))+'</b></td><td>'+esc(p.insurer||'-')+(p.type?'<div class="mut" style="font-size:11.5px">'+esc(p.type)+'</div>':'')+'</td><td><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b></td><td style="color:'+(c>0?'#ff6b6b':c<0?'#5fd38d':'inherit')+'">'+(c==null?'':(c>0?'▲':'▼')+Math.abs(c)+'%')+'</td><td style="text-align:left">'+(p.img?'<button class="btn" data-a="dview" data-k="p:'+p.id+'" aria-label="הצג טופס">👁</button> ':'')+'<button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></td></tr>';
+    o+='<tr data-del="pol:'+p.id+'" style="border-top:1px solid var(--line)"><td style="padding:8px 0"><b>'+esc(polYear(p))+'</b></td><td>'+esc(p.insurer||'-')+(p.type?'<div class="mut" style="font-size:11.5px">'+esc(p.type)+'</div>':'')+'</td><td><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b></td><td style="color:'+(c>0?'#ff6b6b':c<0?'#5fd38d':'inherit')+'">'+(c==null?'':(c>0?'▲':'▼')+Math.abs(c)+'%')+'</td><td style="text-align:left">'+(p.cov&&p.cov.length?'<button class="btn" data-a="covview" data-id="'+p.id+'" aria-label="פירוט הכיסויים">📋</button> ':'')+(p.img?'<button class="btn" data-a="dview" data-k="p:'+p.id+'" aria-label="הצג טופס">👁</button> ':'')+'<button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></td></tr>';
   });
   return o+'</table></div>';
 }
@@ -1042,7 +1042,7 @@ function viewDocs(){
     var n=insDays(cp);
     h+='<div class="card"><div class="row between"><div><b>'+esc(cp.insurer||'פוליסה')+(cp.type?' · '+esc(cp.type):'')+'</b><div class="mut" style="font-size:12.5px">'+(cp.start?esc(fmtD(pd(cp.start)))+' – ':'')+'עד '+esc(fmtD(pd(cp.end)))+(cp.policyNo?' · מס׳ '+esc(cp.policyNo):'')+'</div></div><div style="text-align:left"><div class="big" style="font-size:30px;'+(n<0?'color:var(--over)':'')+'">'+(n<0?(-n):n)+'<small>'+(n<0?'ימי איחור':'ימים')+'</small></div></div></div>'+(cp.premium?'<p style="margin:8px 0 0">פרמיה: <b>₪'+fmtN(cp.premium)+'</b></p>':'')+'</div>';
   }else h+='<div class="card mut">עוד לא נוספה פוליסה.</div>';
-  h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="ins">📷 צלם טופס ביטוח</button><button class="btn" data-a="dgal" data-k="ins">🖼️ בחר טפסים (כמה יחד)</button><button class="btn ghost" data-a="padd">✍️ ידני</button>'+(D.imgs.insurance?'<button class="btn ghost" data-a="dview" data-k="insurance">👁 הצג טופס</button>':'')+'</div>';
+  h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="ins">📷 צלם טופס ביטוח</button><button class="btn" data-a="dgal" data-k="ins">🖼️ בחר טפסים (כמה יחד)</button><button class="btn ghost" data-a="padd">✍️ ידני</button>'+(D.imgs.insurance?'<button class="btn ghost" data-a="dview" data-k="insurance">👁 הצג טופס</button>':'')+'</div><div class="acts"><button class="btn red" data-a="dspec">📑 הוסף מפרט פוליסה</button>'+(cp?'<button class="btn" data-a="covview" data-id="'+cp.id+'">📋 פירוט הכיסויים'+(cp.cov&&cp.cov.length?' ('+cp.cov.length+')':'')+'</button>':'')+'</div>';
   var ps=D.pols.slice().sort(function(a,b){return (b.end||'').localeCompare(a.end||'');});
   h+=insDash(ps);
   if(false){
@@ -1056,7 +1056,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 יב · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 יג · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":הסכום הכולל לתשלום עבור כל תקופת הביטוח (פרמיה / סה״כ לתשלום / אגרה כולל), כמספר בלי סימנים, או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
@@ -1130,6 +1130,83 @@ function safeJson(x){
   try{return JSON.parse(y);}catch(e2){}
   y=y.replace(/\\u[0-9a-fA-F]{4}/g,'');
   return JSON.parse(y);
+}
+
+/* ---------- policy specification (coverages) ---------- */
+var SPEC_SYS='אתה מחלץ נתונים ממפרט / דף פוליסה של ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","total":העלות הכוללת לתשלום עבור כל תקופת הביטוח כמספר או null,"coverages":[{"name":"שם הכיסוי","limit":"גובה הכיסוי / גבול האחריות כפי שמופיע","deductible":"גובה ההשתתפות העצמית כפי שמופיע","note":"הערה קצרה או תנאי, אם יש"}]}\nכללים: רשום כל כיסוי והרחבה שמופיעים במפרט (למשל נזקי גוף, נזק לרכוש צד ג׳, ביטוח מקיף, גניבה, שמשות, גרירה, רכב חלופי, שירותי דרך, הרחבות). limit ו-deductible כטקסט כפי שמופיעים, כולל יחידות (₪, %, ללא הגבלה). total = סה״כ פרמיה / סה״כ לתשלום, בלי סימנים. תאריכים בישראל הם DD/MM/YYYY. אל תמציא נתון שלא מופיע: השמט או null.';
+function specPol(j){
+  var end=okDate(j.end),start=okDate(j.start),no=j.policyNo?String(j.policyNo):'';
+  var p=null;
+  if(no)p=D.pols.filter(function(x){return x.policyNo&&x.policyNo===no;})[0];
+  if(!p&&end)p=D.pols.filter(function(x){return x.end===end;})[0];
+  if(!p&&!end)p=curPol();
+  if(!p&&end){p={id:'p'+Date.now()+Math.random().toString(36).slice(2,5),insurer:j.insurer||'',type:'',policyNo:no,start:start,end:end,premium:null};D.pols.push(p);}
+  return p;
+}
+function mergeCov(p,list){
+  p.cov=p.cov||[];
+  list.forEach(function(c){
+    var k=String(c.n).replace(/\s+/g,'');
+    var ex=p.cov.filter(function(x){return String(x.n).replace(/\s+/g,'')===k;})[0];
+    if(ex){if(c.l)ex.l=c.l;if(c.d)ex.d=c.d;if(c.x)ex.x=c.x;}else p.cov.push(c);
+  });
+}
+async function scanSpec(files){
+  var tk=++scanTok,total=files.length,res=[],fail=[];
+  openSheet(progSheet('📑 קורא את מפרט הפוליסה…'));
+  llmMax=8192;
+  try{
+    for(let i=0;i<total;i++){
+      if(tk!==scanTok)return;
+      stage('קובץ '+(i+1)+' / '+total+': מכין…');
+      try{
+        var doc=await fileToDoc(files[i]);
+        if(tk!==scanTok)return;
+        stage('קובץ '+(i+1)+' / '+total+': שולח לבינה מלאכותית… (עד דקה)');
+        var t=await llmRaw(SPEC_SYS,'תאריך היום: '+iso(today())+'. החזר את ה-JSON.',doc,true);
+        if(tk!==scanTok)return;
+        res.push(parseJson(t));
+      }catch(e){
+        if(e&&e.nokey){var rest=files.slice(i);llmMax=4096;needKey(function(){scanSpec(rest);},function(){closeSheet();toast('קריאת מפרט דורשת חיבור ל-AI');});return;}
+        fail.push('קובץ '+(i+1)+': '+String((e&&e.message)||'שגיאה').slice(0,90));
+      }
+    }
+  }finally{llmMax=4096;}
+  if(tk!==scanTok)return;
+  var done=[];
+  res.forEach(function(j){
+    var cov=(j.coverages||[]).filter(function(c){return c&&c.name;}).map(function(c){return {n:String(c.name),l:c.limit!=null?String(c.limit):'',d:c.deductible!=null?String(c.deductible):'',x:c.note?String(c.note):''};});
+    var p=specPol(j);
+    if(!p){fail.push('לא זוהתה פוליסה שהמפרט שייך לה. הוסף קודם טופס ביטוח.');return;}
+    if(cov.length)mergeCov(p,cov);
+    var tot=numClean(j.total);if(tot)p.premium=tot;
+    if(!p.insurer&&j.insurer)p.insurer=j.insurer;
+    if(!p.policyNo&&j.policyNo)p.policyNo=String(j.policyNo);
+    if(!p.start&&okDate(j.start))p.start=okDate(j.start);
+    p.specAt=iso(today());
+    done.push({p:p,n:cov.length,tot:tot});
+  });
+  dsave();render();
+  var h='<h3>'+(done.length?'✅ המפרט נקרא':'⚠ לא נקרא מידע')+'</h3>';
+  done.forEach(function(r){h+='<div class="card compact"><b>'+esc(polYear(r.p))+(r.p.insurer?' · '+esc(r.p.insurer):'')+'</b><div class="mut" style="font-size:12.5px">'+r.n+' כיסויים · '+(r.tot?'עלות כוללת ₪'+fmtN(r.tot):(r.p.premium?'עלות ₪'+fmtN(r.p.premium):'עלות לא זוהתה'))+'</div></div>';});
+  if(fail.length)h+='<p class="mut" style="font-size:12.5px">'+fail.map(esc).join('<br>')+'</p>';
+  h+='<div class="row">'+(done.length?'<button class="btn red grow" data-a="covview" data-id="'+done[0].p.id+'">📋 פירוט הכיסויים</button>':'<button class="btn" data-a="tconn">🔍 בדיקת חיבור</button>')+'<button class="btn ghost" data-a="closeSheet">סגור</button></div>';
+  openSheet(h);
+}
+function covSheet(id){
+  var p=D.pols.filter(function(x){return x.id===id;})[0];
+  if(!p||!p.cov||!p.cov.length){openSheet('<h3>📋 פירוט הכיסויים</h3><p class="mut">עוד לא נוסף מפרט לפוליסה הזו.</p><div class="row"><button class="btn red grow" data-a="dspec">📑 הוסף מפרט</button><button class="btn ghost" data-a="closeSheet">סגור</button></div>');return;}
+  var h='<h3>📋 פירוט הכיסויים</h3><div class="mut" style="font-size:12.5px;margin:0 0 8px">'+esc(p.insurer||'פוליסה')+(p.type?' · '+esc(p.type):'')+' · '+esc(polYear(p))+(p.policyNo?' · מס׳ '+esc(p.policyNo):'')+'</div>';
+  if(p.premium)h+='<div class="card compact" style="margin:0 0 8px"><div class="row between"><span class="mut">עלות כוללת</span><b style="font-size:18px">₪'+fmtN(p.premium)+'</b></div></div>';
+  p.cov.forEach(function(c){
+    h+='<div class="card compact" style="margin:0 0 7px"><b>'+esc(c.n)+'</b>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;font-size:13px">'+
+      '<div style="flex:1;min-width:46%"><div class="mut" style="font-size:11.5px">גובה הכיסוי</div>'+(c.l?esc(c.l):'<span class="mut">-</span>')+'</div>'+
+      '<div style="flex:1;min-width:46%"><div class="mut" style="font-size:11.5px">השתתפות עצמית</div>'+(c.d?esc(c.d):'<span class="mut">-</span>')+'</div></div>'+
+      (c.x?'<div class="mut" style="font-size:12px;margin-top:4px">'+esc(c.x)+'</div>':'')+'</div>';
+  });
+  h+='<div class="row" style="margin-top:8px"><button class="btn" data-a="dspec">📑 הוסף מפרט</button><button class="btn ghost grow" data-a="closeSheet">סגור</button></div>';
+  openSheet(h);
 }
 function parseJson(t){var m=String(t).match(/\{[\s\S]*\}/);if(!m)throw new Error('לא התקבל JSON תקין');return safeJson(m[0]);}
 function okDate(s){
@@ -1530,6 +1607,8 @@ document.addEventListener('click',function(e){
   else if(a==='submitDone')submitDone(id);
   else if(a==='closeSheet')closeSheet();
   else if(a==='delok')doDel();
+  else if(a==='dspec'){var sp=document.getElementById('d_spec');if(sp)sp.click();}
+  else if(a==='covview')covSheet(id);
   else if(a==='odo')openOdo();
   else if(a==='submitOdo')submitOdo();
   else if(a==='addlog')openAddLog();
@@ -1605,6 +1684,7 @@ document.addEventListener('keydown',function(e){
 document.addEventListener('change',function(e){
   var el=e.target;
   if(el.id==='s_files'||el.id==='s_cam'){var sf=el.files?Array.prototype.slice.call(el.files):[];el.value='';if(sf.length)scanSrv(sf);return;}
+  if(el.id==='d_spec'){var spf=el.files?Array.prototype.slice.call(el.files):[];el.value='';if(spf.length)scanSpec(spf);return;}
   var dm=/^d_(ins|lic)_/.exec(el.id||'');
   if(dm){var dfs=el.files?Array.prototype.slice.call(el.files):[];el.value='';if(dfs.length){if(dm[1]==='ins')scanIns(dfs);else scanDoc('lic',dfs[0]);}return;}
   if(el.getAttribute('data-d')!=null||el.getAttribute('data-dc')!=null){dfUpdate(el);return;}
