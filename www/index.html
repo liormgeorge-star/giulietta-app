@@ -865,18 +865,25 @@ async function callAnthropic(sys,userText,img,noWeb){
 
 function withTimeout(p,ms,msg){return new Promise(function(res,rej){var t=setTimeout(function(){rej(new Error(msg||'תם הזמן'));},ms);p.then(function(v){clearTimeout(t);res(v);},function(e){clearTimeout(t);rej(e);});});}
 var scanTok=0;
-async function netFetch(url,opts){
+async function nativeFetch(url,opts){
+  var cap=window.Capacitor,pl=cap&&cap.Plugins&&cap.Plugins.CapacitorHttp;
+  if(!pl||!pl.request)throw new Error('no-native');
+  var data=opts.body;try{data=opts.body?JSON.parse(opts.body):undefined;}catch(x){}
+  var r=await withTimeout(pl.request({url:url,method:opts.method||'GET',headers:opts.headers||{},data:data,connectTimeout:15000,readTimeout:45000}),50000,'השרת לא ענה בזמן');
+  return {ok:r.status>=200&&r.status<300,status:r.status,json:async function(){return typeof r.data==='string'?JSON.parse(r.data):r.data;},text:async function(){return typeof r.data==='string'?r.data:JSON.stringify(r.data);}};
+}
+async function webFetch(url,opts){
   var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=null,o=Object.assign({},opts);
-  if(ctl){o.signal=ctl.signal;tm=setTimeout(function(){ctl.abort();},40000);}
-  try{return await fetch(url,o);}
-  catch(e){
-    var cap=window.Capacitor,pl=cap&&cap.Plugins&&cap.Plugins.CapacitorHttp;
-    if(!pl||!pl.request)throw e;
-    var hd=opts.headers||{},data=opts.body;
-    try{data=opts.body?JSON.parse(opts.body):undefined;}catch(x){}
-    var r=await pl.request({url:url,method:opts.method||'GET',headers:hd,data:data,connectTimeout:20000,readTimeout:60000});
-    return {ok:r.status>=200&&r.status<300,status:r.status,json:async function(){return typeof r.data==='string'?JSON.parse(r.data):r.data;},text:async function(){return typeof r.data==='string'?r.data:JSON.stringify(r.data);}};
-  }finally{if(tm)clearTimeout(tm);}
+  if(ctl){o.signal=ctl.signal;tm=setTimeout(function(){ctl.abort();},30000);}
+  try{return await withTimeout(fetch(url,o),32000,'השרת לא ענה בזמן');}finally{if(tm)clearTimeout(tm);}
+}
+async function netFetch(url,opts){
+  var cap=window.Capacitor,native=!!(cap&&cap.Plugins&&cap.Plugins.CapacitorHttp&&cap.Plugins.CapacitorHttp.request);
+  if(native){
+    try{return await nativeFetch(url,opts);}
+    catch(e){stage('החיבור הישיר נכשל, מנסה בדרך נוספת…');}
+  }
+  return await webFetch(url,opts);
 }
 async function pickGeminiModel(){
   var r=await netFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',{method:'GET',headers:{'x-goog-api-key':S.gkey}});
@@ -916,13 +923,14 @@ function restoreSheet(){
 async function callGemini(sys,userText,img){
   var parts=[];if(img)parts.push({inline_data:{mime_type:img.mime,data:img.b64}});parts.push({text:userText});
   var body=JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:parts}],generationConfig:{maxOutputTokens:llmMax}});
-  var models=[S.gmodel||'gemini-flash-latest','gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest','gemini-2.5-flash-lite','gemini-2.0-flash'].filter(function(m,i,a){return m&&a.indexOf(m)===i;});
+  var models=[S.gmodel||'gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest'].filter(function(m,i,a){return m&&a.indexOf(m)===i;});
   var lastErr=null,sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
   for(var i=0;i<models.length;i++){
-    for(var at=0;at<3;at++){
+    for(var at=0;at<2;at++){
       var r;
+      stage('שולח ל-Gemini ('+models[i]+')…');
       try{r=await netFetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(models[i])+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':S.gkey},body:body});}
-      catch(ne){lastErr=new Error('אין חיבור יציב לאינטרנט. בדוק Wi-Fi או נתונים סלולריים ונסה שוב');if(at===2)throw lastErr;await sleep(1500*(at+1));continue;}
+      catch(ne){lastErr=new Error('אין חיבור יציב לאינטרנט. בדוק Wi-Fi או נתונים סלולריים ונסה שוב');if(at===1)break;await sleep(1200);continue;}
       if(r.ok){
         var j=await r.json(),c=j.candidates&&j.candidates[0];
         var t=c&&c.content&&c.content.parts?c.content.parts.map(function(p){return p.text||'';}).join(''):'';
@@ -933,11 +941,11 @@ async function callGemini(sys,userText,img){
       if(r.status===400&&/API key|API_KEY/i.test(tx))throw new Error('מפתח Gemini לא תקין');
       if(r.status===401||r.status===403)throw new Error('מפתח Gemini נדחה ('+r.status+')');
       lastErr=new Error(r.status===503||r.status===429||r.status>=500?'Gemini עמוס כרגע, נסה שוב בעוד רגע':'שגיאת Gemini '+r.status+' '+tx.slice(0,100));
-      if(r.status===503||r.status===429||r.status>=500){await sleep(1500*(at+1));continue;}
+      if(r.status===503||r.status===429||r.status>=500){if(at===1)break;stage('Gemini עמוס, מנסה שוב…');await sleep(1500);continue;}
       break;
     }
   }
-  throw lastErr;
+  throw lastErr||new Error('אין תשובה מ-Gemini');
 }
 async function getSample(){try{if(window.claude&&window.claude.use){var s=await window.claude.use('sample');return s||null;}}catch(e){}return null;}
 async function llmRaw(sysFull,user,img,noWeb){
@@ -948,7 +956,7 @@ async function llmRaw(sysFull,user,img,noWeb){
     if(img){var lim=null;try{lim=await sample.limits();}catch(e){}if(lim&&lim.images)opts.images=[img.blob];else throw new Error('ניתוח תמונות לא זמין בתצוגה הזו');}
     var r=await sample(sysFull+'\n\n'+user,opts);return r.text;
   }
-  if(S.provider==='gemini'&&S.gkey)return await callGemini(sysFull,user,img);
+  if(S.provider==='gemini'&&S.gkey)return await withTimeout(callGemini(sysFull,user,img),75000,'Gemini לא ענה תוך 75 שניות');
   if(S.provider!=='gemini'&&S.apiKey)return await callAnthropic(sysFull,user,img,noWeb);
   var e=new Error('nokey');e.nokey=true;throw e;
 }
@@ -961,12 +969,12 @@ function readDataUrl(file){return new Promise(function(res,rej){var fr=new FileR
 function loadImg(src){return new Promise(function(res,rej){var im=new Image();im.onload=function(){res(im);};im.onerror=function(){rej(new Error('התמונה לא נטענה'));};im.src=src;});}
 function drawScaled(src,w,h){
   return new Promise(function(res,rej){
-    var sc=Math.min(1,1600/Math.max(w,h)),c=document.createElement('canvas');
+    var sc=Math.min(1,1400/Math.max(w,h)),c=document.createElement('canvas');
     c.width=Math.max(1,Math.round(w*sc));c.height=Math.max(1,Math.round(h*sc));
     c.getContext('2d').drawImage(src,0,0,c.width,c.height);
-    var url=c.toDataURL('image/jpeg',0.85);
+    var url=c.toDataURL('image/jpeg',0.8);
     if(!url||url.length<100){rej(new Error('המרת תמונה נכשלה'));return;}
-    c.toBlob(function(b){res({url:url,b64:url.split(',')[1],mime:'image/jpeg',blob:b});},'image/jpeg',0.85);
+    c.toBlob(function(b){res({url:url,b64:url.split(',')[1],mime:'image/jpeg',blob:b});},'image/jpeg',0.8);
   });
 }
 async function fileToImg(file){
@@ -1047,7 +1055,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 ט · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 י · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
@@ -1059,8 +1067,10 @@ function needKey(retry,manual){
   pendingRetry=retry;pendingManual=manual;
   openSheet('<h3>🔑 חיבור חד-פעמי לקריאה אוטומטית</h3><p class="mut" style="font-size:13px;margin:0 0 10px">כדי שהאפליקציה תקרא את הטפסים ותמלא הכול לבד, היא צריכה חיבור ל-Gemini. זה חינמי ובלי כרטיס אשראי, ועושים את זה פעם אחת.</p><ol style="font-size:13px;padding-inline-start:18px;margin:0 0 10px;line-height:1.7"><li>פתח <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold)">aistudio.google.com/apikey</a> והתחבר עם חשבון גוגל</li><li>לחץ Create API key והעתק את המפתח</li><li>הדבק אותו כאן:</li></ol><div class="field"><input type="password" id="k_in" dir="ltr" autocomplete="off" placeholder="AIza…"></div><div class="row"><button class="btn red grow" data-a="ksave">שמור והמשך</button><button class="btn ghost" data-a="kmanual">מילוי ידני</button></div>');
 }
-function stage(t){var e=document.getElementById('sc_s');if(e)e.textContent=t;}
-function progSheet(title){return '<h3>'+title+'</h3><p class="mut" id="sc_s">מכין את התמונה…</p><p class="mut" style="font-size:12px">אם זה נתקע, אפשר לבטל ולהזין ידנית.</p><div class="row"><button class="btn ghost grow" data-a="scancancel">ביטול</button></div>';}
+var curStage='',stT=0,stIv=null;
+function stage(t){curStage=t;var e=document.getElementById('sc_s');if(e)e.textContent=t+' · '+Math.round((Date.now()-stT)/1000)+' שנ׳';}
+function stageStart(){stT=Date.now();curStage='מכין את התמונה…';if(stIv)clearInterval(stIv);stIv=setInterval(function(){var e=document.getElementById('sc_s');if(!e){clearInterval(stIv);stIv=null;return;}e.textContent=curStage+' · '+Math.round((Date.now()-stT)/1000)+' שנ׳';},1000);}
+function progSheet(title){stageStart();return '<h3>'+title+'</h3><p class="mut" id="sc_s">מכין את התמונה…</p><p class="mut" style="font-size:12px">אם זה נתקע, אפשר לבטל ולהזין ידנית.</p><div class="row"><button class="btn ghost grow" data-a="scancancel">ביטול</button></div>';}
 function numClean(v){if(v==null||v==='')return '';var n=Number(String(v).replace(/[^\d.]/g,''));return isNaN(n)||!n?'':n;}
 function blankIns(){return {kind:'ins',id:null,insurer:'',type:'',policyNo:'',start:'',end:'',premium:'',contacts:[]};}
 function insFromJson(j){
@@ -1313,7 +1323,7 @@ function openReceipt(file){
     if(tk!==scanTok||(e&&e.message==='cancelled'))return;
     if(e&&e.nokey){needKey(function(){openReceipt(file);},function(){openManualReceipt();});return;}
     rcp={date:iso(today()),km:S.odo,vendor:'',total:'',lines:[],ai:false};
-    rcpSheet((e&&e.nokey?'💡 אין חיבור לבינה מלאכותית (מפתח API ב-⚙️), אז מלא ידנית. ':'⚠ לא הצלחתי לקרוא את החשבונית ('+esc(String((e&&e.message)||e).slice(0,100))+'). ')+'אפשר להוסיף את הפרטים ידנית.');
+    rcpSheet((e&&e.nokey?'💡 אין חיבור לבינה מלאכותית (מפתח API ב-⚙️), אז מלא ידנית. ':'⚠ לא הצלחתי לקרוא את החשבונית ('+esc(String((e&&e.message)||e).slice(0,100))+(curStage?' · נעצר בשלב: '+esc(curStage):'')+'). ')+'אפשר להוסיף את הפרטים ידנית.');
   });
 }
 function openManualReceipt(){rcp={date:iso(today()),km:S.odo,vendor:'',total:'',lines:[],ai:false};rcpSheet('סמן מה בוצע בטיפול או ברכישה.');}
