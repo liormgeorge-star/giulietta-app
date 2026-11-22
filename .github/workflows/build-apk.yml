@@ -33,6 +33,7 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <application#' "$M"
           grep -n "CAMERA\|uses-feature" "$M"
+          bash scripts/icons.sh
 
       - name: Build debug APK
         working-directory: android

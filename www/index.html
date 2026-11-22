@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230e0f12'/%3E%3Cpath d='M135.8 376.2A170 170 0 1 1 376.2 376.2' fill='none' stroke='%23e23446' stroke-width='32' stroke-linecap='round'/%3E%3Ctext x='256' y='327' text-anchor='middle' font-family='serif' font-weight='bold' font-size='200' fill='%23eeeae3'%3EG%3C/text%3E%3C/svg%3E">
 <title>ג'ולייטה – יומן טיפולים ומעקב</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -168,15 +169,20 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
 .askbar input{flex:1}
 .bub img{display:block;max-width:190px;max-height:190px;border-radius:12px;margin-bottom:6px}
 .askbar .btn.ic{padding:8px 11px;font-size:17px}
+.rrow{display:grid;grid-template-columns:auto 1fr;gap:6px;margin-bottom:10px;padding:9px;border:1px solid var(--line);border-radius:12px;background:#101115}
+.rrow .chk{grid-row:1}
+.rrow select{grid-column:1/3}
+.rrow .btn{grid-column:1/3;padding:5px}
+.cost{color:var(--gold);font-size:12.5px}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">
+  <div class="row" style="gap:11px;align-items:flex-end"><div style="flex:none;margin-bottom:4px"><svg width="40" height="40" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="eg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8e0f1f"/><stop offset="1" stop-color="#ff4a5c"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="#0e0f12"/><circle cx="256" cy="256" r="200" fill="none" stroke="#c9a45a" stroke-width="6" opacity=".6"/><path d="M135.8 376.2 A170 170 0 1 1 376.2 376.2" fill="none" stroke="url(#eg)" stroke-width="32" stroke-linecap="round"/><text x="256" y="327" text-anchor="middle" font-family="Georgia,'DejaVu Serif',serif" font-weight="bold" font-size="200" fill="#eeeae3">G</text></svg></div><div class="brand">
     <small>ALFA ROMEO · TYPE 940</small>
     <h1>ג'ולייטה <span>●</span></h1>
     <div class="sub">יומן טיפולים ומעקב · 1.4 טורבו</div>
-  </div>
+  </div></div>
   <div class="row" style="gap:8px"><div class="pill" id="todayPill"></div><button class="pill" data-tab="set" aria-label="הגדרות">⚙️</button></div>
 </header>
 <main id="view"></main>
@@ -191,6 +197,7 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
 </nav>
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
 <div class="toast" id="toast"></div>
+<input type="file" accept="image/*" capture="environment" id="r_cam" hidden><input type="file" accept="image/*" id="r_gal" hidden>
 
 <script>
 (function(){
@@ -232,6 +239,7 @@ var DEFS=[
  {id:'cool',ico:'🌡️',name:'נוזל קירור',intKm:null,intMonths:60,lastKm:53009,lastDate:'2020-06-14',est:false,verify:'ב-2020 הוחלף מיכל עיבוי והוסף נוזל. אם הוחלף יחד עם משאבת המים בהחלפת הטיימינג ב-2025 – סמן "בוצע".',note:'מרווח מקובל: כ-5 שנים. כדאי לוודא שהנוזל נקי ושאין נזילות.'},
  {id:'ac',ico:'❄️',name:'בדיקה / מילוי מזגן',intKm:null,intMonths:24,lastKm:65948,lastDate:'2021-07-15',est:false,verify:'הבדיקה האחרונה ברישומים: 07/2021 – תקין. מילוי גז אחרון: 08/2020. אם נבדק מאז – עדכן.',note:'מומלץ בדיקה אחת לשנתיים, לפני הקיץ.'},
  {id:'shk',ico:'🧰',name:'בולמי זעזועים קדמיים',intKm:100000,intMonths:120,lastKm:41703,lastDate:'2019-08-09',est:false,note:'הבולמים האחוריים הוחלפו שוב ב-10/2022 (83,225 ק״מ). בדוק נזילות ורעשים בטסט.'},
+ {id:'wip',ico:'🌧️',name:'מגבים',intKm:null,intMonths:12,lastKm:58586,lastDate:'2020-11-11',est:false,verify:'ברישומי המוסך הוחלפו סטי מגבים ב-2017, 2018 ו-2020. אין רישום אחרי 2020. אם הוחלפו – סמן "בוצע".',note:'ספר הרכב לא קובע מרווח קבוע. ההמלצה המקובלת: אחת לשנה (לפני החורף) או כשיש רעידות, פסים או רעש.'},
  {id:'tire',ico:'🛞',name:'צמיגים (גיל וסוליה)',intKm:null,intMonths:72,lastKm:null,lastDate:null,est:false,note:'אין מידע ברישומים. הזן תאריך החלפה או תאריך ייצור (DOT) – מומלץ להחליף עד 6 שנים, וקודם אם הסוליה נמוכה.'}
 ];
 
@@ -399,6 +407,7 @@ function viewDash(){
    '</div></div>'+
    '<div class="row between" style="margin-top:8px"><span class="mut" style="font-size:12px">מד הקילומטרים עודכן ב-'+fmtD(pd(S.odoDate))+'</span><button class="btn" data-a="odo">עדכון ק״מ</button></div></div>';
 
+  h+='<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';
   h+='<div class="card test '+(urgent?'':'calm')+(urgent&&!S.test.paid?' pulse':'')+'">'+
    '<div class="row between"><div><div class="mut" style="font-size:12.5px">טסט שנתי · עד '+fmtD(pd(S.test.due))+'</div>'+
    (testDays>=0?'<div class="big">'+testDays+'<small>'+(testDays===1?'יום':'ימים')+'</small></div>':'<div class="big" style="color:var(--over)">'+(-testDays)+'<small>ימי איחור</small></div>')+'</div>'+
@@ -516,7 +525,7 @@ function viewHist(){
   var pts=all.filter(function(x){return x.km!=null;}).map(function(x){return {d:pd(x.d),k:x.km};}).sort(function(a,b){return a.d-b.d;});
   pts.push({d:pd(S.odoDate),k:S.odo});
   var years=[];all.forEach(function(x){var y=x.d.slice(0,4);if(years.indexOf(y)<0)years.push(y);});years.sort().reverse();
-  var h='<div class="card"><div class="row between"><b>ק״מ לאורך השנים</b><button class="btn" data-a="addlog">+ הוסף רישום</button></div>'+chart(pts)+
+  var h='<div class="card"><div class="row between"><b>ק״מ לאורך השנים</b><div class="row" style="gap:6px"><button class="btn red" data-a="rcam">🧾 חשבונית</button><button class="btn" data-a="addlog">+ רישום</button></div></div>'+chart(pts)+
    '<p class="mut" style="font-size:12px;margin:6px 0 0">'+all.length+' רישומים · קצב נסיעה אחרון: כ-'+fmtN(S.rate*365)+' ק״מ בשנה</p></div>';
   h+='<div class="card"><div class="g2"><div class="field" style="margin:0"><label>חיפוש חלק או טיפול</label><input type="search" id="h_q" placeholder="מצתים, בלמים, מצבר…" value="'+esc(hq)+'"></div>'+
    '<div class="field" style="margin:0"><label>שנה</label><select id="h_y"><option value="all">כל השנים</option>'+years.map(function(y){return '<option value="'+y+'"'+(y===hy?' selected':'')+'>'+y+'</option>';}).join('')+'</select></div></div></div>';
@@ -529,13 +538,14 @@ function histList(){
   var list=all.filter(function(x){return (catF==='all'||x.c===catF)&&(hy==='all'||x.d.slice(0,4)===hy)&&(!terms||matches(x,terms));});
   var g=q?findGroup(q):null;
   if(g){allCalc().forEach(function(c){if(c.it.id===g.id)out+=itemCard(c,true);});}
-  out+='<h2>'+list.length+' רישומים'+(q?' · "'+esc(q)+'"':'')+(hy!=='all'?' · '+hy:'')+'</h2>';
+  var tot=list.reduce(function(a,x){return a+(x.cost||0);},0);
+  out+='<h2>'+list.length+' רישומים'+(tot?' · הוצאות מתועדות ₪'+fmtN(tot):'')+(q?' · "'+esc(q)+'"':'')+(hy!=='all'?' · '+hy:'')+'</h2>';
   var cy=null;
   list.forEach(function(x){
     var y=x.d.slice(0,4);
     if(y!==cy){cy=y;out+='<div class="yr" style="font-size:22px;margin-top:10px">'+y+'</div>';}
     out+='<div class="card hcard"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
-     '<div class="k"><span class="tag'+(x.src==='user'?' user':'')+'">'+(x.src==='user'?'עדכון שלך':CATS[x.c])+'</span>'+(x.km!=null?'<span class="num">'+(x.kmEst?'~':'')+fmtN(x.km)+'</span> ק״מ':'')+'</div>'+
+     '<div class="k"><span class="tag'+(x.src==='user'?' user':'')+'">'+(x.src==='user'?'עדכון שלך':CATS[x.c])+'</span>'+(x.km!=null?'<span class="num">'+(x.kmEst?'~':'')+fmtN(x.km)+'</span> ק״מ':'')+(x.cost?' <span class="cost">· ₪'+fmtN(x.cost)+'</span>':'')+'</div>'+
      (x.i&&x.i.length?'<ul>'+x.i.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul>':'')+'</div>';
   });
   if(!list.length)out+='<div class="card mut">לא נמצאו רישומים. נסה מילה אחרת, שנה אחרת או "כל השנים".</div>';
@@ -705,7 +715,7 @@ function ctx(){
   L.push('--- מצב מעקב הפריטים (מחושב) ---');
   cs.forEach(function(c){var it=c.it;L.push('- '+it.name+': סטטוס '+LABEL[c.status]+'; אחרון: '+(it.lastDate||'לא ידוע')+(it.lastKm!=null?' ב-'+(it.est?'~':'')+it.lastKm+' ק״מ':'')+(it.est?' (משוער)':'')+'; מרווח: '+intervalText(it)+'; יעד: '+(c.dueDate?iso(c.dueDate):'-')+' / '+(c.dueKm!=null?c.dueKm+' ק״מ':'-')+(c.status==='verify'&&it.verify?'; הערה: '+it.verify:''));});
   L.push('--- רישומי טיפולים והיסטוריה (מהישן לחדש) ---');
-  histAll().slice().reverse().forEach(function(x){L.push(x.d+' | '+(x.km!=null?(x.kmEst?'~':'')+x.km+' ק״מ':'-')+' | '+x.t+(x.i&&x.i.length?': '+x.i.join('; '):'')+(x.src==='user'?' [דיווח הבעלים]':''));});
+  histAll().slice().reverse().forEach(function(x){L.push(x.d+' | '+(x.km!=null?(x.kmEst?'~':'')+x.km+' ק״מ':'-')+' | '+x.t+(x.i&&x.i.length?': '+x.i.join('; '):'')+(x.cost?' [עלות ₪'+x.cost+']':'')+(x.src==='user'?' [דיווח הבעלים]':''));});
   L.push('--- תקציר ספר הרכב ---');
   MANUAL.forEach(function(m){L.push('['+m.t+'] '+m.b);});
   return L.join('\n');
@@ -725,10 +735,10 @@ function md(t){
   });
   return o;
 }
-async function callAnthropic(sys,userText,img){
+async function callAnthropic(sys,userText,img,noWeb){
   var content=img?[{type:'image',source:{type:'base64',media_type:img.mime,data:img.b64}},{type:'text',text:userText}]:userText;
   var body={model:S.model||'claude-sonnet-5-5',max_tokens:1500,system:sys,messages:[{role:'user',content:content}]};
-  if(S.web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
+  if(S.web&&!noWeb)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
   async function go(b){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(b)});
   }
@@ -749,18 +759,21 @@ async function callGemini(sys,userText,img){
   return t;
 }
 async function getSample(){try{if(window.claude&&window.claude.use){var s=await window.claude.use('sample');return s||null;}}catch(e){}return null;}
-async function llm(q,img){
-  var tr=transcript();
-  var user=(tr?'השיחה עד כה:\n'+tr+'\n\n':'')+'שאלת המשתמש: '+q+(img?'\n(מצורפת תמונה)':'');
+async function llmRaw(sysFull,user,img,noWeb){
   var sample=await getSample();
   if(sample){
     var opts={cache:false,modelTier:'default'};
     if(img){var lim=null;try{lim=await sample.limits();}catch(e){}if(lim&&lim.images)opts.images=[img.blob];else throw new Error('ניתוח תמונות לא זמין בתצוגה הזו');}
-    var r=await sample(SYSTEM+'\n\n'+ctx()+'\n\n'+user,opts);return r.text;
+    var r=await sample(sysFull+'\n\n'+user,opts);return r.text;
   }
-  if(S.provider==='gemini'&&S.gkey)return await callGemini(SYSTEM+'\n\n'+ctx(),user,img);
-  if(S.provider!=='gemini'&&S.apiKey)return await callAnthropic(SYSTEM+'\n\n'+ctx(),user,img);
+  if(S.provider==='gemini'&&S.gkey)return await callGemini(sysFull,user,img);
+  if(S.provider!=='gemini'&&S.apiKey)return await callAnthropic(sysFull,user,img,noWeb);
   var e=new Error('nokey');e.nokey=true;throw e;
+}
+async function llm(q,img){
+  var tr=transcript();
+  var user=(tr?'השיחה עד כה:\n'+tr+'\n\n':'')+'שאלת המשתמש: '+q+(img?'\n(מצורפת תמונה)':'');
+  return llmRaw(SYSTEM+'\n\n'+ctx(),user,img,false);
 }
 function fileToImg(file){
   return new Promise(function(res,rej){
@@ -781,6 +794,71 @@ function fileToImg(file){
     fr.readAsDataURL(file);
   });
 }
+/* ---------- receipts ---------- */
+var rcp=null;
+var RSYS='אתה מחלץ נתונים מחשבוניות וקבלות של מוסך/חנות חלפים לרכב (בעברית, ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד, במבנה:\n'+
+ '{"vendor":"שם העסק","date":"YYYY-MM-DD","km":מספר או null,"total":סכום כולל מספר או null,"lines":[{"desc":"תיאור השורה","item":"קוד"}]}\n'+
+ 'כללים: תאריך בפורמט DD/MM/YYYY בחשבוניות ישראליות (שנה בת 2 ספרות = 20xx); אם אין תאריך – null. km = קילומטראז׳/מד אוץ אם מופיע, אחרת null (אל תנחש). סכום כולל כולל מע״מ אם מופיע.\n'+
+ 'קוד item לכל שורה (רק שורות של חלק או עבודה שמתאימות; אחרת "other"): oil = שמן מנוע / מסנן שמן / טיפול שמן; airf = מסנן אוויר מנוע; cabin = מסנן מזגן/פולן; bfl = נוזל בלמים; plug = מצתים; belt = רצועת תזמון / משאבת מים / ערכת טיימינג; aux = רצועת עזר; brk = רפידות / דיסקים / בלמים; bat = מצבר; cool = נוזל קירור/מצנן; ac = מילוי או טיפול מזגן; shk = בולמי זעזועים; tire = צמיגים; wip = מגבים.\n'+
+ 'אל תכלול שורות סיכום, מע״מ או משלוח. אם מדובר ב"טיפול N ק״מ" ללא פירוט – הוסף שורה אחת עם desc של הטיפול ו-item "oil" (שמן ומסנן שמן מוחלפים בכל טיפול). תיאורים קצרים בעברית.';
+function openReceipt(file){
+  openSheet('<h3>🧾 קורא את החשבונית…</h3><p class="mut">זה לוקח כמה שניות.</p>');
+  fileToImg(file).then(function(img){
+    var user='תאריך היום: '+iso(today())+'. החזר את ה-JSON.';
+    return llmRaw(RSYS,user,img,true);
+  }).then(function(t){
+    var m=String(t).match(/\{[\s\S]*\}/);if(!m)throw new Error('לא התקבל JSON תקין');
+    var j=JSON.parse(m[0]);
+    var ok={};DEFS.forEach(function(d){ok[d.id]=1;});
+    var lines=(j.lines||[]).filter(function(l){return l&&l.desc;}).map(function(l){var it=ok[l.item]?l.item:'other';return {on:it!=='other',item:it,desc:String(l.desc)};});
+    var d=/^\d{4}-\d{2}-\d{2}$/.test(j.date||'')?j.date:iso(today());
+    rcp={date:d,km:j.km!=null&&!isNaN(Number(j.km))?Number(j.km):'',vendor:j.vendor||'',total:j.total!=null&&!isNaN(Number(j.total))?Number(j.total):'',lines:lines,ai:true};
+    rcpSheet('בדוק את מה שזוהה ותקן לפני שמירה. רק שורות מסומנות "עדכן" ישפיעו על המעקב.');
+  }).catch(function(e){
+    rcp={date:iso(today()),km:S.odo,vendor:'',total:'',lines:[],ai:false};
+    rcpSheet((e&&e.nokey?'💡 אין חיבור לבינה מלאכותית (מפתח API ב-⚙️), אז מלא ידנית. ':'⚠ לא הצלחתי לקרוא את החשבונית ('+esc(String((e&&e.message)||e).slice(0,100))+'). ')+'אפשר להוסיף את הפרטים ידנית.');
+  });
+}
+function openManualReceipt(){rcp={date:iso(today()),km:S.odo,vendor:'',total:'',lines:[],ai:false};rcpSheet('סמן מה בוצע בטיפול או ברכישה.');}
+function rcpSheet(msg){
+  var r=rcp;
+  var opts=function(sel){return DEFS.map(function(d){return '<option value="'+d.id+'"'+(d.id===sel?' selected':'')+'>'+esc(d.name)+'</option>';}).join('')+'<option value="other"'+(sel==='other'?' selected':'')+'>אחר (רק להיסטוריה)</option>';};
+  var rows=r.lines.map(function(l,i){return '<div class="rrow"><label class="chk"><input type="checkbox" data-r="on" data-i="'+i+'"'+(l.on?' checked':'')+'><span style="font-size:13px">עדכן</span></label><input type="text" data-r="desc" data-i="'+i+'" value="'+esc(l.desc)+'"><select data-r="item" data-i="'+i+'">'+opts(l.item)+'</select><button class="btn ghost" data-a="rdel" data-i="'+i+'">הסר שורה</button></div>';}).join('');
+  openSheet('<h3>🧾 חשבונית / טיפול</h3><p class="mut" style="font-size:12.5px;margin:0 0 10px">'+msg+'</p>'+
+   '<div class="g2"><div class="field"><label>תאריך</label><input type="date" data-r="date" value="'+esc(r.date)+'"></div><div class="field"><label>ק״מ (אם מופיע)</label><input type="number" inputmode="numeric" data-r="km" value="'+esc(r.km)+'"></div>'+
+   '<div class="field"><label>מוסך / עסק</label><input type="text" data-r="vendor" value="'+esc(r.vendor)+'"></div><div class="field"><label>סכום כולל (₪)</label><input type="number" inputmode="decimal" data-r="total" value="'+esc(r.total)+'"></div></div>'+
+   '<b style="font-size:13px">מה בוצע</b><div style="margin-top:8px">'+(rows||'<p class="mut" style="font-size:12.5px">אין שורות. הוסף שורה לכל חלק או טיפול.</p>')+'</div>'+
+   '<div class="row" style="margin:6px 0 12px"><button class="btn" data-a="radd">+ הוסף שורה</button></div>'+
+   '<div class="row"><button class="btn red grow" data-a="rsave">שמירה ועדכון המעקב</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function rcpUpdate(el){
+  if(!rcp)return;var k=el.getAttribute('data-r'),i=el.getAttribute('data-i');
+  if(i!=null&&i!==''){var l=rcp.lines[Number(i)];if(!l)return;
+    if(k==='on')l.on=el.checked;else if(k==='desc')l.desc=el.value;else if(k==='item'){l.item=el.value;l.on=el.value!=='other';}}
+  else rcp[k]=el.value;
+}
+function applyReceipt(){
+  var r=rcp;if(!r||!r.date){toast('נא למלא תאריך');return;}
+  var km=num(r.km),est=km==null,days=dd(pd(r.date),today());
+  var kmFinal=km!=null?km:Math.max(0,Math.round(S.odo-S.rate*Math.max(0,days)));
+  var done=[],old=[];
+  r.lines.forEach(function(l){
+    if(!l.on||!l.item||l.item==='other')return;
+    var st=S.items[l.item];if(!st||done.indexOf(l.item)>=0||old.indexOf(l.item)>=0)return;
+    if(!st.lastDate||r.date>=st.lastDate){st.lastDate=r.date;st.lastKm=kmFinal;st.est=est;st.verified=true;done.push(l.item);}else old.push(l.item);
+  });
+  if(km!=null&&km>S.odo&&r.date>=S.odoDate){S.odo=km;S.odoDate=r.date;}
+  var cats=done.indexOf('brk')>=0&&done.length===1?'brakes':(done.length?'service':'other');
+  S.log.push({id:'u'+Date.now(),d:r.date,km:km!=null?km:null,t:'חשבונית'+(r.vendor?' – '+r.vendor:''),c:cats,cost:num(r.total)||null,i:r.lines.filter(function(l){return l.desc;}).map(function(l){return l.desc;})});
+  save();
+  var cs=allCalc(),sum='';
+  done.forEach(function(id){var c=cs.filter(function(x){return x.it.id===id;})[0];sum+='<div class="card compact"><b>'+c.it.ico+' '+esc(c.it.name)+'</b><div class="meta" style="margin-top:4px"><span>עודכן: '+esc(fmtD(pd(c.it.lastDate)))+' · '+(c.it.est?'~':'')+fmtN(c.it.lastKm)+' ק״מ</span></div><div class="meta"><span>המועד הבא: '+esc(c.dueDate?fmtD(c.dueDate):'-')+'</span><span>'+(c.dueKm!=null?esc('או ב-'+fmtN(c.dueKm)+' ק״מ'):'')+'</span></div></div>';});
+  if(old.length)sum+='<p class="mut" style="font-size:12.5px">לא עודכנו (קיים רישום חדש יותר): '+old.map(function(id){return esc(DEFS.filter(function(d){return d.id===id;})[0].name);}).join(', ')+'</p>';
+  if(est&&done.length)sum+='<p class="mut" style="font-size:12.5px">לא צוין ק״מ בחשבונית, לכן הק״מ בהחלפה הוערך לפי קצב הנסיעה (מסומן ~).</p>';
+  rcp=null;render();
+  openSheet('<h3>✅ המעקב עודכן</h3>'+(sum||'<p class="mut">החשבונית נשמרה בהיסטוריה. לא סומנו חלקים לעדכון.</p>')+(km!=null&&km>S.odo?'':'')+'<div class="row" style="margin-top:12px"><button class="btn red grow" data-a="closeSheet">סגור</button></div>');
+}
+
 function viewBot(){
   var h='<div class="msgs">'+chat.map(function(m){return '<div class="bub '+m.r+'">'+(m.img?'<img src="'+m.img+'" alt="תמונה">':'')+(m.r==='u'?esc(m.t):m.h)+'</div>';}).join('')+'</div>';
   h+='<div class="sugs">'+SUGS.map(function(s){return '<button class="fchip" data-a="ask" data-q="'+esc(s)+'">'+esc(s)+'</button>';}).join('')+'</div>';
@@ -856,7 +934,7 @@ function openDone(id){
    '<div class="field"><label>הערה (אופציונלי)</label><input type="text" id="d_note" placeholder="למשל: מוסך, מותג, עלות"></div>'+
    '<div class="row"><button class="btn red grow" data-a="submitDone" data-id="'+id+'">שמירה</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
 }
-var CATMAP={oil:'service',airf:'service',cabin:'service',bfl:'service',plug:'service',belt:'service',aux:'engine',brk:'brakes',bat:'elec',cool:'engine',ac:'ac',shk:'susp',tire:'other'};
+var CATMAP={wip:'service',oil:'service',airf:'service',cabin:'service',bfl:'service',plug:'service',belt:'service',aux:'engine',brk:'brakes',bat:'elec',cool:'engine',ac:'ac',shk:'susp',tire:'other'};
 function submitDone(id){
   var d=val('d_date'),km=num(val('d_km'));
   if(!d){toast('נא למלא תאריך');return;}
@@ -906,6 +984,12 @@ document.addEventListener('click',function(e){
   else if(a==='ask'){ask(b.getAttribute('data-q'));}
   else if(a==='askm'){tab='bot';render();window.scrollTo(0,0);ask(b.getAttribute('data-q'));}
   else if(a==='mcat'){mc=b.getAttribute('data-k');render();}
+  else if(a==='rcam'){var rc=document.getElementById('r_cam');if(rc)rc.click();}
+  else if(a==='rgal'){var rg=document.getElementById('r_gal');if(rg)rg.click();}
+  else if(a==='rman')openManualReceipt();
+  else if(a==='radd'){rcp.lines.push({on:true,item:'oil',desc:''});rcpSheet('');}
+  else if(a==='rdel'){rcp.lines.splice(Number(b.getAttribute('data-i')),1);rcpSheet('');}
+  else if(a==='rsave')applyReceipt();
   else if(a==='cam'){var ci=document.getElementById('b_cam');if(ci)ci.click();}
   else if(a==='gal'){var gi=document.getElementById('b_gal');if(gi)gi.click();}
   else if(a==='openlights'){tab='manual';mc='lights';mq='';render();window.scrollTo(0,0);}
@@ -924,6 +1008,7 @@ document.addEventListener('click',function(e){
   else if(a==='reset2'){S=fresh();save();closeSheet();render();toast('אופס');}
 });
 document.addEventListener('input',function(e){
+  if(e.target.getAttribute&&e.target.getAttribute('data-r')&&e.target.type!=='checkbox'&&e.target.tagName!=='SELECT'){rcpUpdate(e.target);}
   if(e.target.id==='m_q'){mq=e.target.value;var ml=document.getElementById('mlist');if(ml)ml.innerHTML=manualList();}
   if(e.target.id==='h_q'){hq=e.target.value;var hl=document.getElementById('hlist');if(hl)hl.innerHTML=histList();}
 });
@@ -932,6 +1017,8 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('change',function(e){
   var el=e.target;
+  if(el.id==='r_cam'||el.id==='r_gal'){var rf=el.files&&el.files[0];el.value='';if(rf)openReceipt(rf);return;}
+  if(el.getAttribute('data-r')){rcpUpdate(el);return;}
   if(el.id==='b_cam'||el.id==='b_gal'){var f=el.files&&el.files[0];el.value='';pickImage(f);return;}
   if(el.id==='h_y'){hy=el.value;var hl2=document.getElementById('hlist');if(hl2)hl2.innerHTML=histList();return;}
   if(el.getAttribute('data-f')){
