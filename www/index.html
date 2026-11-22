@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ג'ולייטה – יומן טיפולים ומעקב</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0d10; --bg2:#121317; --card:#181a1f; --card2:#1f2127; --line:#2a2d35;
+  --tx:#eeeae3; --mut:#9a9ca4; --rosso:#c4162a; --rosso2:#e23446; --gold:#c9a45a;
+  --ok:#3fb37f; --soon:#e5a22e; --over:#ef4a41; --ver:#8aa4ff; --unk:#8b8f99;
+  --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:'Rubik',system-ui,sans-serif;font-size:15px;line-height:1.45}
+body{
+  background:
+   radial-gradient(900px 380px at 85% -80px, rgba(196,22,42,.22), transparent 60%),
+   repeating-linear-gradient(45deg, rgba(255,255,255,.018) 0 2px, transparent 2px 6px),
+   var(--bg);
+  min-height:100vh; padding-bottom:calc(84px + env(safe-area-inset-bottom));
+}
+header{padding:calc(18px + env(safe-area-inset-top)) 18px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.brand small{display:block;letter-spacing:.32em;color:var(--gold);font-size:10.5px;font-weight:500;direction:ltr;text-align:right}
+.brand h1{margin:2px 0 0;font-size:27px;font-weight:700;letter-spacing:.01em}
+.brand h1 span{color:var(--rosso2)}
+.sub{color:var(--mut);font-size:12.5px;margin-top:2px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--mut);background:rgba(255,255,255,.03);white-space:nowrap}
+main{padding:10px 14px 0;max-width:720px;margin:0 auto}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 0 12px;position:relative}
+h2{font-size:13px;letter-spacing:.04em;color:var(--mut);font-weight:500;margin:18px 4px 8px;display:flex;align-items:center;gap:8px}
+h2 .n{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11.5px;color:var(--tx)}
+button{font-family:inherit;cursor:pointer}
+.btn{background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px}
+.btn.red{background:var(--rosso);border-color:var(--rosso);font-weight:600}
+.btn.ghost{background:transparent}
+.btn:active{transform:scale(.97)}
+.row{display:flex;gap:10px;align-items:center}
+.between{justify-content:space-between}
+.grow{flex:1}
+.mut{color:var(--mut)}
+.num{direction:ltr;unicode-bidi:isolate;display:inline-block}
+
+/* gauge */
+.gwrap{display:flex;gap:6px;align-items:center}
+.gauge{width:58%;max-width:250px;flex:none}
+.gside{flex:1;display:flex;flex-direction:column;gap:10px}
+.kv small{display:block;color:var(--mut);font-size:11.5px}
+.kv b{font-size:17px;font-weight:600}
+.kv b i{font-style:normal;font-size:12px;color:var(--mut);font-weight:400}
+
+/* test */
+.test{border-color:#4a2228;background:linear-gradient(135deg,#2a1217,#15161a 70%)}
+.test.calm{border-color:var(--line);background:linear-gradient(180deg,var(--card),var(--bg2))}
+.big{font-size:46px;font-weight:700;line-height:1;direction:ltr;display:inline-block}
+.big small{font-size:15px;font-weight:400;color:var(--mut);margin-inline-start:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;border-radius:999px;padding:3px 10px;border:1px solid var(--line);background:var(--card2)}
+.chip.ok{color:var(--ok);border-color:rgba(63,179,127,.4)}
+.chip.warn{color:var(--soon);border-color:rgba(229,162,46,.45)}
+
+/* rings */
+.rings{display:flex;gap:10px;justify-content:space-around;margin-top:10px}
+.ring{text-align:center;flex:1}
+.ring svg{width:104px;height:104px;display:block;margin:0 auto}
+.ring .t{font-size:12px;color:var(--mut);margin-top:2px}
+.ring text{fill:var(--tx);font-family:'Rubik',sans-serif}
+
+/* badges / items */
+.badge{font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid;white-space:nowrap;font-weight:500}
+.badge.ok{color:var(--ok);border-color:rgba(63,179,127,.45);background:rgba(63,179,127,.08)}
+.badge.soon{color:var(--soon);border-color:rgba(229,162,46,.5);background:rgba(229,162,46,.09)}
+.badge.over{color:var(--over);border-color:rgba(239,74,65,.55);background:rgba(239,74,65,.1)}
+.badge.verify{color:var(--ver);border-color:rgba(138,164,255,.5);background:rgba(138,164,255,.09)}
+.badge.unknown{color:var(--unk);border-color:var(--line)}
+.item .ih{display:flex;gap:10px;align-items:center}
+.ico{width:38px;height:38px;border-radius:11px;background:var(--card2);border:1px solid var(--line);display:grid;place-items:center;font-size:19px;flex:none}
+.in{flex:1;min-width:0}
+.in b{display:block;font-weight:600;font-size:15px}
+.in small{color:var(--mut);font-size:12px}
+.bar{height:6px;background:#0a0b0d;border-radius:9px;overflow:hidden;margin:11px 0 7px;border:1px solid var(--line)}
+.bar i{display:block;height:100%;border-radius:9px;background:var(--ok)}
+.st-soon .bar i{background:var(--soon)} .st-over .bar i{background:var(--over)} .st-verify .bar i{background:var(--ver)}
+.meta{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--mut);flex-wrap:wrap}
+.vn{margin:8px 0 0;font-size:12.5px;color:#b9c6ff;background:rgba(138,164,255,.07);border:1px solid rgba(138,164,255,.25);border-radius:10px;padding:7px 10px}
+.acts{display:flex;gap:8px;margin-top:10px}
+details.note summary{cursor:pointer;color:var(--mut);font-size:12.5px;margin-top:8px;list-style:none}
+details.note summary::before{content:'ⓘ ';}
+details.note p{margin:6px 0 0;font-size:12.5px;color:#c5c3bd}
+.compact{padding:11px 12px}
+.compact .ih .ico{width:34px;height:34px;font-size:17px}
+
+/* rail (km view) */
+.rail{position:relative;margin:0 6px 0 0;padding-right:22px}
+.rail::before{content:'';position:absolute;right:7px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--rosso),var(--line) 25%,var(--line))}
+.node{position:relative;margin-bottom:11px}
+.node::before{content:'';position:absolute;right:-21px;top:20px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:3px solid var(--ok)}
+.node.s-soon::before{border-color:var(--soon)} .node.s-over::before{border-color:var(--over)} .node.s-verify::before{border-color:var(--ver)}
+.node.start::before{border-color:var(--rosso2);background:var(--rosso2)}
+.mark{font-size:12px;color:var(--gold);margin:0 0 4px;font-weight:500;direction:rtl}
+.est{color:var(--mut);font-size:11.5px}
+
+/* year view */
+.yr{font-size:30px;font-weight:700;color:var(--tx);margin:20px 4px 6px;display:flex;align-items:baseline;gap:10px}
+.yr small{font-size:12px;color:var(--mut);font-weight:400}
+.mo{font-size:11.5px;color:var(--gold);margin:0 2px 3px}
+
+/* history */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.fchip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:6px 13px;font-size:13px}
+.fchip.on{background:var(--rosso);border-color:var(--rosso);color:#fff}
+.hcard{padding:12px 13px}
+.hcard .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.hcard .top b{font-weight:600}
+.hcard .d{color:var(--gold);font-size:12.5px;direction:rtl}
+.hcard .k{color:var(--mut);font-size:12.5px}
+.hcard ul{margin:7px 0 0;padding:0 18px 0 0;color:#cfcdc6;font-size:13px}
+.hcard ul li{margin:1px 0}
+.tag{font-size:11px;border-radius:7px;padding:1px 7px;background:var(--card2);border:1px solid var(--line);color:var(--mut);margin-inline-end:6px}
+.tag.user{color:var(--gold);border-color:rgba(201,164,90,.4)}
+.chart{direction:ltr}
+.chart svg{width:100%;height:auto;display:block}
+
+/* settings */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--mut)}
+input,select,textarea{font-family:inherit;font-size:15px;background:#0d0e11;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+input[type=number]{direction:ltr;text-align:right}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--rosso);outline-offset:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+details.set{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--card)}
+details.set summary{padding:11px 13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details.set .body{padding:0 13px 12px}
+.chk{display:flex;gap:9px;align-items:center;font-size:14px}
+.chk input{width:20px;height:20px;accent-color:var(--rosso)}
+
+/* nav */
+nav{position:fixed;inset:auto 0 0 0;background:rgba(14,15,18,.93);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:20}
+nav button{background:none;border:0;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;padding:5px 0;border-radius:10px}
+nav button span{font-size:19px;line-height:1.1}
+nav button.on{color:#fff}
+nav button.on span{filter:drop-shadow(0 0 6px var(--rosso2))}
+nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;background:var(--rosso2);margin-top:2px}
+
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet.hidden{display:none}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.sheet-body{position:relative;background:var(--card);border-top:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+.sheet-body h3{margin:0 0 12px;font-size:17px}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#000;border:1px solid var(--line);padding:8px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.on{opacity:1}
+.foot{color:var(--mut);font-size:12px;margin:18px 6px;line-height:1.6}
+.pulse{animation:pl 1.8s infinite}
+@keyframes pl{0%,100%{box-shadow:0 0 0 0 rgba(239,74,65,.0)}50%{box-shadow:0 0 0 5px rgba(239,74,65,.18)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <small>ALFA ROMEO · TYPE 940</small>
+    <h1>ג'ולייטה <span>●</span></h1>
+    <div class="sub">יומן טיפולים ומעקב · 1.4 טורבו</div>
+  </div>
+  <div class="pill" id="todayPill"></div>
+</header>
+<main id="view"></main>
+
+<nav id="nav">
+  <button data-tab="dash"><span>🏎️</span>דשבורד</button>
+  <button data-tab="km"><span>🛣️</span>לפי ק״מ</button>
+  <button data-tab="year"><span>📅</span>לפי שנה</button>
+  <button data-tab="hist"><span>📜</span>היסטוריה</button>
+  <button data-tab="set"><span>⚙️</span>הגדרות</button>
+</nav>
+<div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var MS=86400000;
+var KEY='giulietta-tracker-v1';
+
+/* ---------- helpers ---------- */
+function pd(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function today(){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());}
+function dd(a,b){return Math.round((b-a)/MS);}
+function addM(d,m){var r=new Date(d.getFullYear(),d.getMonth()+m,d.getDate());if(r.getDate()!==d.getDate())r.setDate(0);return r;}
+function addD(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);}
+function fmtD(d){return d.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});}
+function fmtMY(d){return d.toLocaleDateString('he-IL',{month:'long',year:'numeric'});}
+function fmtM(d){return d.toLocaleDateString('he-IL',{month:'long'});}
+function fmtN(n){return Math.round(n).toLocaleString('he-IL');}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function human(d){d=Math.abs(d);if(d<=1)return d===1?'יום':'0 ימים';if(d<60)return d+' ימים';if(d<700)return Math.round(d/30.4)+' חודשים';var y=d/365.25;return (Math.round(y*10)/10)+' שנים';}
+function num(v){return v===''||v==null?null:Number(v);}
+
+/* ---------- data ---------- */
+var CATS={all:'הכול',service:'טיפולים',brakes:'בלמים',engine:'מנוע',susp:'מתלים',ac:'מזגן',elec:'חשמל',body:'פחחות וחיצוני',other:'אחר'};
+var DEFS=[
+ {id:'oil',ico:'🛢️',name:'שמן מנוע + מסנן שמן',intKm:10000,intMonths:12,lastKm:109700,lastDate:'2026-11-09',est:true,soonKm:1000,soonDays:30,
+  note:'מנוע MultiAir רגיש למרווח ולסוג השמן. במוסך השתמשו ב-0W30 (C2). חלק מהבעלים מחליפים כל 10,000 ק״מ או שנה, גם כשהיצרן מאפשר יותר. ק״מ בהחלפה האחרונה הוא הערכה – עדכן לפי החשבונית.'},
+ {id:'airf',ico:'🌬️',name:'מסנן אוויר מנוע',intKm:20000,intMonths:24,lastKm:103500,lastDate:'2025-11-22',est:true,note:'מוחלף בדרך כלל בטיפול השנתי. התאריך משוער לפי הטיפול שדיווחת לפני כשנה.'},
+ {id:'cabin',ico:'😮‍💨',name:'מסנן מזגן (פולן)',intKm:15000,intMonths:12,lastKm:103500,lastDate:'2025-11-22',est:true,note:'מומלץ אחת לשנה, במיוחד באקלים אבק וחום.'},
+ {id:'bfl',ico:'💧',name:'נוזל בלמים DOT4',intKm:null,intMonths:24,lastKm:103500,lastDate:'2025-11-22',est:true,note:'מוחלף כל שנתיים לפי הזמן (סופג לחות). ברישומים הוחלף ב-2017, 2018, 2020 ו-2022. הנחתי שהוחלף עם הבלמים לפני שנה.'},
+ {id:'plug',ico:'⚡',name:'מצתים',intKm:30000,intMonths:60,lastKm:58586,lastDate:'2020-11-11',est:false,verify:'ברישומי המוסך המצתים הוחלפו ב-2018 וב-2020 (בערך כל 26,000 ק״מ). אין רישום אחרי 2020. אם הוחלפו בטיפולים של 2023–2025 – סמן "בוצע" ותקבל סטטוס אמיתי.',
+  note:'מרווח מקובל ל-1.4 טורבו: כ-30,000 ק״מ. מצת שבור או שחוק יכול לגרום לפיספוסים.'},
+ {id:'belt',ico:'⛓️',name:'רצועת תזמון + משאבת מים',intKm:100000,intMonths:60,lastKm:103500,lastDate:'2025-11-22',est:true,note:'היצרן: עד 120,000 ק״מ / 6 שנים. מומחים ממליצים על 5 שנים (4 בשימוש עירוני), כי המנוע interference. בהחלפה הקודמת (11/2019, 45,632 ק״מ) הוחלפה גם רצועת עזר.'},
+ {id:'aux',ico:'🔄',name:'רצועת עזר (5PK1150) + מותח',intKm:100000,intMonths:72,lastKm:83834,lastDate:'2022-11-14',est:true,note:'ברישום 14.11.2022 יש שורת "חגורת/רצועת מנוע" – לא קריאה לגמרי. אם הוחלפה עם הטיימינג ב-2025 עדכן.'},
+ {id:'brk',ico:'🛑',name:'רפידות + דיסקי בלמים',intKm:50000,intMonths:60,lastKm:103500,lastDate:'2025-11-22',est:true,note:'הוחלפו לפני כשנה. בדיקת עובי רפידות פעם בשנה בטיפול. בעבר הוחלפו ב-2018 וב-2021.'},
+ {id:'bat',ico:'🔋',name:'מצבר 60Ah (סטופ-סטארט)',intKm:null,intMonths:60,lastKm:84071,lastDate:'2022-11-27',est:false,soonDays:400,
+  note:'המצבר בן 4 שנים. חיי מצבר מקובלים 4–6 שנים, והקודם החזיק כ-3.3 שנים (2019–2022). כדאי בדיקת עומס/מתח לפני החורף – בדרך כלל חינם בטסט או בטיפול.'},
+ {id:'cool',ico:'🌡️',name:'נוזל קירור',intKm:null,intMonths:60,lastKm:53009,lastDate:'2020-06-14',est:false,verify:'ב-2020 הוחלף מיכל עיבוי והוסף נוזל. אם הוחלף יחד עם משאבת המים בהחלפת הטיימינג ב-2025 – סמן "בוצע".',note:'מרווח מקובל: כ-5 שנים. כדאי לוודא שהנוזל נקי ושאין נזילות.'},
+ {id:'ac',ico:'❄️',name:'בדיקה / מילוי מזגן',intKm:null,intMonths:24,lastKm:65948,lastDate:'2021-07-15',est:false,verify:'הבדיקה האחרונה ברישומים: 07/2021 – תקין. מילוי גז אחרון: 08/2020. אם נבדק מאז – עדכן.',note:'מומלץ בדיקה אחת לשנתיים, לפני הקיץ.'},
+ {id:'shk',ico:'🧰',name:'בולמי זעזועים קדמיים',intKm:100000,intMonths:120,lastKm:41703,lastDate:'2019-08-09',est:false,note:'הבולמים האחוריים הוחלפו שוב ב-10/2022 (83,225 ק״מ). בדוק נזילות ורעשים בטסט.'},
+ {id:'tire',ico:'🛞',name:'צמיגים (גיל וסוליה)',intKm:null,intMonths:72,lastKm:null,lastDate:null,est:false,note:'אין מידע ברישומים. הזן תאריך החלפה או תאריך ייצור (DOT) – מומלץ להחליף עד 6 שנים, וקודם אם הסוליה נמוכה.'}
+];
+
+var HIST=[
+ {d:'2016-05-01',km:3866,t:'סידור צינורות מזגן',c:'ac',i:[]},
+ {d:'2016-06-17',km:4651,t:'תיקון מעבה מזגן',c:'ac',i:['החלפת מעבה המזגן (Condenser)','צילומי נזק']},
+ {d:'2016-07-17',km:6644,t:'תיקוני פחחות וצבע (חזית)',c:'body',i:['כנף קדמית, מכסה מנוע ותומכי פגוש','פנס ראשי + נורות, סט צופרים','עבודות חשמל, צבע ופחחות']},
+ {d:'2016-11-25',km:9846,t:'החלפת שמן',c:'service',i:['שמן 0W30 C2 – 2 ל׳ + מסנן שמן','פלאש שמן מנוע']},
+ {d:'2016-12-18',km:10435,t:'המשך תיקוני פחחות וצבע',c:'body',i:['בטנה לכנף, מגן ותומך פגוש','עבודות צבע, חשמל ופחחות']},
+ {d:'2017-03-05',km:12543,t:'צביעת מכסה מנוע',c:'body',i:[]},
+ {d:'2017-11-21',km:20254,t:'טיפול שנתי (30,000)',c:'service',i:['שמן 0W30 C2 – 2 ל׳ + מסנן שמן','מסנן אוויר + מסנן מזגן','נוזל בלמים DOT4','סט מגבים, פלאש שמן']},
+ {d:'2018-05-31',km:30346,t:'פנל תא כפפות',c:'other',i:[]},
+ {d:'2018-09-26',km:30346,t:'חיבור מפעיל טורבו',c:'engine',i:['חיבור מפעיל הטורבו (היה מנותק)']},
+ {d:'2018-11-21',km:32005,t:'טיפול 30,000',c:'service',i:['שמן 0W30 C2 + מסנן שמן','מצתים','מסנן אוויר + מסנן מזגן','רפידות ודיסקי בלם – קדמי ואחורי','נוזל בלמים DOT4','סט מגבים']},
+ {d:'2018-12-09',km:32595,t:'פנס אחורי ימין',c:'elec',i:[]},
+ {d:'2019-06-26',km:40301,t:'תיקון דלת נהג',c:'body',i:['ידית שבורה, ריפוד דלת','בתיאום שמאי']},
+ {d:'2019-07-05',km:40302,t:'החלפת ידית דלת',c:'body',i:[]},
+ {d:'2019-08-02',km:41537,t:'מצבר חדש 60Ah',c:'elec',i:['מצבר סטופ-סטארט']},
+ {d:'2019-08-09',km:41703,t:'החלפת בולמי זעזועים',c:'susp',i:['ארבעת הגלגלים (קדמי + אחורי)']},
+ {d:'2019-11-14',km:45632,t:'טיפול 45,000 + טיימינג',c:'service',i:['רצועת תזמון + מותח/מיסב','רצועת עזר 5PK1150','תושבות מנוע (עליונה ימין + תחתונה)','שמן 0W30 + מסנן שמן']},
+ {d:'2020-01-24',km:48689,t:'תושבות מנוע / תיבה',c:'engine',i:['החלפת תושבות גומי (כריות גמישות)','תושבת תגובה תחתונה']},
+ {d:'2020-06-14',km:53009,t:'מערכת קירור',c:'engine',i:['מיכל עיבוי נוזל קירור','נוזל קירור (1 ל׳)']},
+ {d:'2020-07-27',km:54763,t:'מתלים – משולשים קדמיים',c:'susp',i:['משולש קדמי ימין + שמאל','זרועות (Swinging arm)','כיוון פרונט']},
+ {d:'2020-08-30',km:56171,t:'בולם דלת מטען + מזגן',c:'ac',i:['בולם גז לדלת תא מטען','ואקום + מילוי גז מזגן']},
+ {d:'2020-10-11',km:57886,t:'תיקון דלת נהג',c:'body',i:['ידית ומנעול, ריפוד דלת','בתיאום שמאי']},
+ {d:'2020-11-11',km:58586,t:'טיפול 60,000',c:'service',i:['שמן 0W30 – 2 ל׳ + מסנן שמן','מצתים','מסנן אוויר + מסנן מזגן','נוזל בלמים DOT4','סט מגבים, פלאש שמן']},
+ {d:'2021-07-15',km:65948,t:'בדיקת מזגן – תקין',c:'ac',i:['בדיקה ראשונה ב-08.07.2021, חוזרת ב-15.07']},
+ {d:'2021-08-12',km:66940,t:'החלפת נתיך',c:'elec',i:['ללא חיוב']},
+ {d:'2021-08-23',km:67364,t:'בלם חניה',c:'brakes',i:['ידית / מנוף בלם החניה']},
+ {d:'2021-11-10',km:69996,t:'טיפול שנתי + בלמים',c:'service',i:['דיסקים + רפידות – קדמי ואחורי','שמן 0W30 + מסנן שמן','מסנן אוויר + מסנן מזגן','מאוורר מצנן','פלאש שמן']},
+ {d:'2022-10-27',km:83225,t:'בולמים אחוריים',c:'susp',i:['שני בולמי זעזועים אחוריים']},
+ {d:'2022-11-14',km:83834,t:'טיפול 90,000',c:'service',i:['שמן 0W30 + מסנן שמן','מסנן אוויר + מסנן מזגן','נוזל בלמים DOT4','רצועת מנוע (שורה לא קריאה לגמרי)','דוושת מצמד + ביטול רעשים']},
+ {d:'2022-11-27',km:84071,t:'מצבר חדש 60Ah',c:'elec',i:['מצבר סטופ-סטארט']},
+ {d:'2025-11-22',km:103500,dEst:true,kmEst:true,t:'טיימינג + בלמים + טיפול',c:'service',src:'user',i:['החלפת רצועת תזמון','החלפת בלמים','טיפול שנתי','(תאריך וק״מ משוערים – לפי הדיווח "לפני שנה")']},
+ {d:'2026-11-09',km:109700,kmEst:true,t:'החלפת שמן + מסנן שמן',c:'service',src:'user',i:['ק״מ משוער']}
+];
+
+var DEFAULT_RATE=25829/1456; /* km/day: 84,071 (27.11.2022) -> 109,900 (22.11.2026) */
+
+/* ---------- state ---------- */
+var S=load();
+function pick(d){return {lastKm:d.lastKm,lastDate:d.lastDate,intKm:d.intKm,intMonths:d.intMonths,est:!!d.est,verified:false};}
+function fresh(){
+  var s={odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[]};
+  DEFS.forEach(function(d){s.items[d.id]=pick(d);});
+  return s;
+}
+function load(){
+  var base=fresh();
+  try{
+    var r=localStorage.getItem(KEY);
+    if(r){var o=JSON.parse(r);
+      if(o&&typeof o==='object'){
+        if(typeof o.odo==='number')base.odo=o.odo;
+        if(o.odoDate)base.odoDate=o.odoDate;
+        if(typeof o.rate==='number'&&o.rate>0)base.rate=o.rate;
+        if(o.test&&o.test.due)base.test=o.test;
+        if(Array.isArray(o.log))base.log=o.log;
+        if(o.items)DEFS.forEach(function(d){if(o.items[d.id])base.items[d.id]=Object.assign(base.items[d.id],o.items[d.id]);});
+      }
+    }
+  }catch(e){}
+  return base;
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function items(){return DEFS.map(function(d){return Object.assign({},d,S.items[d.id]);});}
+
+/* ---------- calculation ---------- */
+function calc(it){
+  var T=today(),rate=S.rate;
+  var dueKm=(it.lastKm!=null&&it.intKm)?it.lastKm+it.intKm:null;
+  var dueDate=(it.lastDate&&it.intMonths)?addM(pd(it.lastDate),it.intMonths):null;
+  var kmLeft=dueKm!=null?dueKm-S.odo:null;
+  var dT=dueDate?dd(T,dueDate):null;
+  var dK=kmLeft!=null?Math.round(kmLeft/rate):null;
+  var out={it:it,dueKm:dueKm,dueDate:dueDate,kmLeft:kmLeft,dT:dT,dK:dK,status:'unknown',eff:null,bind:null,effKm:null,effDate:null,p:0};
+  var c=[];if(dT!=null)c.push(['time',dT]);if(dK!=null)c.push(['km',dK]);
+  if(!c.length)return out;
+  c.sort(function(a,b){return a[1]-b[1];});
+  out.bind=c[0][0];out.eff=c[0][1];
+  var over=(kmLeft!=null&&kmLeft<0)||(dT!=null&&dT<0);
+  var sk=it.soonKm==null?1500:it.soonKm, sd=it.soonDays==null?45:it.soonDays;
+  var soon=(kmLeft!=null&&kmLeft<=sk)||(dT!=null&&dT<=sd);
+  out.status=over?((it.verify&&!it.verified)?'verify':'over'):(soon?'soon':'ok');
+  out.effDate=addD(T,out.eff);
+  out.effKm=S.odo+Math.min(kmLeft!=null?kmLeft:Infinity,dT!=null?dT*rate:Infinity);
+  var p=0;
+  if(it.intKm&&it.lastKm!=null)p=Math.max(p,(S.odo-it.lastKm)/it.intKm);
+  if(dueDate){var tot=dd(pd(it.lastDate),dueDate);if(tot>0)p=Math.max(p,dd(pd(it.lastDate),T)/tot);}
+  out.p=clamp(p,0,1);
+  return out;
+}
+function allCalc(){return items().map(calc);}
+var LABEL={ok:'תקין',soon:'בקרוב',over:'באיחור',verify:'לאימות',unknown:'חסר מידע'};
+function intervalText(it){var a=[];if(it.intKm)a.push('כל '+fmtN(it.intKm)+' ק״מ');if(it.intMonths)a.push(it.intMonths%12===0?(it.intMonths/12===1?'שנה':(it.intMonths/12)+' שנים'):it.intMonths+' חודשים');return a.length?a.join(' / ')+(a.length>1?' (המוקדם)':''):'';}
+function lastText(it){if(!it.lastDate&&it.lastKm==null)return 'אין רישום';var a=[];if(it.lastDate)a.push(fmtD(pd(it.lastDate)));if(it.lastKm!=null)a.push((it.est?'~':'')+fmtN(it.lastKm)+' ק״מ');return 'אחרון: '+a.join(' · ')+(it.est?' (משוער)':'');}
+function whenText(c){if(!c.dueDate)return '';return (c.dT<0?'חלף ב-':'עד ')+fmtD(c.dueDate)+(c.dT<0?' (לפני '+human(c.dT)+')':(c.dT===0?' (היום)':' (בעוד '+human(c.dT)+')'));}
+function kmText(c){if(c.dueKm==null)return '';return c.kmLeft<0?'חריגה של '+fmtN(-c.kmLeft)+' ק״מ':'נותרו '+fmtN(c.kmLeft)+' ק״מ (ב-'+fmtN(c.dueKm)+')';}
+
+/* ---------- UI pieces ---------- */
+function itemCard(c,compact){
+  var it=c.it;
+  return '<div class="card item st-'+c.status+(compact?' compact':'')+'">'+
+   '<div class="ih"><div class="ico">'+it.ico+'</div><div class="in"><b>'+esc(it.name)+'</b><small>'+esc(intervalText(it))+'</small></div><span class="badge '+c.status+'">'+LABEL[c.status]+'</span></div>'+
+   (c.status==='unknown'?'':'<div class="bar"><i style="width:'+Math.round(c.p*100)+'%"></i></div><div class="meta"><span>'+esc(whenText(c))+'</span><span>'+esc(kmText(c))+'</span></div>')+
+   '<div class="meta" style="margin-top:4px"><span>'+esc(lastText(it))+'</span></div>'+
+   (c.status==='verify'&&it.verify?'<p class="vn">⚠ '+esc(it.verify)+'</p>':'')+
+   (it.note?'<details class="note"><summary>פרטים והערות</summary><p>'+esc(it.note)+'</p></details>':'')+
+   '<div class="acts"><button class="btn red" data-a="done" data-id="'+it.id+'">סמן כבוצע</button></div>'+
+  '</div>';
+}
+function gauge(frac,odo){
+  var cx=110,cy=108,r=88,a0=135,a1=405;
+  function pt(a,rr){var t=a*Math.PI/180;return [cx+rr*Math.cos(t),cy+rr*Math.sin(t)];}
+  function arc(f,t,rr){var p0=pt(f,rr),p1=pt(t,rr);return 'M'+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' A'+rr+' '+rr+' 0 '+((t-f)>180?1:0)+' 1 '+p1[0].toFixed(1)+' '+p1[1].toFixed(1);}
+  var f=clamp(frac,0,1),ang=a0+(a1-a0)*f,tk='';
+  for(var i=0;i<=30;i++){var a=a0+(a1-a0)*i/30,maj=i%5===0,p0=pt(a,r-(maj?20:14)),p1=pt(a,r-6);
+    tk+='<line x1="'+p0[0].toFixed(1)+'" y1="'+p0[1].toFixed(1)+'" x2="'+p1[0].toFixed(1)+'" y2="'+p1[1].toFixed(1)+'" stroke="'+(maj?'#c9a45a':'#4a4d57')+'" stroke-width="'+(maj?2:1.2)+'"/>';}
+  var n=pt(ang,r-26);
+  return '<svg class="gauge" viewBox="0 0 220 200" aria-label="מד ק״מ">'+
+   '<defs><linearGradient id="gr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8e0f1f"/><stop offset="1" stop-color="#ff4a5c"/></linearGradient>'+
+   '<radialGradient id="gb" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1d1f26"/><stop offset="1" stop-color="#0b0c0f"/></radialGradient></defs>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+10)+'" fill="url(#gb)" stroke="#2a2d35" stroke-width="2"/>'+
+   '<path d="'+arc(a0,a1,r)+'" stroke="#23252c" stroke-width="9" fill="none" stroke-linecap="round"/>'+
+   (f>0.004?'<path d="'+arc(a0,a0+(a1-a0)*f,r)+'" stroke="url(#gr)" stroke-width="9" fill="none" stroke-linecap="round"/>':'')+
+   tk+
+   '<line x1="'+cx+'" y1="'+cy+'" x2="'+n[0].toFixed(1)+'" y2="'+n[1].toFixed(1)+'" stroke="#e23446" stroke-width="3.2" stroke-linecap="round"/>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="9" fill="#15161a" stroke="#c9a45a" stroke-width="2"/>'+
+   '<rect x="52" y="140" width="116" height="34" rx="8" fill="#08090b" stroke="#2a2d35"/>'+
+   '<text x="110" y="164" text-anchor="middle" font-size="22" font-weight="600" fill="#eeeae3" font-family="Rubik,sans-serif" letter-spacing="1">'+fmtN(odo)+'</text>'+
+   '<text x="110" y="190" text-anchor="middle" font-size="11" fill="#9a9ca4" font-family="Rubik,sans-serif">ק״מ</text>'+
+  '</svg>';
+}
+function ring(frac,main,sub,label,color){
+  var R=40,C=2*Math.PI*R,f=clamp(frac,0,1);
+  return '<div class="ring"><svg viewBox="0 0 104 104"><circle cx="52" cy="52" r="'+R+'" fill="none" stroke="#23252c" stroke-width="9"/>'+
+   '<circle cx="52" cy="52" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+(C*f).toFixed(1)+' '+C.toFixed(1)+'" transform="rotate(-90 52 52)"/>'+
+   '<text x="52" y="'+(sub?50:57)+'" text-anchor="middle" font-size="'+(main.length>5?17:22)+'" font-weight="700">'+main+'</text>'+(sub?'<text x="52" y="66" text-anchor="middle" font-size="10" fill="#9a9ca4">'+sub+'</text>':'')+
+   '</svg><div class="t">'+label+'</div></div>';
+}
+function statusColor(s){return {ok:'#3fb37f',soon:'#e5a22e',over:'#ef4a41',verify:'#8aa4ff'}[s]||'#8b8f99';}
+
+/* ---------- views ---------- */
+function viewDash(){
+  var cs=allCalc(),T=today();
+  var oil=cs.filter(function(c){return c.it.id==='oil';})[0];
+  var oilKm=S.odo-oil.it.lastKm;
+  var testDays=dd(T,pd(S.test.due)),urgent=testDays<=7;
+  var attn=cs.filter(function(c){return c.status==='over'||c.status==='verify'||c.status==='soon';})
+     .sort(function(a,b){var o={over:0,verify:1,soon:2};return (o[a.status]-o[b.status])||((a.eff||0)-(b.eff||0));});
+  var upcoming=cs.filter(function(c){return c.status==='ok'||c.status==='soon';}).sort(function(a,b){return a.eff-b.eff;});
+  var nx=upcoming[0];
+  var h='';
+  h+='<div class="card"><div class="gwrap">'+gauge(oilKm/oil.it.intKm,S.odo)+
+   '<div class="gside">'+
+   '<div class="kv"><small>ק״מ בטיפול האחרון (שמן)</small><b><span class="num">'+(oil.it.est?'~':'')+fmtN(oil.it.lastKm)+'</span> <i>'+fmtD(pd(oil.it.lastDate))+'</i></b></div>'+
+   '<div class="kv"><small>נסיעה מאז</small><b><span class="num">'+fmtN(Math.max(0,oilKm))+'</span> <i>ק״מ</i></b></div>'+
+   '<div class="kv"><small>עד החלפת שמן הבאה</small><b><span class="num">'+fmtN(Math.max(0,oil.kmLeft))+'</span> <i>ק״מ או '+fmtMY(oil.dueDate)+'</i></b></div>'+
+   '</div></div>'+
+   '<div class="row between" style="margin-top:8px"><span class="mut" style="font-size:12px">מד הקילומטרים עודכן ב-'+fmtD(pd(S.odoDate))+'</span><button class="btn" data-a="odo">עדכון ק״מ</button></div></div>';
+
+  h+='<div class="card test '+(urgent?'':'calm')+(urgent&&!S.test.paid?' pulse':'')+'">'+
+   '<div class="row between"><div><div class="mut" style="font-size:12.5px">טסט שנתי · עד '+fmtD(pd(S.test.due))+'</div>'+
+   (testDays>=0?'<div class="big">'+testDays+'<small>'+(testDays===1?'יום':'ימים')+'</small></div>':'<div class="big" style="color:var(--over)">'+(-testDays)+'<small>ימי איחור</small></div>')+'</div>'+
+   '<div style="text-align:left;display:flex;flex-direction:column;gap:7px;align-items:flex-end"><span class="chip '+(S.test.paid?'ok':'warn')+'">'+(S.test.paid?'✓ אגרה שולמה':'אגרה לא שולמה')+'</span>'+
+   '<span class="chip">'+(testDays<=7&&testDays>=0?'⏰ לקבוע תור השבוע':testDays<0?'⚠ יש לבצע מיד':'מצב: מתוכנן')+'</span></div></div>'+
+   '<div class="acts"><button class="btn red" data-a="testdone">הטסט בוצע</button><button class="btn ghost" data-tab="set">שינוי מועד</button></div></div>';
+
+  if(nx){
+    var daysFrac=nx.dT!=null?clamp(nx.dT/((nx.it.intMonths||12)*30.4),0,1):0;
+    var kmFrac=nx.kmLeft!=null&&nx.it.intKm?clamp(nx.kmLeft/nx.it.intKm,0,1):0;
+    h+='<h2>הבא בתור</h2><div class="card item st-'+nx.status+'"><div class="ih"><div class="ico">'+nx.it.ico+'</div><div class="in"><b>'+esc(nx.it.name)+'</b><small>'+esc(intervalText(nx.it))+'</small></div><span class="badge '+nx.status+'">'+LABEL[nx.status]+'</span></div>'+
+     '<div class="rings">'+
+      (nx.dT!=null?ring(daysFrac,String(Math.max(nx.dT,0)),'ימים','עד '+fmtD(nx.dueDate),statusColor(nx.status)):'')+
+      (nx.kmLeft!=null?ring(kmFrac,fmtN(Math.max(nx.kmLeft,0)),'ק״מ','עד '+fmtN(nx.dueKm)+' ק״מ',statusColor(nx.status)):'')+
+     '</div>'+
+     (nx.bind?'<p class="mut" style="text-align:center;font-size:12px;margin:8px 0 0">'+(nx.bind==='time'?'התאריך קובע (לפי קצב נסיעה של כ-'+fmtN(S.rate*365)+' ק״מ בשנה)':'הקילומטראז׳ קובע')+'</p>':'')+
+     '<div class="acts"><button class="btn red" data-a="done" data-id="'+nx.it.id+'">סמן כבוצע</button></div></div>';
+  }
+  h+='<h2>דורש תשומת לב <span class="n">'+attn.length+'</span></h2>';
+  if(!attn.length)h+='<div class="card mut">הכול תקין 👌</div>';
+  attn.forEach(function(c){h+=itemCard(c,true);});
+  var unk=cs.filter(function(c){return c.status==='unknown';});
+  if(unk.length){h+='<h2>חסר מידע <span class="n">'+unk.length+'</span></h2>';unk.forEach(function(c){h+=itemCard(c,true);});}
+  h+='<p class="foot">המרווחים מבוססים על מידע שנאסף מספר היצרן, ממומחי אלפא ומפורומי בעלים, ועל הרישומים שצירפת. הם הנחיה בלבד – מועדי הטיפול הסופיים נקבעים לפי ספר הרכב והמוסך שלך. פריטים עם "~" הם הערכה – עדכן לפי חשבוניות דרך "סמן כבוצע".</p>';
+  return h;
+}
+
+function viewKm(){
+  var cs=allCalc();
+  var late=cs.filter(function(c){return c.status==='over'||c.status==='verify';}).sort(function(a,b){return a.effKm-b.effKm;});
+  var road=cs.filter(function(c){return c.status==='ok'||c.status==='soon';}).sort(function(a,b){return a.effKm-b.effKm;});
+  var unk=cs.filter(function(c){return c.status==='unknown';});
+  var h='<h2>נקודת המוצא</h2><div class="rail"><div class="node start"><div class="card compact"><div class="row between"><b>עכשיו</b><span class="num" style="font-weight:700;font-size:20px">'+fmtN(S.odo)+' ק״מ</span></div></div></div></div>';
+  if(late.length){h+='<h2>באיחור / לאימות <span class="n">'+late.length+'</span></h2><div class="rail">';
+    late.forEach(function(c){h+='<div class="node s-'+c.status+'"><div class="mark">יעד: '+(c.dueKm!=null?fmtN(c.dueKm)+' ק״מ':'לפי תאריך')+'</div>'+itemCard(c,true)+'</div>';});h+='</div>';}
+  h+='<h2>הדרך קדימה – לפי קילומטרים <span class="n">'+road.length+'</span></h2><div class="rail">';
+  road.forEach(function(c){
+    var left=c.effKm-S.odo,isEst=c.bind==='time';
+    h+='<div class="node s-'+c.status+'"><div class="mark">ב-'+(isEst?'~':'')+fmtN(c.effKm)+' ק״מ · בעוד '+(isEst?'~':'')+fmtN(left)+' ק״מ'+(isEst?' <span class="est">(משוער לפי תאריך)</span>':'')+'</div>'+itemCard(c,true)+'</div>';});
+  h+='</div>';
+  if(unk.length){h+='<h2>חסר מידע</h2>';unk.forEach(function(c){h+=itemCard(c,true);});}
+  return h;
+}
+
+function viewYear(){
+  var cs=allCalc(),T=today();
+  var late=cs.filter(function(c){return c.status==='over'||c.status==='verify';}).sort(function(a,b){return a.eff-b.eff;});
+  var fut=cs.filter(function(c){return c.status==='ok'||c.status==='soon';}).map(function(c){return {d:c.effDate,c:c};});
+  var td=pd(S.test.due);
+  fut.push({d:td,test:true});
+  fut.push({d:addM(td,12),test:true,next:true});
+  fut.sort(function(a,b){return a.d-b.d;});
+  var h='';
+  if(late.length){h+='<h2>עכשיו – באיחור / לאימות <span class="n">'+late.length+'</span></h2>';late.forEach(function(c){h+=itemCard(c,true);});}
+  var cur=null;
+  fut.forEach(function(e){
+    var y=e.d.getFullYear();
+    if(y!==cur){cur=y;var cnt=fut.filter(function(x){return x.d.getFullYear()===y;}).length;h+='<div class="yr">'+y+'<small>'+cnt+' אירועים</small></div>';}
+    if(e.test){
+      h+='<div class="mo">'+fmtD(e.d)+'</div><div class="card compact"><div class="ih" style="display:flex;gap:10px;align-items:center"><div class="ico">🚦</div><div class="in"><b>טסט שנתי'+(e.next?' (הבא)':'')+'</b><small>'+(e.next?'משוער – שנה אחרי הטסט הנוכחי':(S.test.paid?'אגרה שולמה':'אגרה טרם שולמה'))+'</small></div><span class="badge '+(e.next?'unknown':(dd(T,e.d)<=7?'soon':'ok'))+'">'+(e.next?'מתוכנן':(dd(T,e.d)<0?'באיחור':'בעוד '+human(dd(T,e.d))))+'</span></div></div>';
+    }else{
+      h+='<div class="mo">'+fmtM(e.d)+(e.c.bind==='km'?' · ~לפי ק״מ':'')+'</div>'+itemCard(e.c,true);
+    }
+  });
+  return h;
+}
+
+function chart(pts){
+  var W=340,H=150,pl=34,pr=8,pt=10,pb=22;
+  var t0=pd('2016-01-01'),t1=addM(today(),2);
+  var xs=function(d){return pl+(d-t0)/(t1-t0)*(W-pl-pr);};
+  var ymax=120000,ys=function(k){return H-pb-(k/ymax)*(H-pb-pt);};
+  var g='';
+  for(var k=0;k<=120000;k+=20000)g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+ys(k)+'" y2="'+ys(k)+'" stroke="#23252c"/><text x="'+(pl-4)+'" y="'+(ys(k)+3)+'" font-size="8" fill="#7d808a" text-anchor="end">'+(k/1000)+'k</text>';
+  for(var y=2016;y<=today().getFullYear();y++){var x=xs(pd(y+'-01-01'));g+='<text x="'+x+'" y="'+(H-6)+'" font-size="8" fill="#7d808a" text-anchor="middle">'+y+'</text>';}
+  var line=pts.map(function(p){return xs(p.d).toFixed(1)+','+ys(p.k).toFixed(1);}).join(' ');
+  var dots=pts.map(function(p,i){return '<circle cx="'+xs(p.d).toFixed(1)+'" cy="'+ys(p.k).toFixed(1)+'" r="'+(i===pts.length-1?3.6:1.9)+'" fill="'+(i===pts.length-1?'#e23446':'#c9a45a')+'"/>';}).join('');
+  return '<div class="chart"><svg viewBox="0 0 '+W+' '+H+'">'+g+'<polyline points="'+line+'" fill="none" stroke="#c9a45a" stroke-width="1.5"/>'+dots+'</svg></div>';
+}
+function histAll(){
+  var a=HIST.map(function(x){return Object.assign({},x);});
+  S.log.forEach(function(l){a.push(Object.assign({src:'user'},l));});
+  a.sort(function(x,y){return x.d<y.d?1:x.d>y.d?-1:0;});
+  return a;
+}
+function viewHist(){
+  var all=histAll();
+  var pts=all.filter(function(x){return x.km!=null;}).map(function(x){return {d:pd(x.d),k:x.km};}).sort(function(a,b){return a.d-b.d;});
+  pts.push({d:pd(S.odoDate),k:S.odo});
+  var list=all.filter(function(x){return catF==='all'||x.c===catF;});
+  var h='<div class="card"><div class="row between"><b>ק״מ לאורך השנים</b><button class="btn" data-a="addlog">+ הוסף רישום</button></div>'+chart(pts)+
+   '<p class="mut" style="font-size:12px;margin:6px 0 0">'+all.length+' רישומים · קצב נסיעה אחרון: כ-'+fmtN(S.rate*365)+' ק״מ בשנה</p></div>';
+  h+='<div class="chips">'+Object.keys(CATS).map(function(k){return '<button class="fchip '+(k===catF?'on':'')+'" data-a="cat" data-k="'+k+'">'+CATS[k]+'</button>';}).join('')+'</div>';
+  var cy=null;
+  list.forEach(function(x){
+    var y=x.d.slice(0,4);
+    if(y!==cy){cy=y;h+='<div class="yr" style="font-size:22px;margin-top:10px">'+y+'</div>';}
+    h+='<div class="card hcard"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
+     '<div class="k"><span class="tag'+(x.src==='user'?' user':'')+'">'+(x.src==='user'?'עדכון שלך':CATS[x.c])+'</span>'+(x.km!=null?'<span class="num">'+(x.kmEst?'~':'')+fmtN(x.km)+'</span> ק״מ':'')+'</div>'+
+     (x.i&&x.i.length?'<ul>'+x.i.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul>':'')+'</div>';
+  });
+  if(!list.length)h+='<div class="card mut">אין רישומים בקטגוריה הזו.</div>';
+  return h;
+}
+
+function viewSet(){
+  var h='<h2>הרכב</h2><div class="card">'+
+   '<div class="g2"><div class="field"><label>ק״מ נוכחי</label><input type="number" inputmode="numeric" id="f_odo" value="'+S.odo+'"></div>'+
+   '<div class="field"><label>תאריך הקריאה</label><input type="date" id="f_odod" value="'+S.odoDate+'"></div></div>'+
+   '<div class="field"><label>קצב נסיעה (ק״מ בשנה) – משמש להערכת תאריכים</label><input type="number" inputmode="numeric" id="f_rate" value="'+Math.round(S.rate*365)+'"></div></div>'+
+   '<h2>טסט</h2><div class="card"><div class="field"><label>מועד אחרון לביצוע הטסט</label><input type="date" id="f_test" value="'+S.test.due+'"></div>'+
+   '<label class="chk"><input type="checkbox" id="f_paid" '+(S.test.paid?'checked':'')+'> האגרה שולמה</label></div>'+
+   '<h2>פריטי תחזוקה – ערוך מועדים ומרווחים</h2>';
+  items().forEach(function(it){
+    h+='<details class="set"><summary><span>'+it.ico+' '+esc(it.name)+'</span><span class="mut" style="font-size:12px">'+esc(lastText(it))+'</span></summary><div class="body">'+
+     '<div class="g2"><div class="field"><label>תאריך אחרון</label><input type="date" data-f="1" data-id="'+it.id+'" data-k="lastDate" value="'+(it.lastDate||'')+'"></div>'+
+     '<div class="field"><label>ק״מ באחרון</label><input type="number" inputmode="numeric" data-f="1" data-id="'+it.id+'" data-k="lastKm" value="'+(it.lastKm==null?'':it.lastKm)+'"></div>'+
+     '<div class="field"><label>מרווח (ק״מ)</label><input type="number" inputmode="numeric" data-f="1" data-id="'+it.id+'" data-k="intKm" value="'+(it.intKm==null?'':it.intKm)+'"></div>'+
+     '<div class="field"><label>מרווח (חודשים)</label><input type="number" inputmode="numeric" data-f="1" data-id="'+it.id+'" data-k="intMonths" value="'+(it.intMonths==null?'':it.intMonths)+'"></div></div></div></details>';
+  });
+  h+='<div class="row" style="margin-top:14px"><button class="btn" data-a="reset">איפוס לברירת מחדל</button></div>'+
+   '<p class="foot">הנתונים נשמרים בדפדפן של המכשיר הזה בלבד. כדי לראות אותם במכשיר אחר, יש להזין שם מחדש.</p>';
+  return h;
+}
+
+/* ---------- render ---------- */
+var tab='dash',catF='all';
+function render(){
+  var v=document.getElementById('view');
+  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,set:viewSet})[tab]();
+  Array.prototype.forEach.call(document.querySelectorAll('#nav button'),function(b){b.classList.toggle('on',b.getAttribute('data-tab')===tab);});
+  document.getElementById('todayPill').textContent=fmtD(today());
+}
+function toast(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('on');setTimeout(function(){e.classList.remove('on');},1600);}
+function openSheet(html){document.getElementById('sheetBody').innerHTML=html;document.getElementById('sheet').classList.remove('hidden');}
+function closeSheet(){document.getElementById('sheet').classList.add('hidden');}
+function val(id){return document.getElementById(id).value;}
+
+function openDone(id){
+  var it=items().filter(function(x){return x.id===id;})[0];
+  openSheet('<h3>סימון כבוצע – '+esc(it.name)+'</h3>'+
+   '<div class="g2"><div class="field"><label>תאריך</label><input type="date" id="d_date" value="'+iso(today())+'"></div>'+
+   '<div class="field"><label>ק״מ במועד הביצוע</label><input type="number" inputmode="numeric" id="d_km" value="'+S.odo+'"></div></div>'+
+   '<div class="field"><label>הערה (אופציונלי)</label><input type="text" id="d_note" placeholder="למשל: מוסך, מותג, עלות"></div>'+
+   '<div class="row"><button class="btn red grow" data-a="submitDone" data-id="'+id+'">שמירה</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+var CATMAP={oil:'service',airf:'service',cabin:'service',bfl:'service',plug:'service',belt:'service',aux:'engine',brk:'brakes',bat:'elec',cool:'engine',ac:'ac',shk:'susp',tire:'other'};
+function submitDone(id){
+  var d=val('d_date'),km=num(val('d_km'));
+  if(!d){toast('נא למלא תאריך');return;}
+  var it=items().filter(function(x){return x.id===id;})[0],st=S.items[id];
+  st.lastDate=d;st.lastKm=km;st.est=false;st.verified=true;
+  if(km!=null&&km>S.odo){S.odo=km;S.odoDate=d;}
+  S.log.push({id:'u'+Date.now(),d:d,km:km,t:'בוצע: '+it.name,c:CATMAP[id]||'other',i:val('d_note')?[val('d_note')]:[]});
+  save();closeSheet();render();toast('נשמר ✓');
+}
+function openOdo(){
+  openSheet('<h3>עדכון קילומטראז׳</h3><div class="field"><label>ק״מ נוכחי</label><input type="number" inputmode="numeric" id="o_km" value="'+S.odo+'"></div>'+
+   '<div class="row"><button class="btn red grow" data-a="submitOdo">שמירה</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function submitOdo(){
+  var km=num(val('o_km'));if(!km||km<0){toast('ערך לא תקין');return;}
+  var T=today(),prev=pd(S.odoDate),days=dd(prev,T);
+  if(km>S.odo&&days>=30){S.rate=clamp((km-S.odo)/days,3,200);} /* refine pace only after a month+ gap */
+  S.odo=km;S.odoDate=iso(T);save();closeSheet();render();toast('עודכן ✓');
+}
+function openAddLog(){
+  openSheet('<h3>הוספת רישום להיסטוריה</h3><div class="g2"><div class="field"><label>תאריך</label><input type="date" id="l_d" value="'+iso(today())+'"></div>'+
+   '<div class="field"><label>ק״מ</label><input type="number" inputmode="numeric" id="l_k" value="'+S.odo+'"></div></div>'+
+   '<div class="field"><label>כותרת</label><input type="text" id="l_t" placeholder="למשל: החלפת מגבים"></div>'+
+   '<div class="field"><label>קטגוריה</label><select id="l_c">'+Object.keys(CATS).filter(function(k){return k!=='all';}).map(function(k){return '<option value="'+k+'">'+CATS[k]+'</option>';}).join('')+'</select></div>'+
+   '<div class="field"><label>פירוט</label><input type="text" id="l_n"></div>'+
+   '<div class="row"><button class="btn red grow" data-a="submitLog">שמירה</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function submitLog(){
+  var t=val('l_t').trim();if(!t||!val('l_d')){toast('נא למלא תאריך וכותרת');return;}
+  S.log.push({id:'u'+Date.now(),d:val('l_d'),km:num(val('l_k')),t:t,c:val('l_c'),i:val('l_n')?[val('l_n')]:[]});
+  save();closeSheet();render();toast('נשמר ✓');
+}
+
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-tab]');
+  if(t){tab=t.getAttribute('data-tab');render();window.scrollTo(0,0);return;}
+  var b=e.target.closest('[data-a]');if(!b)return;
+  var a=b.getAttribute('data-a'),id=b.getAttribute('data-id');
+  if(a==='done')openDone(id);
+  else if(a==='submitDone')submitDone(id);
+  else if(a==='closeSheet')closeSheet();
+  else if(a==='odo')openOdo();
+  else if(a==='submitOdo')submitOdo();
+  else if(a==='addlog')openAddLog();
+  else if(a==='submitLog')submitLog();
+  else if(a==='cat'){catF=b.getAttribute('data-k');render();}
+  else if(a==='testdone'){
+    openSheet('<h3>הטסט בוצע?</h3><p class="mut">המועד הבא יוזז שנה קדימה והאגרה תסומן כלא שולמה.</p><div class="row"><button class="btn red grow" data-a="testdone2">כן, בוצע</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+  }
+  else if(a==='testdone2'){
+    var old=pd(S.test.due);S.test.due=iso(addM(old,12));S.test.paid=false;
+    S.log.push({id:'u'+Date.now(),d:iso(today()),km:S.odo,t:'טסט שנתי בוצע',c:'other',i:[]});
+    save();closeSheet();render();toast('הטסט הבא: '+fmtD(pd(S.test.due)));
+  }
+  else if(a==='reset'){
+    openSheet('<h3>איפוס לברירת מחדל?</h3><p class="mut">כל העדכונים והרישומים שהוספת במכשיר הזה יימחקו.</p><div class="row"><button class="btn red grow" data-a="reset2">איפוס</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+  }
+  else if(a==='reset2'){S=fresh();save();closeSheet();render();toast('אופס');}
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.getAttribute('data-f')){
+    var id=el.getAttribute('data-id'),k=el.getAttribute('data-k'),st=S.items[id];
+    st[k]=(k==='lastDate')?(el.value||null):num(el.value);
+    if(k==='lastDate'||k==='lastKm'){st.est=false;st.verified=true;}
+    save();toast('נשמר ✓');return;
+  }
+  var m={f_odo:function(){var v=num(el.value);if(v>0){S.odo=v;}},f_odod:function(){if(el.value)S.odoDate=el.value;},f_rate:function(){var v=num(el.value);if(v>0)S.rate=v/365;},
+         f_test:function(){if(el.value)S.test.due=el.value;},f_paid:function(){S.test.paid=el.checked;}};
+  if(m[el.id]){m[el.id]();save();toast('נשמר ✓');}
+});
+
+render();
+})();
+</script>
+</body>
+</html>
