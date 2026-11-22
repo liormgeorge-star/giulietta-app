@@ -183,6 +183,7 @@ a.btn{display:inline-block;text-align:center;text-decoration:none}
 .bars{display:flex;gap:8px;align-items:flex-end;height:90px;margin:10px 0 4px}
 .bars div{flex:1;text-align:center;font-size:11px;color:var(--mut)}
 .bars i{display:block;background:linear-gradient(#ff4a5c,#8e0f1f);border-radius:6px 6px 0 0;min-height:3px;margin-bottom:3px}
+[data-del]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 </style>
 </head>
 <body>
@@ -296,7 +297,7 @@ var DEFAULT_RATE=25829/1456; /* km/day: 84,071 (27.11.2022) -> 109,900 (22.11.20
 var S=load();
 function pick(d){return {lastKm:d.lastKm,lastDate:d.lastDate,intKm:d.intKm,intMonths:d.intMonths,est:!!d.est,verified:false};}
 function fresh(){
-  var s={apiKey:'',model:'claude-sonnet-5-5',web:true,provider:'claude',gkey:'',gmodel:'gemini-flash-latest',odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[]};
+  var s={apiKey:'',model:'claude-sonnet-5-5',web:true,provider:'claude',gkey:'',gmodel:'gemini-flash-latest',odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[],hide:[]};
   DEFS.forEach(function(d){s.items[d.id]=pick(d);});
   return s;
 }
@@ -317,6 +318,7 @@ function load(){
         if(typeof o.rate==='number'&&o.rate>0)base.rate=o.rate;
         if(o.test&&o.test.due)base.test=o.test;
         if(Array.isArray(o.log))base.log=o.log;
+        if(Array.isArray(o.hide))base.hide=o.hide;
         if(o.items)DEFS.forEach(function(d){if(o.items[d.id])base.items[d.id]=Object.assign(base.items[d.id],o.items[d.id]);});
       }
     }
@@ -525,7 +527,8 @@ function chart(pts){
   return '<div class="chart"><svg viewBox="0 0 '+W+' '+H+'">'+g+'<polyline points="'+line+'" fill="none" stroke="#c9a45a" stroke-width="1.5"/>'+dots+'</svg></div>';
 }
 function histAll(){
-  var a=HIST.map(function(x){return Object.assign({},x);});
+  var hd=S.hide||[];
+  var a=HIST.filter(function(x){return hd.indexOf(x.d+'|'+x.t)<0;}).map(function(x){return Object.assign({},x);});
   S.log.forEach(function(l){a.push(Object.assign({src:'user'},l));});
   a.sort(function(x,y){return x.d<y.d?1:x.d>y.d?-1:0;});
   return a;
@@ -581,10 +584,11 @@ function histList(){
   list.forEach(function(x){
     var y=x.d.slice(0,4);
     if(y!==cy){cy=y;out+='<div class="yr" style="font-size:22px;margin-top:10px">'+y+'</div>';}
-    out+='<div class="card hcard"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
+    out+='<div class="card hcard" data-del="'+(x.src==='user'&&x.id?'log:'+x.id:'hist:'+x.d+'|'+x.t)+'"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
      '<div class="k"><span class="tag'+(x.src==='user'?' user':'')+'">'+(x.src==='user'?'עדכון שלך':CATS[x.c])+'</span>'+(x.km!=null?'<span class="num">'+(x.kmEst?'~':'')+fmtN(x.km)+'</span> ק״מ':'')+(x.cost?' <span class="cost">· ₪'+fmtN(x.cost)+'</span>':'')+'</div>'+
      (x.i&&x.i.length?'<ul>'+x.i.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul>':'')+'</div>';
   });
+  if(list.length)out+='<p class="mut" style="font-size:11.5px;text-align:center">לחיצה ארוכה על רישום מאפשרת למחוק אותו</p>';
   if(!list.length)out+='<div class="card mut">לא נמצאו רישומים. נסה מילה אחרת, שנה אחרת או "כל השנים".</div>';
   return out;
 }
@@ -1011,7 +1015,7 @@ function insBrief(){
   return '<div class="card"><div class="row between"><div><div class="mut" style="font-size:12.5px">ביטוח'+(cp.insurer?' · '+esc(cp.insurer):'')+' · עד '+esc(fmtD(pd(cp.end)))+'</div><div class="big" style="'+(bad?'color:var(--over)':'')+'">'+(bad?(-n):n)+'<small>'+(bad?'ימי איחור':'ימים')+'</small></div></div><div style="text-align:left;display:flex;flex-direction:column;gap:7px;align-items:flex-end">'+(cp.premium?'<span class="mut" style="font-size:12px">פרמיה ₪'+fmtN(cp.premium)+'</span>':'')+'<span class="chip '+(bad?'warn':warn?'warn':'ok')+'">'+(bad?'⚠ פג תוקף':warn?'⏰ לחדש בקרוב':'✓ בתוקף')+'</span><button class="btn" data-tab="docs">📇 מסמכים וחירום</button></div></div></div>';
 }
 function contactCard(c){
-  return '<div class="card compact"><div class="row between" style="gap:8px"><div style="min-width:0"><b>'+esc(c.role)+'</b>'+(c.name?'<div class="mut" style="font-size:12.5px">'+esc(c.name)+'</div>':'')+'</div><div class="row" style="gap:6px">'+(c.phone?'<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.phone)+'</a>':'<span class="mut" style="font-size:12.5px">אין מספר</span>')+'<button class="btn" data-a="dcedit" data-id="'+c.id+'" aria-label="עריכה">✏️</button></div></div></div>';
+  return '<div class="card compact" data-del="con:'+c.id+'"><div class="row between" style="gap:8px"><div style="min-width:0"><b>'+esc(c.role)+'</b>'+(c.name?'<div class="mut" style="font-size:12.5px">'+esc(c.name)+'</div>':'')+'</div><div class="row" style="gap:6px">'+(c.phone?'<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.phone)+'</a>':'<span class="mut" style="font-size:12.5px">אין מספר</span>')+'<button class="btn" data-a="dcedit" data-id="'+c.id+'" aria-label="עריכה">✏️</button></div></div></div>';
 }
 
 function insDash(ps){
@@ -1031,7 +1035,7 @@ function insDash(ps){
   by.forEach(function(p,i){
     var pv=null;for(var k=i-1;k>=0;k--){if(by[k].premium){pv=by[k];break;}}
     var c=p.premium&&pv?Math.round((p.premium-pv.premium)/pv.premium*100):null;
-    o+='<tr style="border-top:1px solid var(--line)"><td style="padding:8px 0"><b>'+esc(polYear(p))+'</b></td><td>'+esc(p.insurer||'-')+(p.type?'<div class="mut" style="font-size:11.5px">'+esc(p.type)+'</div>':'')+'</td><td><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b></td><td style="color:'+(c>0?'#ff6b6b':c<0?'#5fd38d':'inherit')+'">'+(c==null?'':(c>0?'▲':'▼')+Math.abs(c)+'%')+'</td><td style="text-align:left">'+(p.img?'<button class="btn" data-a="dview" data-k="p:'+p.id+'" aria-label="הצג טופס">👁</button> ':'')+'<button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></td></tr>';
+    o+='<tr data-del="pol:'+p.id+'" style="border-top:1px solid var(--line)"><td style="padding:8px 0"><b>'+esc(polYear(p))+'</b></td><td>'+esc(p.insurer||'-')+(p.type?'<div class="mut" style="font-size:11.5px">'+esc(p.type)+'</div>':'')+'</td><td><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b></td><td style="color:'+(c>0?'#ff6b6b':c<0?'#5fd38d':'inherit')+'">'+(c==null?'':(c>0?'▲':'▼')+Math.abs(c)+'%')+'</td><td style="text-align:left">'+(p.img?'<button class="btn" data-a="dview" data-k="p:'+p.id+'" aria-label="הצג טופס">👁</button> ':'')+'<button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></td></tr>';
   });
   return o+'</table></div>';
 }
@@ -1049,16 +1053,16 @@ function viewDocs(){
     h+='<h2>עלות הביטוח לאורך השנים'+(cnt?' · סה״כ ₪'+fmtN(tot):'')+'</h2>';
     var pr=ps.filter(function(p){return p.premium;}).slice().reverse();
     if(pr.length>1){var mx=Math.max.apply(null,pr.map(function(p){return p.premium;}));h+='<div class="card"><div class="bars">'+pr.map(function(p){return '<div><i style="height:'+Math.round(p.premium/mx*70)+'px"></i>'+esc(polYear(p).slice(0,4))+'</div>';}).join('')+'</div><p class="mut" style="font-size:12.5px;margin:4px 0 0">ממוצע לשנה: ₪'+fmtN(Math.round(tot/cnt))+'</p></div>';}
-    ps.forEach(function(p){h+='<div class="card compact"><div class="row between"><div><b>'+esc(polYear(p))+(p.insurer?' · '+esc(p.insurer):'')+'</b><div class="mut" style="font-size:12.5px">'+(p.type?esc(p.type)+' · ':'')+'עד '+esc(p.end?fmtD(pd(p.end)):'-')+'</div></div><div class="row" style="gap:6px"><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b><button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></div></div></div>';});
+    ps.forEach(function(p){h+='<div class="card compact" data-del="pol:'+p.id+'"><div class="row between"><div><b>'+esc(polYear(p))+(p.insurer?' · '+esc(p.insurer):'')+'</b><div class="mut" style="font-size:12.5px">'+(p.type?esc(p.type)+' · ':'')+'עד '+esc(p.end?fmtD(pd(p.end)):'-')+'</div></div><div class="row" style="gap:6px"><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b><button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></div></div></div>';});
   }
   var L=D.lic||{};
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 י · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 יא · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
-var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
+var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":הסכום הכולל לתשלום עבור כל תקופת הביטוח (פרמיה / סה״כ לתשלום / אגרה כולל), כמספר בלי סימנים, או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
 var LIC_SYS='אתה מחלץ נתונים מרישיון רכב / טופס רישוי ישראלי. החזר JSON בלבד, בלי טקסט נוסף:\n{"plate":"מספר רכב","expiry":"YYYY-MM-DD (תוקף הרישיון / עד תאריך)","year":שנת ייצור כמספר או null,"model":"יצרן ודגם","vin":"מספר שלדה","color":""}\nתאריכים בישראל הם DD/MM/YYYY. אל תנחש שדה שלא נראה: null.';
 var df=null;
 
@@ -1119,11 +1123,18 @@ async function scanIns(files){
   var s='<h3>'+(added.length?'✅ נקראו '+added.length+' פוליסות':'⚠ לא נקרא מידע')+'</h3>';
   added.forEach(function(r){var p=r.p;s+='<div class="card compact"><b>'+esc(polYear(p))+(p.insurer?' · '+esc(p.insurer):'')+'</b><div class="mut" style="font-size:12.5px">'+(p.type?esc(p.type)+' · ':'')+'עד '+esc(fmtD(pd(p.end)))+' · '+(p.premium?'₪'+fmtN(p.premium):'פרמיה לא זוהתה')+(r.isNew?'':' · עודכן')+'</div></div>';});
   if(fail.length)s+='<p class="mut" style="font-size:12.5px">'+fail.map(esc).join('<br>')+'</p>';
-  s+='<p class="mut" style="font-size:12.5px">הכול סודר לפי שנים בדשבורד. אפשר לתקן כל פוליסה בלחיצה על ✏️.</p><div class="row">'+(failedFiles.length?'<button class="btn" data-a="pretry">🔄 נסה שוב</button><button class="btn" data-a="tconn">🔍 בדיקת חיבור</button>':'')+(review?'<button class="btn" data-a="preview">השלם טופס שלא נקרא</button>':'')+'<button class="btn red grow" data-a="closeSheet">סגור</button></div>';
+  s+='<p class="mut" style="font-size:12.5px">הכול סודר לפי שנים בדשבורד. אפשר לתקן כל פוליסה בלחיצה על ✏️, ולמחוק בלחיצה ארוכה.</p><div class="row">'+(failedFiles.length?'<button class="btn" data-a="pretry">🔄 נסה שוב</button><button class="btn" data-a="tconn">🔍 בדיקת חיבור</button>':'')+(review?'<button class="btn" data-a="preview">השלם טופס שלא נקרא</button>':'')+'<button class="btn red grow" data-a="closeSheet">סגור</button></div>';
   window._rev=review;window._failedFiles=failedFiles;
   openSheet(s);
 }
-function parseJson(t){var m=String(t).match(/\{[\s\S]*\}/);if(!m)throw new Error('לא התקבל JSON תקין');return JSON.parse(m[0]);}
+function safeJson(x){
+  try{return JSON.parse(x);}catch(e1){}
+  var y=String(x).replace(/[\u0000-\u001f]/g,' ').replace(/\\(?!["\\\/bfnrt]|u[0-9a-fA-F]{4})/g,'').replace(/,\s*([}\]])/g,'$1');
+  try{return JSON.parse(y);}catch(e2){}
+  y=y.replace(/\\u[0-9a-fA-F]{4}/g,'');
+  return JSON.parse(y);
+}
+function parseJson(t){var m=String(t).match(/\{[\s\S]*\}/);if(!m)throw new Error('לא התקבל JSON תקין');return safeJson(m[0]);}
 function okDate(s){
   s=String(s||'').trim();
   if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
@@ -1236,8 +1247,8 @@ var SRV_SYS='אתה מחלץ נתונים מקובץ של היסטוריית ט�
  'קוד item לכל שורה: oil = שמן מנוע / מסנן שמן / טיפול שמן; airf = מסנן אוויר מנוע; cabin = מסנן מזגן/פולן; bfl = נוזל בלמים; plug = מצתים; belt = רצועת תזמון / משאבת מים; aux = רצועת עזר; brk = רפידות / דיסקים / בלמים; bat = מצבר; cool = נוזל קירור/מצנן; ac = מילוי או טיפול מזגן; shk = בולמי זעזועים; tire = צמיגים; wip = מגבים; אחרת "other". אל תכלול שורות סיכום או מע״מ. תיאורים קצרים.';
 function parseRecords(t){
   var s=String(t),i=s.indexOf('{');if(i<0)throw new Error('לא התקבל JSON תקין');s=s.slice(i);
-  try{var m=s.match(/\{[\s\S]*\}/);return JSON.parse(m[0]).records||[];}
-  catch(e){var k=s.lastIndexOf('},');if(k<0)throw new Error('לא התקבל JSON תקין');return JSON.parse(s.slice(0,k+1)+']}').records||[];}
+  try{var m=s.match(/\{[\s\S]*\}/);return safeJson(m[0]).records||[];}
+  catch(e){var k=s.lastIndexOf('},');if(k<0)throw new Error('לא התקבל JSON תקין');return safeJson(s.slice(0,k+1)+']}').records||[];}
 }
 function applyRecord(r){
   var d=okDate(r.date);if(!d)return {skip:'ללא תאריך תקין'};
@@ -1313,7 +1324,7 @@ function openReceipt(file){
   }).then(function(t){
     if(tk!==scanTok)throw new Error('cancelled');
     var m=String(t).match(/\{[\s\S]*\}/);if(!m)throw new Error('לא התקבל JSON תקין');
-    var j=JSON.parse(m[0]);
+    var j=safeJson(m[0]);
     var ok={};DEFS.forEach(function(d){ok[d.id]=1;});
     var lines=(j.lines||[]).filter(function(l){return l&&l.desc;}).map(function(l){var it=ok[l.item]?l.item:'other';return {on:it!=='other',item:it,desc:String(l.desc)};});
     var d=/^\d{4}-\d{2}-\d{2}$/.test(j.date||'')?j.date:iso(today());
@@ -1476,7 +1487,44 @@ function submitLog(){
   save();closeSheet();render();toast('נשמר ✓');
 }
 
+var lpT=null,lpX=0,lpY=0,lpFired=0;
+function delLabel(k){
+  var i=k.indexOf(':'),kind=k.slice(0,i),id=k.slice(i+1);
+  if(kind==='log'){var l=S.log.filter(function(x){return x.id===id;})[0];return l?l.t+' · '+fmtD(pd(l.d)):null;}
+  if(kind==='hist'){var j=id.indexOf('|');return fmtD(pd(id.slice(0,j)))+' · '+id.slice(j+1);}
+  if(kind==='pol'){var p=D.pols.filter(function(x){return x.id===id;})[0];return p?'ביטוח '+polYear(p)+(p.insurer?' · '+p.insurer:''):null;}
+  if(kind==='con'){var c=D.contacts.filter(function(x){return x.id===id;})[0];return c?c.role+(c.name?' · '+c.name:''):null;}
+  return null;
+}
+function askDel(k){
+  var lb=delLabel(k);if(!lb)return;
+  window._delK=k;
+  openSheet('<h3>🗑 למחוק?</h3><p style="margin:0 0 6px"><b>'+esc(lb)+'</b></p><p class="mut" style="font-size:12.5px;margin:0 0 12px">'+(k.indexOf('log:')===0||k.indexOf('hist:')===0?'הרישום יוסר מההיסטוריה. מועדי הטיפול הבא לא ישתנו; אפשר לתקן אותם בכרטיס עצמו.':'הפעולה לא ניתנת לביטול.')+'</p><div class="row"><button class="btn red grow" data-a="delok">מחק</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function doDel(){
+  var k=window._delK||'',i=k.indexOf(':'),kind=k.slice(0,i),id=k.slice(i+1);
+  if(kind==='log'){S.log=S.log.filter(function(x){return x.id!==id;});save();}
+  else if(kind==='hist'){S.hide=S.hide||[];if(S.hide.indexOf(id)<0)S.hide.push(id);save();}
+  else if(kind==='pol'){D.pols=D.pols.filter(function(x){return x.id!==id;});dsave();}
+  else if(kind==='con'){D.contacts=D.contacts.filter(function(x){return x.id!==id;});dsave();}
+  window._delK=null;closeSheet();render();toast('נמחק');
+}
+function lpStart(e){
+  if(e.target.closest&&e.target.closest('button,a,input,select,textarea'))return;
+  var el=e.target.closest&&e.target.closest('[data-del]');if(!el)return;
+  var pt=(e.touches&&e.touches[0])||e;lpX=pt.clientX;lpY=pt.clientY;
+  clearTimeout(lpT);
+  lpT=setTimeout(function(){lpT=null;lpFired=Date.now();if(navigator.vibrate)try{navigator.vibrate(30);}catch(x){}askDel(el.getAttribute('data-del'));},550);
+}
+function lpCancel(){if(lpT){clearTimeout(lpT);lpT=null;}}
+function lpMove(e){if(!lpT)return;var pt=(e.touches&&e.touches[0])||e;if(Math.abs(pt.clientX-lpX)>10||Math.abs(pt.clientY-lpY)>10)lpCancel();}
+document.addEventListener('touchstart',lpStart,{passive:true});
+document.addEventListener('touchmove',lpMove,{passive:true});
+document.addEventListener('touchend',lpCancel);document.addEventListener('touchcancel',lpCancel);
+document.addEventListener('mousedown',lpStart);document.addEventListener('mouseup',lpCancel);document.addEventListener('mousemove',lpMove);
+document.addEventListener('contextmenu',function(e){if(e.target.closest&&e.target.closest('[data-del]'))e.preventDefault();});
 document.addEventListener('click',function(e){
+  if(Date.now()-lpFired<700){e.preventDefault();e.stopPropagation();return;}
   var t=e.target.closest('[data-tab]');
   if(t){tab=t.getAttribute('data-tab');render();window.scrollTo(0,0);return;}
   var b=e.target.closest('[data-a]');if(!b)return;
@@ -1484,6 +1532,7 @@ document.addEventListener('click',function(e){
   if(a==='done')openDone(id);
   else if(a==='submitDone')submitDone(id);
   else if(a==='closeSheet')closeSheet();
+  else if(a==='delok')doDel();
   else if(a==='odo')openOdo();
   else if(a==='submitOdo')submitOdo();
   else if(a==='addlog')openAddLog();
