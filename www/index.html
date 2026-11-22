@@ -208,6 +208,8 @@ a.btn{display:inline-block;text-align:center;text-decoration:none}
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
 <div class="toast" id="toast"></div>
 <input type="file" accept="image/*" capture="environment" id="d_ins_cam" hidden><input type="file" accept="image/*" id="d_ins_gal" multiple hidden><input type="file" accept="image/*" capture="environment" id="d_lic_cam" hidden><input type="file" accept="image/*" id="d_lic_gal" hidden>
+<input type="file" accept="image/*,application/pdf" id="s_files" multiple hidden>
+<input type="file" accept="image/*" capture="environment" id="s_cam" hidden>
 <input type="file" accept="image/*" capture="environment" id="r_cam" hidden><input type="file" accept="image/*" id="r_gal" hidden>
 
 <script>
@@ -442,7 +444,7 @@ function viewDash(){
   h+=insBrief();
   var ec=D.contacts.filter(function(c){return c.phone;});
   h+='<div class="card"><div class="row between"><b>🆘 אנשי קשר לחירום</b><button class="btn" data-tab="docs">עריכה</button></div><div class="acts" style="margin-top:8px">'+(ec.length?ec.map(function(c){return '<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.role)+'</a>';}).join(''):'<span class="mut" style="font-size:12.5px">עוד לא הוזנו מספרים</span>')+'</div></div>';
-  h+='<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';
+  h+='<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn" data-a="sfiles">📂 קובצי טיפולים</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';
   h+='<div class="card test '+(urgent?'':'calm')+(urgent&&!S.test.paid?' pulse':'')+'">'+
    '<div class="row between"><div><div class="mut" style="font-size:12.5px">טסט שנתי · עד '+fmtD(pd(S.test.due))+'</div>'+
    (testDays>=0?'<div class="big">'+testDays+'<small>'+(testDays===1?'יום':'ימים')+'</small></div>':'<div class="big" style="color:var(--over)">'+(-testDays)+'<small>ימי איחור</small></div>')+'</div>'+
@@ -560,7 +562,7 @@ function viewHist(){
   var pts=all.filter(function(x){return x.km!=null;}).map(function(x){return {d:pd(x.d),k:x.km};}).sort(function(a,b){return a.d-b.d;});
   pts.push({d:pd(S.odoDate),k:S.odo});
   var years=[];all.forEach(function(x){var y=x.d.slice(0,4);if(years.indexOf(y)<0)years.push(y);});years.sort().reverse();
-  var h='<div class="card"><div class="row between"><b>ק״מ לאורך השנים</b><div class="row" style="gap:6px"><button class="btn red" data-a="rcam">🧾 חשבונית</button><button class="btn" data-a="addlog">+ רישום</button></div></div>'+chart(pts)+
+  var h='<div class="card"><div class="row between"><b>ק״מ לאורך השנים</b><div class="row" style="gap:6px"><button class="btn red" data-a="rcam">🧾 חשבונית</button><button class="btn" data-a="sfiles">📂 ייבוא</button><button class="btn" data-a="addlog">+ רישום</button></div></div>'+chart(pts)+
    '<p class="mut" style="font-size:12px;margin:6px 0 0">'+all.length+' רישומים · קצב נסיעה אחרון: כ-'+fmtN(S.rate*365)+' ק״מ בשנה</p></div>';
   h+='<div class="card"><div class="g2"><div class="field" style="margin:0"><label>חיפוש חלק או טיפול</label><input type="search" id="h_q" placeholder="מצתים, בלמים, מצבר…" value="'+esc(hq)+'"></div>'+
    '<div class="field" style="margin:0"><label>שנה</label><select id="h_y"><option value="all">כל השנים</option>'+years.map(function(y){return '<option value="'+y+'"'+(y===hy?' selected':'')+'>'+y+'</option>';}).join('')+'</select></div></div></div>';
@@ -846,9 +848,10 @@ function md(t){
   });
   return o;
 }
+var llmMax=4096;
 async function callAnthropic(sys,userText,img,noWeb){
-  var content=img?[{type:'image',source:{type:'base64',media_type:img.mime,data:img.b64}},{type:'text',text:userText}]:userText;
-  var body={model:S.model||'claude-sonnet-5-5',max_tokens:1500,system:sys,messages:[{role:'user',content:content}]};
+  var content=img?[{type:img.mime==='application/pdf'?'document':'image',source:{type:'base64',media_type:img.mime,data:img.b64}},{type:'text',text:userText}]:userText;
+  var body={model:S.model||'claude-sonnet-5-5',max_tokens:Math.max(1500,llmMax),system:sys,messages:[{role:'user',content:content}]};
   if(S.web&&!noWeb)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
   async function go(b){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(b)});
@@ -861,7 +864,7 @@ async function callAnthropic(sys,userText,img,noWeb){
 }
 async function callGemini(sys,userText,img){
   var parts=[];if(img)parts.push({inline_data:{mime_type:img.mime,data:img.b64}});parts.push({text:userText});
-  var body=JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:parts}],generationConfig:{maxOutputTokens:4096}});
+  var body=JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:parts}],generationConfig:{maxOutputTokens:llmMax}});
   var models=[S.gmodel||'gemini-flash-latest','gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest','gemini-2.5-flash-lite','gemini-2.0-flash'].filter(function(m,i,a){return m&&a.indexOf(m)===i;});
   var lastErr=null,sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
   for(var i=0;i<models.length;i++){
@@ -890,6 +893,7 @@ async function llmRaw(sysFull,user,img,noWeb){
   var sample=await getSample();
   if(sample){
     var opts={cache:false,modelTier:'default'};
+    if(img&&img.mime==='application/pdf')throw new Error('קובצי PDF דורשים חיבור Gemini או Claude בהגדרות (⚙️)');
     if(img){var lim=null;try{lim=await sample.limits();}catch(e){}if(lim&&lim.images)opts.images=[img.blob];else throw new Error('ניתוח תמונות לא זמין בתצוגה הזו');}
     var r=await sample(sysFull+'\n\n'+user,opts);return r.text;
   }
@@ -988,7 +992,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 ה · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 ו · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
@@ -1138,6 +1142,78 @@ function saveCon(){
   c.role=f.role;c.name=f.name;c.phone=f.phone;dsave();df=null;closeSheet();render();toast('נשמר');
 }
 
+
+/* ---------- service files import ---------- */
+function fileToDoc(file){
+  if(file.type==='application/pdf'||/\.pdf$/i.test(file.name||'')){
+    return new Promise(function(res,rej){
+      var fr=new FileReader();fr.onerror=function(){rej(new Error('קריאת הקובץ נכשלה'));};
+      fr.onload=function(){var u=String(fr.result);res({url:null,b64:u.split(',')[1],mime:'application/pdf',blob:file});};
+      fr.readAsDataURL(file);
+    });
+  }
+  return fileToImg(file);
+}
+var SRV_SYS='אתה מחלץ נתונים מקובץ של היסטוריית טיפולים, חשבוניות או דוח מוסך לרכב (בעברית, ישראל). ייתכנו כמה ביקורים או שורות בקובץ אחד. החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n'+
+ '{"records":[{"date":"YYYY-MM-DD","km":מספר או null,"title":"כותרת קצרה בעברית","vendor":"מוסך או עסק","total":סכום כולל מספר או null,"lines":[{"desc":"תיאור","item":"קוד"}]}]}\n'+
+ 'כללים: רשומה אחת לכל ביקור או תאריך. כלול את כל הרשומות שבקובץ, ממוינות לפי תאריך. תאריכים בישראל הם DD/MM/YYYY (שנה בת 2 ספרות = 20xx). km רק אם מופיע (אל תנחש). '+
+ 'קוד item לכל שורה: oil = שמן מנוע / מסנן שמן / טיפול שמן; airf = מסנן אוויר מנוע; cabin = מסנן מזגן/פולן; bfl = נוזל בלמים; plug = מצתים; belt = רצועת תזמון / משאבת מים; aux = רצועת עזר; brk = רפידות / דיסקים / בלמים; bat = מצבר; cool = נוזל קירור/מצנן; ac = מילוי או טיפול מזגן; shk = בולמי זעזועים; tire = צמיגים; wip = מגבים; אחרת "other". אל תכלול שורות סיכום או מע״מ. תיאורים קצרים.';
+function parseRecords(t){
+  var s=String(t),i=s.indexOf('{');if(i<0)throw new Error('לא התקבל JSON תקין');s=s.slice(i);
+  try{var m=s.match(/\{[\s\S]*\}/);return JSON.parse(m[0]).records||[];}
+  catch(e){var k=s.lastIndexOf('},');if(k<0)throw new Error('לא התקבל JSON תקין');return JSON.parse(s.slice(0,k+1)+']}').records||[];}
+}
+function applyRecord(r){
+  var d=okDate(r.date);if(!d)return {skip:'ללא תאריך תקין'};
+  var kn=numClean(r.km),km=kn===''?null:Number(kn),est=km==null;
+  var dup=histAll().some(function(x){return x.d===d&&(x.km==null||km==null||Math.abs(x.km-km)<=300);});
+  if(dup)return {skip:'קיים כבר',d:d};
+  var days=dd(pd(d),today()),kmFinal=km!=null?km:Math.max(0,Math.round(S.odo-S.rate*Math.max(0,days)));
+  var done=[],lines=(r.lines||[]).filter(function(l){return l&&l.desc;});
+  var okIds={};DEFS.forEach(function(x){okIds[x.id]=1;});
+  lines.forEach(function(l){
+    var id=okIds[l.item]?l.item:null;if(!id||done.indexOf(id)>=0)return;
+    var st=S.items[id];if(!st)return;
+    if(!st.lastDate||d>=st.lastDate){st.lastDate=d;st.lastKm=kmFinal;st.est=est;st.verified=true;done.push(id);}
+  });
+  if(km!=null&&km>S.odo&&d>=S.odoDate){S.odo=km;S.odoDate=d;}
+  var onlyBrk=done.length>0&&done.every(function(x){return x==='brk';});
+  S.log.push({id:'i'+Date.now()+Math.random().toString(36).slice(2,5),d:d,km:km,t:(r.title||'טיפול')+(r.vendor?' – '+r.vendor:''),c:onlyBrk?'brakes':'service',cost:numClean(r.total)||null,i:lines.map(function(l){return l.desc;}),src:'import'});
+  return {ok:true,d:d,km:km,title:r.title||'טיפול',cost:numClean(r.total)||null,items:done};
+}
+async function scanSrv(files){
+  var total=files.length,recs=[],fail=[],failedFiles=[];
+  var snap=JSON.stringify({items:S.items,log:S.log,odo:S.odo,odoDate:S.odoDate});
+  openSheet('<h3>📂 קורא קובצי טיפולים…</h3><p class="mut" id="sc_p">1 / '+total+'</p><p class="mut" style="font-size:12.5px">קובץ ארוך יכול לקחת עד חצי דקה.</p>');
+  llmMax=8192;
+  try{
+    for(let i=0;i<total;i++){
+      var pe=document.getElementById('sc_p');if(pe)pe.textContent=(i+1)+' / '+total;
+      try{
+        var doc=await fileToDoc(files[i]);
+        var t=await llmRaw(SRV_SYS,'תאריך היום: '+iso(today())+'. החזר את ה-JSON.',doc,true);
+        parseRecords(t).forEach(function(r){recs.push(r);});
+      }catch(e){
+        if(e&&e.nokey){var rest=files.slice(i);llmMax=4096;needKey(function(){scanSrv(rest);},function(){df=null;openSheet('<h3>הוספה ידנית</h3><p class="mut">אפשר להוסיף רישום בלשונית היסטוריה ← + רישום.</p><div class="row"><button class="btn red grow" data-a="closeSheet">סגור</button></div>');});return;}
+        fail.push('קובץ '+(i+1)+': '+((e&&e.message)?String(e.message).slice(0,90):'שגיאה'));failedFiles.push(files[i]);
+      }
+    }
+  }finally{llmMax=4096;}
+  recs.sort(function(a,b){return String(okDate(a.date)).localeCompare(String(okDate(b.date)));});
+  var res=recs.map(applyRecord),ok=res.filter(function(x){return x.ok;}),sk=res.filter(function(x){return x.skip;});
+  if(ok.length){save();window._snap=snap;}
+  window._failedSrv=failedFiles;
+  render();
+  var s='<h3>'+(ok.length?'✅ נוספו '+ok.length+' רישומי טיפול':(recs.length?'לא נוספו רישומים חדשים':'⚠ לא נקרא מידע'))+'</h3>';
+  if(ok.length){
+    s+=ok.map(function(x){return '<div class="card compact"><b>'+esc(fmtD(pd(x.d)))+' · '+esc(x.title)+'</b><div class="mut" style="font-size:12.5px">'+(x.km!=null?fmtN(x.km)+' ק״מ · ':'')+(x.cost?'₪'+fmtN(x.cost)+' · ':'')+(x.items.length?'עודכנו: '+x.items.map(function(id){var f=DEFS.filter(function(z){return z.id===id;})[0];return esc(f.ico+' '+f.name);}).join(', '):'נשמר בהיסטוריה')+'</div></div>';}).join('');
+  }
+  if(sk.length)s+='<p class="mut" style="font-size:12.5px">דילגתי על '+sk.length+' רשומות ('+(sk.filter(function(x){return x.skip==='קיים כבר';}).length?'חלקן כבר קיימות בהיסטוריה':'ללא תאריך תקין')+').</p>';
+  if(fail.length)s+='<p class="mut" style="font-size:12.5px">'+fail.map(esc).join('<br>')+'</p>';
+  if(ok.length)s+='<p class="mut" style="font-size:12.5px">תאריכי ההחלפה האחרונים, הק״מ והמועדים הבאים עודכנו בדשבורד.</p>';
+  s+='<div class="row">'+(failedFiles.length?'<button class="btn" data-a="sretry">🔄 נסה שוב</button>':'')+(ok.length?'<button class="btn ghost" data-a="sundo">↩ בטל ייבוא</button>':'')+'<button class="btn red grow" data-a="closeSheet">סגור</button></div>';
+  openSheet(s);
+}
 /* ---------- receipts ---------- */
 var rcp=null;
 var RSYS='אתה מחלץ נתונים מחשבוניות וקבלות של מוסך/חנות חלפים לרכב (בעברית, ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד, במבנה:\n'+
@@ -1348,6 +1424,9 @@ document.addEventListener('click',function(e){
   else if(a==='csave')saveCon();
   else if(a==='cdel'){D.contacts=D.contacts.filter(function(x){return x.id!==df.id;});dsave();df=null;closeSheet();render();}
   else if(a==='dview'){var dk=b.getAttribute('data-k'),im=dk.indexOf('p:')===0?(D.pols.filter(function(x){return x.id===dk.slice(2);})[0]||{}).img:D.imgs[dk];if(im)openSheet('<img src="'+im+'" alt="מסמך" style="width:100%;border-radius:10px"><div class="row" style="margin-top:10px"><button class="btn ghost grow" data-a="closeSheet">סגור</button></div>');}
+  else if(a==='sfiles'){var sfi=document.getElementById('s_files');if(sfi)sfi.click();}
+  else if(a==='sretry'){var fs2=window._failedSrv||[];if(fs2.length)scanSrv(fs2);}
+  else if(a==='sundo'){try{var sn=JSON.parse(window._snap);S.items=sn.items;S.log=sn.log;S.odo=sn.odo;S.odoDate=sn.odoDate;save();render();toast('הייבוא בוטל');}catch(e){}closeSheet();}
   else if(a==='ksave'){var kv=(document.getElementById('k_in')||{}).value;kv=String(kv||'').trim();if(!kv){toast('נא להדביק מפתח');return;}S.provider='gemini';S.gkey=kv;save();var rr=pendingRetry;pendingRetry=null;closeSheet();if(rr)rr();}
   else if(a==='kmanual'){var pm=pendingManual;pendingManual=null;pendingRetry=null;closeSheet();if(pm)pm();}
   else if(a==='pretry'){var ff=window._failedFiles||[];if(ff.length)scanIns(ff);}
@@ -1381,6 +1460,7 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('change',function(e){
   var el=e.target;
+  if(el.id==='s_files'||el.id==='s_cam'){var sf=el.files?Array.prototype.slice.call(el.files):[];el.value='';if(sf.length)scanSrv(sf);return;}
   var dm=/^d_(ins|lic)_/.exec(el.id||'');
   if(dm){var dfs=el.files?Array.prototype.slice.call(el.files):[];el.value='';if(dfs.length){if(dm[1]==='ins')scanIns(dfs);else scanDoc('lic',dfs[0]);}return;}
   if(el.getAttribute('data-d')!=null||el.getAttribute('data-dc')!=null){dfUpdate(el);return;}
