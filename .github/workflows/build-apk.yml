@@ -35,9 +35,20 @@ jobs:
           grep -n "CAMERA\|uses-feature" "$M"
           bash scripts/icons.sh
 
+      - name: Use fixed signing key (so updates install over the old app and keep data)
+        run: |
+          mkdir -p ~/.android
+          cp signing/debug.keystore ~/.android/debug.keystore
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Print signer fingerprint
+        run: |
+          FP=$(keytool -printcert -jarfile android/app/build/outputs/apk/debug/app-debug.apk | grep "SHA256:" | head -1 | sed 's/.*SHA256: *//')
+          echo "SIGNER_FP=$FP" >> "$GITHUB_ENV"
+          echo "Signer SHA256: $FP"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -51,4 +62,4 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk giulietta.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest giulietta.apk --title "Giulietta APK (latest)" --notes "Auto-built from commit ${GITHUB_SHA::7}" --target "$GITHUB_SHA"
+          gh release create latest giulietta.apk --title "Giulietta APK (latest)" --notes "Auto-built from commit ${GITHUB_SHA::7} | signer ${SIGNER_FP}" --target "$GITHUB_SHA"
