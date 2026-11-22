@@ -953,24 +953,26 @@ async function llm(q,img){
   var user=(tr?'השיחה עד כה:\n'+tr+'\n\n':'')+'שאלת המשתמש: '+q+(img?'\n(מצורפת תמונה)':'');
   return llmRaw(SYSTEM+'\n\n'+ctx(),user,img,false);
 }
-function fileToImg(file){
+function readDataUrl(file){return new Promise(function(res,rej){var fr=new FileReader();fr.onerror=function(){rej(new Error('קריאת הקובץ נכשלה'));};fr.onload=function(){res(String(fr.result));};fr.readAsDataURL(file);});}
+function loadImg(src){return new Promise(function(res,rej){var im=new Image();im.onload=function(){res(im);};im.onerror=function(){rej(new Error('התמונה לא נטענה'));};im.src=src;});}
+function drawScaled(src,w,h){
   return new Promise(function(res,rej){
-    var fr=new FileReader();
-    fr.onerror=function(){rej(new Error('קריאת הקובץ נכשלה'));};
-    fr.onload=function(){
-      var im=new Image();
-      im.onerror=function(){rej(new Error('התמונה לא נטענה'));};
-      im.onload=function(){
-        var sc=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');
-        c.width=Math.max(1,Math.round(im.width*sc));c.height=Math.max(1,Math.round(im.height*sc));
-        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-        var url=c.toDataURL('image/jpeg',0.82);
-        c.toBlob(function(b){res({url:url,b64:url.split(',')[1],mime:'image/jpeg',blob:b});},'image/jpeg',0.82);
-      };
-      im.src=fr.result;
-    };
-    fr.readAsDataURL(file);
+    var sc=Math.min(1,1600/Math.max(w,h)),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(w*sc));c.height=Math.max(1,Math.round(h*sc));
+    c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+    var url=c.toDataURL('image/jpeg',0.85);
+    if(!url||url.length<100){rej(new Error('המרת תמונה נכשלה'));return;}
+    c.toBlob(function(b){res({url:url,b64:url.split(',')[1],mime:'image/jpeg',blob:b});},'image/jpeg',0.85);
   });
+}
+async function fileToImg(file){
+  var nm=file.name||'',mime=/heic/i.test(nm)?'image/heic':/heif/i.test(nm)?'image/heif':file.type||(/\.png$/i.test(nm)?'image/png':/\.webp$/i.test(nm)?'image/webp':'image/jpeg');
+  try{if(typeof createImageBitmap==='function'){var bm=await createImageBitmap(file);var r1=await drawScaled(bm,bm.width,bm.height);if(bm.close)bm.close();return r1;}}catch(e){}
+  try{var u=URL.createObjectURL(file);try{var im=await loadImg(u);return await drawScaled(im,im.naturalWidth||im.width,im.naturalHeight||im.height);}finally{URL.revokeObjectURL(u);}}catch(e){}
+  try{var d0=await readDataUrl(file);var im2=await loadImg(d0);return await drawScaled(im2,im2.naturalWidth||im2.width,im2.naturalHeight||im2.height);}catch(e){}
+  var d=await readDataUrl(file);
+  if(d.length>14000000)throw new Error('התמונה גדולה מדי לשליחה');
+  return {url:d.length<1200000?d:null,b64:d.split(',')[1],mime:/^image\//.test(mime)?mime:'image/jpeg',blob:file};
 }
 /* ---------- documents, insurance, contacts ---------- */
 var DKEY='giulietta-docs-v1';
@@ -1039,7 +1041,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 ז · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 ח · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
