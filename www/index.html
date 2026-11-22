@@ -865,8 +865,10 @@ async function callGemini(sys,userText,img){
   var models=[S.gmodel||'gemini-flash-latest','gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest','gemini-2.5-flash-lite','gemini-2.0-flash'].filter(function(m,i,a){return m&&a.indexOf(m)===i;});
   var lastErr=null,sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
   for(var i=0;i<models.length;i++){
-    for(var at=0;at<2;at++){
-      var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(models[i])+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':S.gkey},body:body});
+    for(var at=0;at<3;at++){
+      var r;
+      try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(models[i])+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':S.gkey},body:body});}
+      catch(ne){lastErr=new Error('אין חיבור יציב לאינטרנט. בדוק Wi-Fi או נתונים סלולריים ונסה שוב');if(at===2)throw lastErr;await sleep(1500*(at+1));continue;}
       if(r.ok){
         var j=await r.json(),c=j.candidates&&j.candidates[0];
         var t=c&&c.content&&c.content.parts?c.content.parts.map(function(p){return p.text||'';}).join(''):'';
@@ -986,7 +988,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 ד · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 22.11.2026 ה · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
