@@ -166,6 +166,8 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
 .sugs{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
 .askbar{position:sticky;bottom:78px;display:flex;gap:8px;background:rgba(12,13,16,.92);padding:8px 0;backdrop-filter:blur(8px)}
 .askbar input{flex:1}
+.bub img{display:block;max-width:190px;max-height:190px;border-radius:12px;margin-bottom:6px}
+.askbar .btn.ic{padding:8px 11px;font-size:17px}
 </style>
 </head>
 <body>
@@ -273,7 +275,7 @@ var DEFAULT_RATE=25829/1456; /* km/day: 84,071 (27.11.2022) -> 109,900 (22.11.20
 var S=load();
 function pick(d){return {lastKm:d.lastKm,lastDate:d.lastDate,intKm:d.intKm,intMonths:d.intMonths,est:!!d.est,verified:false};}
 function fresh(){
-  var s={apiKey:'',model:'claude-sonnet-5-5',web:true,odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[]};
+  var s={apiKey:'',model:'claude-sonnet-5-5',web:true,provider:'claude',gkey:'',gmodel:'gemini-flash-latest',odo:109900,odoDate:'2026-11-22',rate:DEFAULT_RATE,test:{due:'2026-11-29',paid:true},items:{},log:[]};
   DEFS.forEach(function(d){s.items[d.id]=pick(d);});
   return s;
 }
@@ -284,6 +286,9 @@ function load(){
     if(r){var o=JSON.parse(r);
       if(o&&typeof o==='object'){
         if(typeof o.apiKey==='string')base.apiKey=o.apiKey;
+        if(o.provider)base.provider=o.provider;
+        if(typeof o.gkey==='string')base.gkey=o.gkey;
+        if(o.gmodel)base.gmodel=o.gmodel;
         if(o.model)base.model=o.model;
         if(typeof o.web==='boolean')base.web=o.web;
         if(typeof o.odo==='number')base.odo=o.odo;
@@ -610,9 +615,31 @@ function botReply(q0){
   return 'לא הבנתי את השאלה. נסה לשאול על חלק (מצתים, בלמים, מצבר, שמן, טיימינג…), על שנה, על הטסט או "מה דחוף עכשיו?".';
 }
 /* ---------- owner's manual (summary, own words) ---------- */
-var MCATS={all:'הכול',maint:'תחזוקה',fluids:'נוזלים',tyres:'צמיגים',battery:'מצבר',emergency:'חירום',dash:'לוח מחוונים',drive:'נהיגה',specs:'נתונים'};
+var MCATS={all:'הכול',lights:'נוריות',maint:'תחזוקה',fluids:'נוזלים',tyres:'צמיגים',battery:'מצבר',emergency:'חירום',dash:'לוח מחוונים',drive:'נהיגה',specs:'נתונים'};
 var PDF_URL='https://aftersales.fiat.com/eLumData/EN/83/191_GIULIETTA/83_191_GIULIETTA_604.38.735_EN_04_09.15_L_LG/83_191_GIULIETTA_604.38.735_EN_04_09.15_L_LG.pdf';
 var MANUAL=[
+{c:'lights',t:'🔴 נוזל בלמים נמוך / בלם יד',b:'נוזל בלמים נמוך: להשלים ולוודא שהנורית כבתה. בלם יד פעיל: לשחרר. אם הנורית נשארת – למוסך.',k:'נורה אדומה בלם יד נוזל בלמים'},
+{c:'lights',t:'🔴🟡 תקלת EBD (אדום וכתום יחד)',b:'הגלגלים האחוריים עלולים להינעל בבלימה חזקה. לנסוע בזהירות למוסך לבדיקה מיידית.',k:'ebd בלימה נורה'},
+{c:'lights',t:'🔴 תקלת כריות אוויר',b:'אמורה לכבות כמה שניות אחרי ההתנעה. אם נשארת דולקת – מערכת כריות האוויר תקולה; למוסך מיד.',k:'כרית אוויר airbag'},
+{c:'lights',t:'🔴 חגורות בטיחות לא חגורות',b:'קבועה בעמידה כשחגורת הנהג פתוחה. מהבהבת עם זמזם בנסיעה – חגורות קדמיות לא חגורות. לחגור.',k:'חגורה בטיחות'},
+{c:'lights',t:'🔴 תקלת מטען (אלטרנטור / מצבר)',b:'אמורה לכבות כשהמנוע פועל. אם נשארת או מהבהבת – למוסך בהקדם. בינתיים לכבות צרכנים מיותרים.',k:'מצבר אלטרנטור טעינה נורה'},
+{c:'lights',t:'🔴 לחץ שמן מנוע נמוך',b:'אם נדלקת בנסיעה – לעצור מיד, לכבות מנוע ולפנות למוסך (לא להמשיך לנסוע).',k:'שמן לחץ שמן נורה'},
+{c:'lights',t:'🔴 שמן מנוע מבותה (מהבהבת)',b:'השמן התבלה מהשימוש – זו לא תקלה ולא מפלס נמוך. להחליף שמן בהקדם ולכל היותר תוך 500 ק״מ מההופעה הראשונה. לא להוסיף שמן.',k:'שמן החלפה נורה מהבהבת'},
+{c:'lights',t:'🔴 טמפרטורת מנוע גבוהה',b:'לעצור, לכבות ולחכות שיתקרר, ואז לבדוק מפלס נוזל קירור ולהשלים אם חסר. אם חוזר – למוסך. אחרי נהיגה תובענית כדאי לעמוד רגע לפני כיבוי.',k:'התחממות חום קירור נורה'},
+{c:'lights',t:'🔴 תקלת תיבת TCT',b:'מהבהבת עם הודעה וזמזם = תקלה בתיבה. יכולה להופיע גם מהתחממות אחרי עומס, ואז ההספק מוגבל. למוסך בהקדם.',k:'tct תיבה נורה'},
+{c:'lights',t:'🔴 דלת / תא מטען לא סגורים',b:'דלת, תא מטען (או מכסה מנוע) לא נעולים עד הסוף. לסגור. אם הרכב נע עם דלת פתוחה יישמע זמזם.',k:'דלת פתוחה'},
+{c:'lights',t:'🔴 חריגת מהירות',b:'מופיעה כשעוברים את המהירות שהוגדרה בתפריט ההגדרות. להאט.',k:'מהירות'},
+{c:'lights',t:'🔴 תקלת הגה פעיל (Dual pinion)',b:'עזרת ההגה עלולה להיעלם: ההגה כבד יותר אך עדיין אפשרי. למוסך בהקדם.',k:'הגה היגוי נורה'},
+{c:'lights',t:'🟡 CODE / אזעקה',b:'קבועה = תקלה במערכת. מהבהבת = ניסיון פריצה. למוסך בהקדם. אם הרכב לא מתניע: מפתח ל-STOP ואז MAR, או נסה מפתח אחר.',k:'code אזעקה immobilizer'},
+{c:'lights',t:'🟡 רזרבת דלק',b:'נדלקת כשנשארו כ-8–10 ליטר. לתדלק. מתחת לכ-50 ק״מ טווח יכולה להופיע הודעה.',k:'דלק רזרבה'},
+{c:'lights',t:'🟡 תקלה כללית (קבוצה 1)',b:'כוללת ניתוק דלק, Start&Stop, חיישן גשם וחיישני חניה. למוסך.',k:'תקלה כללית'},
+{c:'lights',t:'🟡 תקלה כללית (קבוצה 2)',b:'כוללת חיישן דמדומים, חיישן לחץ שמן, פנסים אדפטיביים (AFS) והגנת צביטה בחלון. למוסך.',k:'תקלה כללית'},
+{c:'lights',t:'🟡 תקלת תאורה חיצונית',b:'לבדוק נתיכים ונורות של האור הרלוונטי (DRL, אורות צד, איתות, ערפל אחורי, לוחית). אם נשארת – למוסך.',k:'נורה פנס תאורה'},
+{c:'lights',t:'🟡 תקלת ABS',b:'בלימה רגילה נשארת אבל בלי ABS. לנהוג בזהירות ולפנות למוסך.',k:'abs בלמים'},
+{c:'lights',t:'🟡 שחיקת רפידות בלם',b:'רפידות קדמיות ואחוריות שחוקות. להחליף בקרוב.',k:'רפידות בלמים ברקסים'},
+{c:'lights',t:'🟡 כרית אוויר נוסע כבויה',b:'מידע בלבד: כרית הנוסע הקדמי כבויה. אם מהבהבת – הנורית עצמה תקולה, למוסך.',k:'כרית אוויר נוסע'},
+{c:'lights',t:'🟡 תקלת הזרקה / EOBD (מנוע)',b:'קבועה: תקלת הזרקה או הצתה. להימנע ממאמץ ולפנות למוסך. מהבהבת (בנזין): סכנה לקטליזטור – להקל על הגז עד שתפסיק להבהב ולנסוע בעדינות למוסך.',k:'מנוע check engine הזרקה eobd נורה'},
+{c:'lights',t:'🟡 לחץ אוויר בצמיגים (iTPMS)',b:'קבועה: צמיג אחד או יותר חלש. לא להמשיך לנסוע – לעצור בבטחה ולתקן (ערכת Fix&Go) ואז למוסך. מהבהבת כ-75 שניות ואז קבועה: המערכת כבויה או תקולה. לאפס כשאפשר.',k:'צמיגים לחץ נורה פנצר'},
 {c:'maint',t:'לוח הטיפולים התקופתיים (בנזין)',b:'הטיפולים חוזרים בצעדים של 15,000 ק״מ או שנה (המוקדם). בכל טיפול בודקים מצב ולחץ צמיגים, תאורה, מפלסי נוזלים, פליטה, שקע האבחון ורפידות בלם קדמיות. אחרי 120,000 ק״מ או 8 שנים התוכנית חוזרת מהצעד הראשון.',k:'טיפול תקופתי מרווח 15000 שנה'},
 {c:'maint',t:'שמן מנוע ומסנן שמן – מתי להחליף',b:'מוחלפים בנקודות הטיפול המתוכננות, ופעם בשנה אם הנסיעה בעיקר עירונית או מתחת ל-10,000 ק״מ בשנה. נורית שמן אדומה מהבהבת פירושה שהשמן התבלה (לא שהמפלס נמוך): לא מוסיפים שמן, מחליפים בהקדם ולכל היותר תוך 500 ק״מ.',k:'שמן פילטר שמן נורית'},
 {c:'maint',t:'מצתים',b:'מוחלפים בנקודות הטיפול המתוכננות, כולם מאותו סוג. בגרסת 1.4 טורבו מצוין מצת NGK IKR9J8.',k:'מצת מצתים ngk'},
@@ -669,7 +696,8 @@ var SYSTEM='אתה "עוזר ג׳ולייטה": עוזר אישי לבעל רכ�
  '3. אם המשתמש כתב רק שם חלק (למשל "צמיגים" או "ברקסים") – ענה כאילו שאל מתי הוחלף ומתי להחליף.\n'+
  '4. לשאלות כלליות על הרכב, תקלות, נוריות, נהיגה, נוזלים, חלקים או עלויות – ענה מהספר ומהידע שלך. כשאתה לא בטוח או שהדבר תלוי בגרסה, אמור זאת. לתקלות בטיחותיות המלץ לפנות למוסך.\n'+
  '5. נושאים שאינם קשורים לרכב – סרב בנימוס והחזר לנושא הרכב.\n'+
- '6. אתה לא מחליף מוסך מוסמך; לא לתת הוראות פירוק מסוכנות.';
+ '6. אתה לא מחליף מוסך מוסמך; לא לתת הוראות פירוק מסוכנות.\n'+
+ '7. אם מצורפת תמונה (נורית בלוח, הודעה על המסך או חלק ברכב): זהה מה רואים, ציין צבע וחומרת הנורית, מה המשמעות לפי ספר הרכב, אם אפשר להמשיך לנסוע או צריך לעצור, ומה לעשות (כולל מה לעשות במוסך). אם התמונה לא ברורה או שאינך בטוח – אמור מה נראה והצע לצלם שוב מקרוב ובתאורה טובה. נורה אדומה = להדגיש זהירות.';
 function ctx(){
   var T=today(),cs=allCalc(),L=[];
   L.push('תאריך היום: '+iso(T)+'. ק״מ נוכחי: '+S.odo+' (עודכן '+S.odoDate+'). קצב נסיעה ממוצע: כ-'+Math.round(S.rate*365)+' ק״מ בשנה.');
@@ -697,8 +725,9 @@ function md(t){
   });
   return o;
 }
-async function callAnthropic(sys,userText){
-  var body={model:S.model||'claude-sonnet-5-5',max_tokens:1500,system:sys,messages:[{role:'user',content:userText}]};
+async function callAnthropic(sys,userText,img){
+  var content=img?[{type:'image',source:{type:'base64',media_type:img.mime,data:img.b64}},{type:'text',text:userText}]:userText;
+  var body={model:S.model||'claude-sonnet-5-5',max_tokens:1500,system:sys,messages:[{role:'user',content:content}]};
   if(S.web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
   async function go(b){
     return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(b)});
@@ -709,37 +738,82 @@ async function callAnthropic(sys,userText){
   var j=await r.json();
   return (j.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
 }
+async function callGemini(sys,userText,img){
+  var parts=[];if(img)parts.push({inline_data:{mime_type:img.mime,data:img.b64}});parts.push({text:userText});
+  var body={systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:parts}],generationConfig:{maxOutputTokens:1500}};
+  var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(S.gmodel||'gemini-flash-latest')+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':S.gkey},body:JSON.stringify(body)});
+  if(!r.ok){var tx='';try{tx=await r.text();}catch(e){}throw new Error('שגיאת Gemini '+r.status+' '+tx.slice(0,100));}
+  var j=await r.json(),c=j.candidates&&j.candidates[0];
+  var t=c&&c.content&&c.content.parts?c.content.parts.map(function(p){return p.text||'';}).join(''):'';
+  if(!t)throw new Error('תשובה ריקה מ-Gemini');
+  return t;
+}
 async function getSample(){try{if(window.claude&&window.claude.use){var s=await window.claude.use('sample');return s||null;}}catch(e){}return null;}
-async function llm(q){
+async function llm(q,img){
   var tr=transcript();
-  var user=(tr?'השיחה עד כה:\n'+tr+'\n\n':'')+'שאלת המשתמש: '+q;
+  var user=(tr?'השיחה עד כה:\n'+tr+'\n\n':'')+'שאלת המשתמש: '+q+(img?'\n(מצורפת תמונה)':'');
   var sample=await getSample();
-  if(sample){var r=await sample(SYSTEM+'\n\n'+ctx()+'\n\n'+user,{cache:false,modelTier:'default'});return r.text;}
-  if(S.apiKey)return await callAnthropic(SYSTEM+'\n\n'+ctx(),user);
+  if(sample){
+    var opts={cache:false,modelTier:'default'};
+    if(img){var lim=null;try{lim=await sample.limits();}catch(e){}if(lim&&lim.images)opts.images=[img.blob];else throw new Error('ניתוח תמונות לא זמין בתצוגה הזו');}
+    var r=await sample(SYSTEM+'\n\n'+ctx()+'\n\n'+user,opts);return r.text;
+  }
+  if(S.provider==='gemini'&&S.gkey)return await callGemini(SYSTEM+'\n\n'+ctx(),user,img);
+  if(S.provider!=='gemini'&&S.apiKey)return await callAnthropic(SYSTEM+'\n\n'+ctx(),user,img);
   var e=new Error('nokey');e.nokey=true;throw e;
 }
+function fileToImg(file){
+  return new Promise(function(res,rej){
+    var fr=new FileReader();
+    fr.onerror=function(){rej(new Error('קריאת הקובץ נכשלה'));};
+    fr.onload=function(){
+      var im=new Image();
+      im.onerror=function(){rej(new Error('התמונה לא נטענה'));};
+      im.onload=function(){
+        var sc=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(im.width*sc));c.height=Math.max(1,Math.round(im.height*sc));
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        var url=c.toDataURL('image/jpeg',0.82);
+        c.toBlob(function(b){res({url:url,b64:url.split(',')[1],mime:'image/jpeg',blob:b});},'image/jpeg',0.82);
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
 function viewBot(){
-  var h='<div class="msgs">'+chat.map(function(m){return '<div class="bub '+m.r+'">'+(m.r==='u'?esc(m.t):m.h)+'</div>';}).join('')+'</div>';
+  var h='<div class="msgs">'+chat.map(function(m){return '<div class="bub '+m.r+'">'+(m.img?'<img src="'+m.img+'" alt="תמונה">':'')+(m.r==='u'?esc(m.t):m.h)+'</div>';}).join('')+'</div>';
   h+='<div class="sugs">'+SUGS.map(function(s){return '<button class="fchip" data-a="ask" data-q="'+esc(s)+'">'+esc(s)+'</button>';}).join('')+'</div>';
-  h+='<div class="askbar"><input type="text" id="b_in" placeholder="שאל כל דבר על הרכב והטיפולים…" autocomplete="off"><button class="btn red" data-a="send">שלח</button></div>';
+  h+='<div class="askbar"><button class="btn ic" data-a="cam" aria-label="צלם נורית או חלק">📷</button><button class="btn ic" data-a="gal" aria-label="בחר תמונה">🖼️</button><input type="text" id="b_in" placeholder="שאל, או צלם נורית / הודעה / חלק…" autocomplete="off"><button class="btn red" data-a="send">שלח</button>'+
+   '<input type="file" accept="image/*" capture="environment" id="b_cam" hidden><input type="file" accept="image/*" id="b_gal" hidden></div>';
   return h;
 }
 function toBottom(){setTimeout(function(){try{window.scrollTo(0,document.body.scrollHeight);}catch(e){}},30);}
-function ask(q){
-  q=String(q||'').trim();if(!q||busy)return;
-  var m={r:'b',h:'<span class="mut">⏳ חושב…</span>',pending:true};
-  chat.push({r:'u',t:q});chat.push(m);busy=true;render();toBottom();
-  llm(q).then(function(t){m.t=t;m.h=md(t);})
+function ask(q,img){
+  q=String(q||'').trim();if(img&&!q)q='מה זה? מה המשמעות ומה כדאי לעשות?';
+  if(!q||busy)return;
+  var m={r:'b',h:'<span class="mut">⏳ '+(img?'מנתח את התמונה…':'חושב…')+'</span>',pending:true};
+  chat.push({r:'u',t:q,img:img?img.url:null});chat.push(m);busy=true;render();toBottom();
+  llm(q,img).then(function(t){m.t=t;m.h=md(t);})
    .catch(function(e){
      m.t='';
-     m.h=botReply(q)+'<br><span class="li">'+(e&&e.nokey?'💡 זו תשובה מהנתונים שבאפליקציה. כדי שהעוזר יענה על כל שאלה, הוסף מפתח API ב-⚙️ הגדרות.':'⚠ העוזר החכם לא זמין כרגע ('+esc(String((e&&e.message)||e).slice(0,140))+'). זו תשובה מהנתונים המקומיים.')+'</span>';
+     var base=img?'📷 קיבלתי את התמונה, אבל בלי חיבור לבינה מלאכותית אני לא יכול לנתח אותה. אפשר לחפש את הנורית בקטלוג: <button class="btn" data-a="openlights">פתח את קטלוג הנוריות</button>':botReply(q);
+     m.h=base+'<br><span class="li">'+(e&&e.nokey?'💡 כדי שהעוזר יענה על כל שאלה ויבין תמונות, הוסף מפתח API ב-⚙️ הגדרות.':'⚠ העוזר החכם לא זמין כרגע ('+esc(String((e&&e.message)||e).slice(0,140))+').')+'</span>';
    })
-   .then(function(){m.pending=false;busy=false;render();toBottom();var i=document.getElementById('b_in');if(i&&i.focus)i.focus();});
+   .then(function(){m.pending=false;busy=false;render();toBottom();});
+}
+function pickImage(file){
+  if(!file)return;
+  var i=document.getElementById('b_in'),txt=i?i.value:'';
+  fileToImg(file).then(function(img){ask(txt,img);}).catch(function(e){toast('⚠ '+(e&&e.message||'שגיאת תמונה'));});
 }
 
 function viewSet(){
   var h='<h2>עוזר חכם (Claude)</h2><div class="card"><p class="mut" style="font-size:12.5px;margin:0 0 10px">כדי שהעוזר יענה על כל שאלה, הדבק מפתח API של Anthropic (מ-console.anthropic.com). המפתח נשמר רק במכשיר הזה. בגרסה שבאתר Claude אין צורך במפתח. עלות שאלה אחת: סנטים בודדים.</p>'+
-   '<div class="field"><label>מפתח API</label><input type="password" id="f_key" autocomplete="off" placeholder="sk-ant-…" value="'+esc(S.apiKey)+'"></div>'+
+   '<div class="field"><label>ספק</label><select id="f_prov"><option value="claude"'+(S.provider==='claude'?' selected':'')+'>Claude (Anthropic)</option><option value="gemini"'+(S.provider==='gemini'?' selected':'')+'>Gemini (Google – יש מכסה חינמית)</option></select></div>'+
+   '<div class="field"><label>מפתח API של Claude</label><input type="password" id="f_key" autocomplete="off" placeholder="sk-ant-…" value="'+esc(S.apiKey)+'"></div>'+
+   '<div class="field"><label>מפתח API של Gemini (מ-aistudio.google.com)</label><input type="password" id="f_gkey" autocomplete="off" placeholder="AIza…" value="'+esc(S.gkey)+'"></div>'+
+   '<div class="field"><label>מודל Gemini</label><input type="text" id="f_gmodel" dir="ltr" value="'+esc(S.gmodel)+'"></div>'+
    '<div class="field"><label>מודל</label><select id="f_model"><option value="claude-sonnet-5-5"'+(S.model==='claude-sonnet-5-5'?' selected':'')+'>Sonnet 5.5 (מומלץ)</option><option value="claude-haiku-5-5"'+(S.model==='claude-haiku-5-5'?' selected':'')+'>Haiku 5.5 (מהיר וזול)</option><option value="claude-opus-5-5"'+(S.model==='claude-opus-5-5'?' selected':'')+'>Opus 5.5 (מדויק)</option></select></div>'+
    '<label class="chk"><input type="checkbox" id="f_web" '+(S.web?'checked':'')+'> אפשר לעוזר לחפש ברשת (אם החשבון תומך)</label></div>'+
    '<h2>הרכב</h2><div class="card">'+
@@ -832,6 +906,9 @@ document.addEventListener('click',function(e){
   else if(a==='ask'){ask(b.getAttribute('data-q'));}
   else if(a==='askm'){tab='bot';render();window.scrollTo(0,0);ask(b.getAttribute('data-q'));}
   else if(a==='mcat'){mc=b.getAttribute('data-k');render();}
+  else if(a==='cam'){var ci=document.getElementById('b_cam');if(ci)ci.click();}
+  else if(a==='gal'){var gi=document.getElementById('b_gal');if(gi)gi.click();}
+  else if(a==='openlights'){tab='manual';mc='lights';mq='';render();window.scrollTo(0,0);}
   else if(a==='send'){var bi=document.getElementById('b_in');ask(bi?bi.value:'');}
   else if(a==='testdone'){
     openSheet('<h3>הטסט בוצע?</h3><p class="mut">המועד הבא יוזז שנה קדימה והאגרה תסומן כלא שולמה.</p><div class="row"><button class="btn red grow" data-a="testdone2">כן, בוצע</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
@@ -855,6 +932,7 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('change',function(e){
   var el=e.target;
+  if(el.id==='b_cam'||el.id==='b_gal'){var f=el.files&&el.files[0];el.value='';pickImage(f);return;}
   if(el.id==='h_y'){hy=el.value;var hl2=document.getElementById('hlist');if(hl2)hl2.innerHTML=histList();return;}
   if(el.getAttribute('data-f')){
     var id=el.getAttribute('data-id'),k=el.getAttribute('data-k'),st=S.items[id];
@@ -863,7 +941,7 @@ document.addEventListener('change',function(e){
     save();toast('נשמר ✓');return;
   }
   var m={f_odo:function(){var v=num(el.value);if(v>0){S.odo=v;}},f_odod:function(){if(el.value)S.odoDate=el.value;},f_rate:function(){var v=num(el.value);if(v>0)S.rate=v/365;},
-         f_test:function(){if(el.value)S.test.due=el.value;},f_key:function(){S.apiKey=el.value.trim();},f_model:function(){S.model=el.value;},f_web:function(){S.web=el.checked;},f_paid:function(){S.test.paid=el.checked;}};
+         f_test:function(){if(el.value)S.test.due=el.value;},f_key:function(){S.apiKey=el.value.trim();},f_prov:function(){S.provider=el.value;},f_gkey:function(){S.gkey=el.value.trim();},f_gmodel:function(){S.gmodel=el.value.trim();},f_model:function(){S.model=el.value;},f_web:function(){S.web=el.checked;},f_paid:function(){S.test.paid=el.checked;}};
   if(m[el.id]){m[el.id]();save();toast('נשמר ✓');}
 });
 
