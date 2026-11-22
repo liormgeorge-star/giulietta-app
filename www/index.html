@@ -138,8 +138,8 @@ details.set .body{padding:0 13px 12px}
 .chk input{width:20px;height:20px;accent-color:var(--rosso)}
 
 /* nav */
-nav{position:fixed;inset:auto 0 0 0;background:rgba(14,15,18,.93);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:20}
-nav button{background:none;border:0;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;padding:5px 0;border-radius:10px}
+nav{position:fixed;inset:auto 0 0 0;background:rgba(14,15,18,.93);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
+nav button{background:none;border:0;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;padding:5px 0;border-radius:10px}
 nav button span{font-size:19px;line-height:1.1}
 nav button.on{color:#fff}
 nav button.on span{filter:drop-shadow(0 0 6px var(--rosso2))}
@@ -156,6 +156,16 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
 .foot{color:var(--mut);font-size:12px;margin:18px 6px;line-height:1.6}
 .pulse{animation:pl 1.8s infinite}
 @keyframes pl{0%,100%{box-shadow:0 0 0 0 rgba(239,74,65,.0)}50%{box-shadow:0 0 0 5px rgba(239,74,65,.18)}}
+
+.msgs{display:flex;flex-direction:column;gap:10px;margin:6px 0 14px}
+.bub{max-width:88%;padding:10px 13px;border-radius:16px;font-size:14.5px;line-height:1.55;border:1px solid var(--line)}
+.bub.u{align-self:flex-start;background:var(--rosso);border-color:var(--rosso);border-end-start-radius:4px;color:#fff}
+.bub.b{align-self:flex-end;background:linear-gradient(180deg,var(--card),var(--bg2));border-end-end-radius:4px;border-color:#3a3322}
+.bub b{color:var(--gold);font-weight:600}
+.bub .li{display:block;color:#d7d4cd;font-size:13.5px}
+.sugs{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
+.askbar{position:sticky;bottom:78px;display:flex;gap:8px;background:rgba(12,13,16,.92);padding:8px 0;backdrop-filter:blur(8px)}
+.askbar input{flex:1}
 </style>
 </head>
 <body>
@@ -174,6 +184,7 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
   <button data-tab="km"><span>🛣️</span>לפי ק״מ</button>
   <button data-tab="year"><span>📅</span>לפי שנה</button>
   <button data-tab="hist"><span>📜</span>היסטוריה</button>
+  <button data-tab="bot"><span>🤖</span>עוזר</button>
   <button data-tab="set"><span>⚙️</span>הגדרות</button>
 </nav>
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
@@ -465,24 +476,138 @@ function histAll(){
   a.sort(function(x,y){return x.d<y.d?1:x.d>y.d?-1:0;});
   return a;
 }
+/* ---------- search + synonyms ---------- */
+var GROUPS=[
+ {id:'oil',w:['שמן','פילטר שמן','מסנן שמן']},
+ {id:'airf',w:['מסנן אוויר','מסנן אויר','פילטר אוויר','פילטר אויר']},
+ {id:'cabin',w:['מסנן מזגן','פולן','מסנן אבק','מסנן תא']},
+ {id:'bfl',w:['נוזל בלמים','נוזל בלם']},
+ {id:'plug',w:['מצת','מצתים']},
+ {id:'belt',w:['טיימינג','תזמון','משאבת מים']},
+ {id:'aux',w:['רצועת עזר','רצועה','חגורה','5pk']},
+ {id:'brk',w:['בלמים','בלם','רפידות','רפידה','דיסק']},
+ {id:'bat',w:['מצבר','סוללה']},
+ {id:'cool',w:['נוזל קירור','קירור','רדיאטור','מצנן']},
+ {id:'ac',w:['מזגן','קונדנסר','condenser']},
+ {id:'shk',w:['בולמים','בולם','זעזועים','מתלים','משולש']},
+ {id:'tire',w:['צמיג','גלגל']}
+];
+function norm(s){return String(s||'').toLowerCase().replace(/[״"'’׳]/g,'').replace(/\s+/g,' ').trim();}
+function findGroup(q){
+  q=norm(q);var best=null,bl=0;
+  GROUPS.forEach(function(g){g.w.forEach(function(w){var n=norm(w);if(q.indexOf(n)>=0&&n.length>bl){bl=n.length;best=g;}});});
+  return best;
+}
+function expand(q){var g=findGroup(q);return g?g.w.map(norm):[norm(q)];}
+function entryText(x){return norm(x.t+' '+(x.i||[]).join(' '));}
+function matches(x,terms){var t=entryText(x);return terms.some(function(w){return w&&t.indexOf(w)>=0;});}
+var hq='',hy='all';
 function viewHist(){
   var all=histAll();
   var pts=all.filter(function(x){return x.km!=null;}).map(function(x){return {d:pd(x.d),k:x.km};}).sort(function(a,b){return a.d-b.d;});
   pts.push({d:pd(S.odoDate),k:S.odo});
-  var list=all.filter(function(x){return catF==='all'||x.c===catF;});
+  var years=[];all.forEach(function(x){var y=x.d.slice(0,4);if(years.indexOf(y)<0)years.push(y);});years.sort().reverse();
   var h='<div class="card"><div class="row between"><b>ק״מ לאורך השנים</b><button class="btn" data-a="addlog">+ הוסף רישום</button></div>'+chart(pts)+
    '<p class="mut" style="font-size:12px;margin:6px 0 0">'+all.length+' רישומים · קצב נסיעה אחרון: כ-'+fmtN(S.rate*365)+' ק״מ בשנה</p></div>';
+  h+='<div class="card"><div class="g2"><div class="field" style="margin:0"><label>חיפוש חלק או טיפול</label><input type="search" id="h_q" placeholder="מצתים, בלמים, מצבר…" value="'+esc(hq)+'"></div>'+
+   '<div class="field" style="margin:0"><label>שנה</label><select id="h_y"><option value="all">כל השנים</option>'+years.map(function(y){return '<option value="'+y+'"'+(y===hy?' selected':'')+'>'+y+'</option>';}).join('')+'</select></div></div></div>';
   h+='<div class="chips">'+Object.keys(CATS).map(function(k){return '<button class="fchip '+(k===catF?'on':'')+'" data-a="cat" data-k="'+k+'">'+CATS[k]+'</button>';}).join('')+'</div>';
+  h+='<div id="hlist">'+histList()+'</div>';
+  return h;
+}
+function histList(){
+  var all=histAll(),q=hq.trim(),terms=q?expand(q):null,out='';
+  var list=all.filter(function(x){return (catF==='all'||x.c===catF)&&(hy==='all'||x.d.slice(0,4)===hy)&&(!terms||matches(x,terms));});
+  var g=q?findGroup(q):null;
+  if(g){allCalc().forEach(function(c){if(c.it.id===g.id)out+=itemCard(c,true);});}
+  out+='<h2>'+list.length+' רישומים'+(q?' · "'+esc(q)+'"':'')+(hy!=='all'?' · '+hy:'')+'</h2>';
   var cy=null;
   list.forEach(function(x){
     var y=x.d.slice(0,4);
-    if(y!==cy){cy=y;h+='<div class="yr" style="font-size:22px;margin-top:10px">'+y+'</div>';}
-    h+='<div class="card hcard"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
+    if(y!==cy){cy=y;out+='<div class="yr" style="font-size:22px;margin-top:10px">'+y+'</div>';}
+    out+='<div class="card hcard"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
      '<div class="k"><span class="tag'+(x.src==='user'?' user':'')+'">'+(x.src==='user'?'עדכון שלך':CATS[x.c])+'</span>'+(x.km!=null?'<span class="num">'+(x.kmEst?'~':'')+fmtN(x.km)+'</span> ק״מ':'')+'</div>'+
      (x.i&&x.i.length?'<ul>'+x.i.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul>':'')+'</div>';
   });
-  if(!list.length)h+='<div class="card mut">אין רישומים בקטגוריה הזו.</div>';
+  if(!list.length)out+='<div class="card mut">לא נמצאו רישומים. נסה מילה אחרת, שנה אחרת או "כל השנים".</div>';
+  return out;
+}
+
+/* ---------- local assistant ---------- */
+var chat=[{r:'b',h:'שלום! אני העוזר של ג׳ולייטה. אני עונה לפי הנתונים שבאפליקציה: מועדי טיפול, החלפות חלקים, הטסט וההיסטוריה. אפשר לשאול למשל <b>"מתי הוחלפו המצתים?"</b> או <b>"מה עשיתי ב-2021?"</b>.'}];
+var SUGS=['מה דחוף עכשיו?','מתי הטיפול הבא?','כמה ימים לטסט?','מתי הוחלפו המצתים?','מה מצב המצבר?','מה עשיתי ב-2021?','מתי הוחלפה רצועת התזמון?'];
+function li(s){return '<span class="li">• '+s+'</span>';}
+function entryLine(x){return li(esc(fmtD(pd(x.d)))+(x.km!=null?' · '+(x.kmEst?'~':'')+fmtN(x.km)+' ק״מ':'')+' – '+esc(x.t));}
+function dueLine(c){
+  var p=[];
+  if(c.dueDate)p.push('<b>'+esc(fmtD(c.dueDate))+'</b> ('+(c.dT<0?'עבר לפני '+human(c.dT):c.dT===0?'היום':'בעוד '+human(c.dT))+')');
+  if(c.dueKm!=null)p.push('<b>'+fmtN(c.dueKm)+' ק״מ</b> ('+(c.kmLeft<0?'חריגה של '+fmtN(-c.kmLeft):'נותרו '+fmtN(c.kmLeft))+')');
+  return p.join(' או ')+(p.length>1?' – המוקדם מביניהם':'');
+}
+function botReply(q0){
+  var q=norm(q0),T=today(),g=findGroup(q),ym=q.match(/(20[12]\d)/),year=ym?ym[1]:null,all=histAll(),cs=allCalc(),L=[];
+  if(/טסט|רישוי/.test(q)&&!g){
+    var d=dd(T,pd(S.test.due));
+    return 'הטסט צריך להתבצע עד <b>'+esc(fmtD(pd(S.test.due)))+'</b>. '+(d>=0?'נשארו <b>'+d+' ימים</b>.':'עברו <b>'+(-d)+' ימים</b> מהמועד – יש לבצע מיד.')+' האגרה '+(S.test.paid?'שולמה ✓':'טרם שולמה')+'.';
+  }
+  if(g){
+    var c=cs.filter(function(x){return x.it.id===g.id;})[0],it=c.it,terms=g.w.map(norm);
+    var ents=all.filter(function(x){return matches(x,terms);}).filter(function(x){return !year||x.d.slice(0,4)===year;});
+    if(year){
+      if(!ents.length)return 'לא מצאתי רישום של '+esc(it.name)+' בשנת '+year+'.';
+      return 'רישומים של <b>'+esc(it.name)+'</b> ב-'+year+':<br>'+ents.slice(0,8).map(entryLine).join('');
+    }
+    var wantHist=/היסטוריה|כל ה|כמה פעמים|רשימ/.test(q),wantLast=/הוחלף|הוחלפה|הוחלפו|החלפתי|עשיתי|בוצע|אחרון|לאחרונה|מתי עבר/.test(q),wantNext=/הבא|הבאה|להחליף|צריך|אמור|מועד|נשאר|עוד כמה|כמה זמן|כמה ק|לעשות/.test(q);
+    var lastL=(it.lastDate||it.lastKm!=null)?'האחרון: <b>'+(it.lastDate?esc(fmtD(pd(it.lastDate))):'תאריך לא ידוע')+'</b>'+(it.lastKm!=null?' ב-'+(it.est?'כ-':'')+fmtN(it.lastKm)+' ק״מ':'')+(it.est?' (משוער)':'')+'.':'אין רישום של החלפה אחרונה.';
+    var nextL=c.status==='unknown'?'אין מספיק נתונים לחישוב מועד הבא.':'המועד הבא: '+dueLine(c)+'. סטטוס: <b>'+LABEL[c.status]+'</b>.';
+    if(wantHist){return 'ההיסטוריה של <b>'+esc(it.name)+'</b> ('+ents.length+' רישומים):<br>'+(ents.slice(0,10).map(entryLine).join('')||li('אין רישומים'));}
+    var res='<b>'+esc(it.name)+'</b><br>';
+    if(wantLast&&!wantNext)res+=lastL;
+    else if(wantNext&&!wantLast)res+=nextL;
+    else res+=lastL+'<br>'+nextL;
+    if(c.status==='verify'&&it.verify)res+='<br>⚠ '+esc(it.verify);
+    if(it.note&&!wantLast)res+='<br><span class="li">'+esc(it.note)+'</span>';
+    return res;
+  }
+  if(year&&!/הבא|הבאה/.test(q)){
+    var ye=all.filter(function(x){return x.d.slice(0,4)===year;});
+    if(!ye.length)return 'אין לי רישומים משנת '+year+'. הרישומים של המוסך נמשכים מ-2016 עד נובמבר 2022, ומהדיווח שלך על 2025–2026.';
+    return 'ב-<b>'+year+'</b> יש '+ye.length+' רישומים:<br>'+ye.slice().reverse().slice(0,10).map(entryLine).join('')+(ye.length>10?'<br>ועוד '+(ye.length-10)+'… (אפשר לראות הכול בלשונית "היסטוריה").':'');
+  }
+  if(/טיפול הבא|הטיפול הבא|טיפול שנתי/.test(q)){
+    var oc=cs.filter(function(x){return x.it.id==='oil';})[0];
+    return 'הטיפול השנתי הבא (שמן + מסנן שמן, ובדרך כלל מסנן אוויר ומזגן): '+dueLine(oc)+'.<br>בינתיים: הטסט עד <b>'+esc(fmtD(pd(S.test.due)))+'</b>. לרשימת מה שדורש בדיקה עכשיו שאל "מה דחוף עכשיו?".';
+  }
+  if(/דחוף|דורש|באיחור|מה צריך|מה חסר|מה לעשות|בקרוב|הבא|הבאה|סיכום|מצב הרכב|לבדוק/.test(q)){
+    var late=cs.filter(function(x){return x.status==='over'||x.status==='verify';}),soon=cs.filter(function(x){return x.status==='soon';}),up=cs.filter(function(x){return x.status==='ok';}).sort(function(a,b){return a.eff-b.eff;})[0];
+    var td=dd(T,pd(S.test.due));
+    L.push('<b>טסט:</b> '+(td>=0?'בעוד '+td+' ימים ('+esc(fmtD(pd(S.test.due)))+')':'באיחור של '+(-td)+' ימים'));
+    if(late.length){L.push('<b>באיחור / לאימות:</b>');late.forEach(function(x){L.push(li(esc(x.it.name)+' – '+(x.status==='verify'?'אין רישום עדכני, לאמת':'באיחור')));});}
+    if(soon.length){L.push('<b>בקרוב:</b>');soon.forEach(function(x){L.push(li(esc(x.it.name)+' – '+dueLine(x)));});}
+    if(up)L.push('<b>הבא אחרי זה:</b> '+esc(up.it.name)+' – '+dueLine(up));
+    return L.join('<br>');
+  }
+  if(/ק״מ|קמ|קילומטר|מד |נסעתי|קצב/.test(q)){
+    return 'הקריאה האחרונה: <b>'+fmtN(S.odo)+' ק״מ</b> (עודכנה ב-'+esc(fmtD(pd(S.odoDate)))+'). קצב הנסיעה המוערך: כ-<b>'+fmtN(S.rate*365)+' ק״מ בשנה</b>. להחלפת השמן הבאה נותרו '+fmtN(Math.max(0,cs.filter(function(x){return x.it.id==='oil';})[0].kmLeft))+' ק״מ.';
+  }
+  var words=q.split(' ').filter(function(w){return w.length>=3&&!/^(מתי|מה|איך|כמה|האם|היה|עשיתי|הרכב|שלי|על|של)$/.test(w);});
+  if(words.length){
+    var f=all.filter(function(x){return words.some(function(w){return entryText(x).indexOf(w)>=0;});});
+    if(f.length)return 'מצאתי '+f.length+' רישומים שקשורים לשאלה:<br>'+f.slice(0,8).map(entryLine).join('');
+  }
+  return 'לא הבנתי את השאלה. נסה לשאול על חלק (מצתים, בלמים, מצבר, שמן, טיימינג…), על שנה, על הטסט או "מה דחוף עכשיו?".';
+}
+function viewBot(){
+  var h='<div class="msgs">'+chat.map(function(m){return '<div class="bub '+m.r+'">'+(m.r==='u'?esc(m.t):m.h)+'</div>';}).join('')+'</div>';
+  h+='<div class="sugs">'+SUGS.map(function(s){return '<button class="fchip" data-a="ask" data-q="'+esc(s)+'">'+esc(s)+'</button>';}).join('')+'</div>';
+  h+='<div class="askbar"><input type="text" id="b_in" placeholder="שאל על טיפול, חלק או מועד…" autocomplete="off"><button class="btn red" data-a="send">שלח</button></div>';
   return h;
+}
+function ask(q){
+  q=String(q||'').trim();if(!q)return;
+  chat.push({r:'u',t:q});chat.push({r:'b',h:botReply(q)});
+  render();window.scrollTo(0,document.body.scrollHeight);
+  var i=document.getElementById('b_in');if(i&&i.focus)i.focus();
 }
 
 function viewSet(){
@@ -509,7 +634,7 @@ function viewSet(){
 var tab='dash',catF='all';
 function render(){
   var v=document.getElementById('view');
-  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,set:viewSet})[tab]();
+  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,bot:viewBot,set:viewSet})[tab]();
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'),function(b){b.classList.toggle('on',b.getAttribute('data-tab')===tab);});
   document.getElementById('todayPill').textContent=fmtD(today());
 }
@@ -573,6 +698,8 @@ document.addEventListener('click',function(e){
   else if(a==='addlog')openAddLog();
   else if(a==='submitLog')submitLog();
   else if(a==='cat'){catF=b.getAttribute('data-k');render();}
+  else if(a==='ask'){ask(b.getAttribute('data-q'));}
+  else if(a==='send'){var bi=document.getElementById('b_in');ask(bi?bi.value:'');}
   else if(a==='testdone'){
     openSheet('<h3>הטסט בוצע?</h3><p class="mut">המועד הבא יוזז שנה קדימה והאגרה תסומן כלא שולמה.</p><div class="row"><button class="btn red grow" data-a="testdone2">כן, בוצע</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
   }
@@ -586,8 +713,15 @@ document.addEventListener('click',function(e){
   }
   else if(a==='reset2'){S=fresh();save();closeSheet();render();toast('אופס');}
 });
+document.addEventListener('input',function(e){
+  if(e.target.id==='h_q'){hq=e.target.value;var hl=document.getElementById('hlist');if(hl)hl.innerHTML=histList();}
+});
+document.addEventListener('keydown',function(e){
+  if(e.target.id==='b_in'&&e.key==='Enter'){e.preventDefault();ask(e.target.value);}
+});
 document.addEventListener('change',function(e){
   var el=e.target;
+  if(el.id==='h_y'){hy=el.value;var hl2=document.getElementById('hlist');if(hl2)hl2.innerHTML=histList();return;}
   if(el.getAttribute('data-f')){
     var id=el.getAttribute('data-id'),k=el.getAttribute('data-k'),st=S.items[id];
     st[k]=(k==='lastDate')?(el.value||null):num(el.value);
