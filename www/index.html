@@ -179,6 +179,10 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
 .lg.r{color:#ff4a5c}.lg.a{color:#ffb020}
 .lt{display:flex;gap:11px;align-items:center}.lt b{flex:1}
 .ns li{margin:3px 0}.ns ul{margin:6px 0 0;padding-inline-start:18px;font-size:13.5px}
+a.btn{display:inline-block;text-align:center;text-decoration:none}
+.bars{display:flex;gap:8px;align-items:flex-end;height:90px;margin:10px 0 4px}
+.bars div{flex:1;text-align:center;font-size:11px;color:var(--mut)}
+.bars i{display:block;background:linear-gradient(#ff4a5c,#8e0f1f);border-radius:6px 6px 0 0;min-height:3px;margin-bottom:3px}
 </style>
 </head>
 <body>
@@ -188,7 +192,7 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
     <h1>ג'ולייטה <span>●</span></h1>
     <div class="sub">יומן טיפולים ומעקב · 1.4 טורבו</div>
   </div></div>
-  <div class="row" style="gap:8px"><div class="pill" id="todayPill"></div><button class="pill" data-tab="set" aria-label="הגדרות">⚙️</button></div>
+  <div class="row" style="gap:8px"><div class="pill" id="todayPill"></div><button class="pill" data-tab="docs" aria-label="מסמכים ואנשי קשר">📇</button><button class="pill" data-tab="set" aria-label="הגדרות">⚙️</button></div>
 </header>
 <main id="view"></main>
 
@@ -202,6 +206,7 @@ nav button.on::after{content:'';width:22px;height:3px;border-radius:3px;backgrou
 </nav>
 <div class="sheet hidden" id="sheet"><div class="sheet-bg" data-a="closeSheet"></div><div class="sheet-body" id="sheetBody"></div></div>
 <div class="toast" id="toast"></div>
+<input type="file" accept="image/*" capture="environment" id="d_ins_cam" hidden><input type="file" accept="image/*" id="d_ins_gal" hidden><input type="file" accept="image/*" capture="environment" id="d_lic_cam" hidden><input type="file" accept="image/*" id="d_lic_gal" hidden>
 <input type="file" accept="image/*" capture="environment" id="r_cam" hidden><input type="file" accept="image/*" id="r_gal" hidden>
 
 <script>
@@ -433,6 +438,7 @@ function viewDash(){
    '<div class="row between" style="margin-top:8px"><span class="mut" style="font-size:12px">מד הקילומטרים עודכן ב-'+fmtD(pd(S.odoDate))+'</span><button class="btn" data-a="odo">עדכון ק״מ</button></div></div>';
 
   h+=nextService();
+  h+=insBrief();
   h+='<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';
   h+='<div class="card test '+(urgent?'':'calm')+(urgent&&!S.test.paid?' pulse':'')+'">'+
    '<div class="row between"><div><div class="mut" style="font-size:12.5px">טסט שנתי · עד '+fmtD(pd(S.test.due))+'</div>'+
@@ -581,7 +587,7 @@ function histList(){
 /* ---------- local assistant ---------- */
 var chat=[{r:'b',h:'שלום! אני העוזר של ג׳ולייטה. אפשר לשאול אותי כל שאלה על הרכב והטיפולים: מתי הוחלפו בלמים או מגבים, מה להחליף ומתי, מה פירוש נורית בלוח, איזה שמן או לחץ אוויר, ועוד. אפשר גם לכתוב רק שם חלק, כמו <b>"צמיגים"</b>.',t:'שלום! אני העוזר של ג׳ולייטה.'}];
 var busy=false;
-var SUGS=['מתי הוחלפו הבלמים?','מתי הוחלפו המגבים?','צמיגים','מה דחוף עכשיו?','מה לחץ האוויר הנכון?','נורית שמן מהבהבת – מה עושים?','מה עשיתי ב-2021?'];
+var SUGS=['מתי נגמר הביטוח?','מספר הגרר','איך מפעילים בקרת שיוט?','כמה שמן נכנס למנוע?','מתי הוחלפו הבלמים?','מתי הוחלפו המגבים?','צמיגים','מה דחוף עכשיו?','מה לחץ האוויר הנכון?','נורית שמן מהבהבת – מה עושים?','מה עשיתי ב-2021?'];
 function li(s){return '<span class="li">• '+s+'</span>';}
 function entryLine(x){return li(esc(fmtD(pd(x.d)))+(x.km!=null?' · '+(x.kmEst?'~':'')+fmtN(x.km)+' ק״מ':'')+' – '+esc(x.t));}
 function dueLine(c){
@@ -617,6 +623,11 @@ function botReply(q0){
     else res+=lastL+'<br>'+nextL;
     if(c.status==='verify'&&it.verify)res+='<br>⚠ '+esc(it.verify);
     if(it.note&&!wantLast)res+='<br><span class="li">'+esc(it.note)+'</span>';
+    if(/לחץ|כמה|נפח|מידה|מידות|קיבולת|סוג|איזה|מפרט|פלאצק|חלופי/.test(q)){
+      var gs=g.w.map(norm),qw=q.split(' ').map(function(w){return w.replace(/[^\u0590-\u05FFa-z0-9]/gi,'');}).filter(function(w){return w.length>=3&&!/^(מתי|מה|איך|כמה|האם|הרכב|שלי|זה|יש)$/.test(w);}),
+        gm=MANUAL.filter(function(m){var t=norm(m.t+' '+m.k);return gs.some(function(w){return w.length>=3&&t.indexOf(w)>=0;});}).map(function(m){var t=norm(m.t+' '+m.k),bb=norm(m.b);return {m:m,s:qw.filter(function(w){return t.indexOf(w)>=0;}).length*3+qw.filter(function(w){return bb.indexOf(w)>=0;}).length};}).sort(function(x,y){return y.s-x.s;}).slice(0,2).map(function(x){return x.m;});
+      if(gm.length)res+='<br><br><b>מספר הרכב:</b><br>'+gm.map(function(m){return '<b>'+esc(cleanT(m.t))+'</b><br>'+esc(m.b);}).join('<br><br>');
+    }
     return res;
   }
   if(year&&!/הבא|הבאה/.test(q)){
@@ -628,7 +639,7 @@ function botReply(q0){
     var oc=cs.filter(function(x){return x.it.id==='oil';})[0];
     return 'הטיפול השנתי הבא (שמן + מסנן שמן, ובדרך כלל מסנן אוויר ומזגן): '+dueLine(oc)+'.<br>בינתיים: הטסט עד <b>'+esc(fmtD(pd(S.test.due)))+'</b>. לרשימת מה שדורש בדיקה עכשיו שאל "מה דחוף עכשיו?".';
   }
-  if(/דחוף|דורש|באיחור|מה צריך|מה חסר|מה לעשות|בקרוב|הבא|הבאה|סיכום|מצב הרכב|לבדוק/.test(q)){
+  if(/דחוף|דורש|באיחור|מה צריך|מה חסר|מה לעשות|בקרוב|הבא|הבאה|סיכום|מצב הרכב|לבדוק/.test(q)&&q.split(' ').length<=4){
     var late=cs.filter(function(x){return x.status==='over'||x.status==='verify';}),soon=cs.filter(function(x){return x.status==='soon';}),up=cs.filter(function(x){return x.status==='ok';}).sort(function(a,b){return a.eff-b.eff;})[0];
     var td=dd(T,pd(S.test.due));
     L.push('<b>טסט:</b> '+(td>=0?'בעוד '+td+' ימים ('+esc(fmtD(pd(S.test.due)))+')':'באיחור של '+(-td)+' ימים'));
@@ -640,20 +651,56 @@ function botReply(q0){
   if(/ק״מ|קמ|קילומטר|מד |נסעתי|קצב/.test(q)){
     return 'הקריאה האחרונה: <b>'+fmtN(S.odo)+' ק״מ</b> (עודכנה ב-'+esc(fmtD(pd(S.odoDate)))+'). קצב הנסיעה המוערך: כ-<b>'+fmtN(S.rate*365)+' ק״מ בשנה</b>. להחלפת השמן הבאה נותרו '+fmtN(Math.max(0,cs.filter(function(x){return x.it.id==='oil';})[0].kmLeft))+' ק״מ.';
   }
-  var words=q.split(' ').filter(function(w){return w.length>=3&&!/^(מתי|מה|איך|כמה|האם|היה|עשיתי|הרכב|שלי|על|של)$/.test(w);});
-  if(words.length){
-    var f=all.filter(function(x){return words.some(function(w){return entryText(x).indexOf(w)>=0;});});
-    if(f.length)return 'מצאתי '+f.length+' רישומים שקשורים לשאלה:<br>'+f.slice(0,8).map(entryLine).join('');
+  if(/ביטוח|פוליס/.test(q)){
+    var cp=curPol();
+    if(!cp)return 'עוד לא הוספת פוליסת ביטוח. אפשר לצלם את טופס הביטוח ואז אדע מתי הוא מסתיים וכמה עלה. <button class="btn" data-tab="docs">📇 למסמכים</button>';
+    var idd=insDays(cp),pl=D.pols.filter(function(x){return x.premium;}).sort(function(a,b){return (b.end||'').localeCompare(a.end||'');});
+    return '<b>ביטוח'+(cp.insurer?' – '+esc(cp.insurer):'')+(cp.type?' ('+esc(cp.type)+')':'')+'</b><br>תוקף עד <b>'+esc(fmtD(pd(cp.end)))+'</b> – '+(idd>=0?'נשארו <b>'+idd+' ימים</b>.':'<b>פג לפני '+(-idd)+' ימים – יש לחדש!</b>')+(cp.premium?'<br>פרמיה אחרונה: ₪'+fmtN(cp.premium):'')+(pl.length>1?'<br>עלות לאורך השנים:<br>'+pl.map(function(x){return li(esc(polYear(x))+' – ₪'+fmtN(x.premium));}).join(''):'');
   }
-  var mscore=function(m){var t=norm(m.t+' '+m.k);return words.filter(function(w){return t.indexOf(w)>=0;}).length*3+words.filter(function(w){return norm(m.b).indexOf(w)>=0;}).length;};
-  var mm=MANUAL.filter(function(m){return mscore(m)>0;}).sort(function(a,b){return mscore(b)-mscore(a);}).slice(0,2);
-  if(mm.length)return 'מספר הרכב:<br>'+mm.map(function(m){return '<b>'+esc(m.t)+'</b><br>'+esc(m.b);}).join('<br><br>');
-  return 'לא הבנתי את השאלה. נסה לשאול על חלק (מצתים, בלמים, מצבר, שמן, טיימינג…), על שנה, על הטסט או "מה דחוף עכשיו?".';
+  if(/גרר|שמש|תלתן|פיאוט|טלפון|חירום|שירותי דרך|מוקד|אנשי קשר|פנצר/.test(q)&&!/נורית|נורה|הוחלפ|מתי/.test(q)){
+    return '<b>אנשי קשר לחירום</b><br>'+D.contacts.map(function(c){return li('<b>'+esc(c.role)+'</b>'+(c.name?' – '+esc(c.name):'')+': '+(c.phone?'<a href="tel:'+esc(telNum(c.phone))+'" style="color:var(--gold)">'+esc(c.phone)+'</a>':'לא הוזן'));}).join('')+'<br><button class="btn" data-tab="docs">📇 עריכה והוספה</button>';
+  }
+  if(/רישיון|רשיון|טופס רישוי/.test(q)){
+    var L2=D.lic||{};
+    return L2.expiry||L2.plate?'<b>רישיון הרכב</b><br>'+(L2.plate?li('מספר רכב: '+esc(L2.plate)):'')+(L2.expiry?li('תוקף עד: '+esc(fmtD(pd(L2.expiry)))):'')+(L2.model?li('דגם: '+esc(L2.model)):'')+(L2.vin?li('שלדה: '+esc(L2.vin)):''):'עוד לא הוספת את טופס הרישוי. <button class="btn" data-tab="docs">📇 למסמכים</button>';
+  }
+  var STOPW=/^(מתי|מה|איך|כמה|האם|היה|עשיתי|הרכב|שלי|על|של|את|זה|לי|אני|יש|לא|או|גם|עם|אם|כל|למה|איפה|אפשר|צריך)$/;
+  var words=q.split(' ').map(function(w){return w.replace(/[^\u0590-\u05FFa-z0-9]/gi,'');}).filter(function(w){return w.length>=2&&!STOPW.test(w);});
+  var stems=[];
+  words.forEach(function(w){[w].concat(w.length>3&&/^[הבלמוכש]/.test(w)?[w.slice(1)]:[]).concat(w.length>4&&/^(וה|שה|מה|לה|בה|כש)/.test(w)?[w.slice(2)]:[]).forEach(function(v){if(v.length>=2&&stems.indexOf(v)<0)stems.push(v);});});
+  var mscore=function(m){var t=norm(m.t+' '+m.k),b=norm(m.b);return stems.filter(function(w){return t.indexOf(w)>=0;}).length*3+stems.filter(function(w){return b.indexOf(w)>=0;}).length;};
+  var mm=MANUAL.map(function(m){return {m:m,s:mscore(m)};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3);
+  var fh=stems.length?all.filter(function(x){return stems.some(function(w){return w.length>=3&&entryText(x).indexOf(w)>=0;});}):[];
+  var outp=[];
+  if(mm.length)outp.push('<b>מספר הרכב:</b><br>'+mm.map(function(x){return '<b>'+esc(cleanT(x.m.t))+'</b><br>'+esc(x.m.b);}).join('<br><br>'));
+  if(fh.length&&(!mm.length||mm[0].s<6))outp.push('<b>מהרישומים:</b><br>'+fh.slice(0,5).map(entryLine).join(''));
+  var mqb='<br><br><button class="btn" data-a="mq" data-q="'+esc(q0)+'">📖 חפש בספר הרכב</button>';
+  if(outp.length)return outp.join('<br><br>')+mqb;
+  return 'לא מצאתי תשובה לשאלה הזו בספר הרכב או ברישומים (בלי חיבור לבינה מלאכותית אני עונה רק ממה שיש בספר, בנתוני המעקב ובמסמכים).'+mqb+'<br><span class="li">💡 כדי לקבל תשובה לכל שאלה: מפתח Gemini חינמי או Claude ב-⚙️ הגדרות.</span>';
 }
 /* ---------- owner's manual (summary, own words) ---------- */
 var MCATS={all:'הכול',lights:'נוריות',maint:'תחזוקה',fluids:'נוזלים',tyres:'צמיגים',battery:'מצבר',emergency:'חירום',dash:'לוח מחוונים',drive:'נהיגה',specs:'נתונים'};
 var PDF_URL='https://aftersales.fiat.com/eLumData/EN/83/191_GIULIETTA/83_191_GIULIETTA_604.38.735_EN_04_09.15_L_LG/83_191_GIULIETTA_604.38.735_EN_04_09.15_L_LG.pdf';
 var MANUAL=[
+{c:'drive',t:'מצבי נהיגה Alfa DNA',b:'ידית ה-DNA בוחרת בין d (דינמי), n (טבעי) ל-a (כל מזג אוויר). להחזיק את הידית כחצי שנייה כדי להיכנס לדינמי או ל-All Weather. אי אפשר לעבור ישירות בין דינמי ל-All Weather, צריך לעבור קודם דרך טבעי. המצב שנבחר נשמר גם אחרי כיבוי והתנעה. במצב All Weather מערכת E-Q2 מושבתת.',k:'dna דינמי טבעי מצב נהיגה all weather מצבי נהיגה'},
+{c:'drive',t:'ESC, ASR, Hill Holder ו-Q2',b:'ESC אי אפשר לכבות: היא מתקנת תת-היגוי ועודף-היגוי בבלימת גלגלים בודדים והפחתת מומנט. ASR מפחיתה הספק או בולמת גלגל שמחליק. Hill Holder פועל בעלייה של מעל 5% ומחזיק לחץ בלם עד שתי שניות (ברכב עמוס ובשיפוע קל מ-8% הוא עלול לא לפעול). E-Q2 בולם את הגלגל הפנימי בתאוצה בפנייה.',k:'esc asr hill holder יציבות בקרת אחיזה עלייה q2 דיפרנציאל'},
+{c:'drive',t:'בקרת שיוט',b:'אפשר להפעיל מעל 30 קמ״ש בכביש יבש וישר, לא מומלץ בעיר. לא ניתן להפעיל בהילוך ראשון או אחורי; מומלץ הילוך חמישי ומעלה. כל לחיצה משנה כ-1 קמ״ש, והחזקה משנה ברציפות. הבקרה מתנתקת בלחיצה על בלם או מצמד, בכיבוי מנוע, או כש-ABS/ESC מתערבים.',k:'שיוט בקרת שיוט cruise מהירות קבועה'},
+{c:'drive',t:'חיישני חניה',b:'מצפצפים לסירוגין כשיש מכשול קרוב, ובמרחק של פחות מ-30 ס״מ הצפצוף רציף. בגרסה עם חיישנים אחוריים בלבד הם נדלקים בהילוך אחורי; בגרסה קדמית ואחורית יש גם כפתור. מושבתים מעל כ-15 קמ״ש. קרח, שלג, בוץ והדהוד עלולים לפגוע בדיוק. לנקות במים ושמפו, בלי בד גס, ובשטיפת לחץ לשמור מרחק של 10 ס״מ.',k:'חיישני חניה פארק צפצוף חניה'},
+{c:'drive',t:'מגבים וחיישן גשם',b:'ידית המגבים בצד ימין פועלת רק כשהמתנע במצב MAR. חיישן הגשם אינפרא-אדום ומתאים את המהירות לגשם; הרגישות נקבעת בתפריט ההגדרות. אם המנוע כבה כשהחיישן על AUTO, צריך להחזיר את הטבעת ל-O ושוב ל-AUTO. תקלה בחיישן גורמת לניקוי לסירוגין והודעה בצג. המגב האחורי פועל ברציפות בהילוך אחורי.',k:'מגבים חיישן גשם מגב ניגוב שמשה'},
+{c:'drive',t:'תאורה: אורות יום, חיישן דמדומים ו-Follow me home',b:'אורות יום נדלקים כשהטבעת במצב DRL והמתנע ב-MAR. חיישן הדמדומים מדליק אורות צד וקצרים לבד, אבל אינו מזהה ערפל. מתקן גובה הפנסים בעל ארבעה מצבים (0–3) לפי העומס. פנס ערפל אחורי עובד רק עם אורות קצרים או ערפל קדמי. תאורת הכניסה נשארת כ-25 שניות אחרי פתיחה, ו-Follow me home מאיר 30 שניות לכל משיכת ידית, עד 210 שניות.',k:'אורות פנסים ערפל דמדומים follow me home תאורה גובה פנסים'},
+{c:'drive',t:'מזגן ואוטומט – שימוש נכון',b:'MAX-DEF מפעיל מפוח מרבי וחום עם המדחס לפירוק אדים. החלון האחורי המחומם נכבה לבד אחרי כ-20 דקות. במזגן דו-אזורי טמפרטורת הייחוס 22 מעלות והלחצן AUTO מפעיל הכול אוטומטית. כשהמדחס כבוי אין ייבוש אוויר והחלונות עלולים להתכסות באדים. בחורף כדאי להפעיל את המזגן לפחות פעם בחודש כ-10 דקות.',k:'מזגן אוטומט פירוק אדים אדים חלון אחורי חימום'},
+{c:'drive',t:'מפתח, התנעה, נעילה וילדים',b:'למתנע שלוש עמדות: STOP (אפשר להוציא מפתח והגה ננעל), MAR ו-AVV (התנעה). אם המנוע לא התניע, יש להחזיר ל-STOP לפני ניסיון נוסף. אם סוללת המפתח ריקה, מכניסים את המפתח ומסובבים ל-MAR כדי לכבות אזעקה. נעילה מרכזית פועלת מהמפתח או מהלחצן בלוח. נעילת ילדים בדלתות האחוריות מופעלת רק כשהדלת פתוחה, והדלת אינה נפתחת אז מבפנים. אחרי פגיעה, מערכת ניתוק הדלק פותחת את הדלתות.',k:'מפתח התנעה נעילה מרכזית ילדים דלת אחורית mar stop סוללה מפתח אזעקה'},
+{c:'drive',t:'מושבים, הגה ומראות',b:'מושב חשמלי ניתן לכוונון כשהמתנע ב-MAR ועוד כדקה אחרי STOP (או כ-3 דקות אחרי פתיחת דלת). זיכרון נהג: שלושה מקומות, שומרים בהחזקת הלחצן עד צפצוף. חימום מושב בשלוש רמות. ההגה מתכוונן לגובה ולעומק כשהרכב עומד והמנוע כבוי. מראות הצד מתכווננות רק ב-MAR, ויש קיפול חשמלי. המראה הפנימית יכולה להחשיך לבד ומתיישרת בהילוך אחורי.',k:'מושב הגה מראה כוונון זיכרון חימום מושבים'},
+{c:'drive',t:'מחשב דרך (Trip)',b:'שני זיכרונות עצמאיים, Trip A ו-Trip B. מציגים טווח, מרחק, צריכה ממוצעת ורגעית, מהירות ממוצעת וזמן נסיעה. לחיצה ארוכה על TRIP מאפסת. כשהטווח נמוך מ-50 ק״מ מוצגות קווים. הנתונים מתאפסים גם בניתוק מצבר.',k:'מחשב דרך trip צריכה טווח דלק'},
+{c:'fluids',t:'תדלוק ופתח מילוי',b:'לכבות מנוע לפני תדלוק. בנזין ללא עופרת 95 אוקטן ומעלה (95 או 98). למילוי מלא אפשר להוסיף פעמיים אחרי הקליק הראשון של הנוזל. הפתח נפתח עם הנעילה המרכזית, והמכסה מחובר בחוט ונסגם בסיבוב עד קליק. בחירום יש חוט שחרור בצד ימין של תא המטען. לא נוסעים עם מיכל כמעט ריק, כי הפסקות באספקה עלולות לפגוע בקטליזטור.',k:'תדלוק דלק מיכל פתח מילוי 95 בנזין מכסה'},
+{c:'drive',t:'מושבי ילדים וכרית נוסע',b:'ילדים חייבים להיות בהתקן מתאים, ומומלץ ישיבה אחורה כמה שיותר זמן, לפחות עד גיל 3–4. מעל 1.50 מ׳ משתמשים בחגורת מבוגר. כרית האוויר של הנוסע הקדמי מנוטרלת דרך תפריט ההגדרות ואחרי אישור, ונורית מאשרת שהיא כבויה. חובה לנטרל לפני התקנת מושב ילד הפוך בקדמי.',k:'ילד מושב בוסטר isofix כרית נוסע נטרול'},
+{c:'drive',t:'חגורות ומותחני חגורה',b:'מכניסים את הלשון לאבזם עד קליק; לא משחררים בזמן נסיעה. מותחני החגורות הקדמיים פועלים פעם אחת ומוחלפים במוסך אחרי הפעלה. מעט עשן בהפעלה הוא תקין. אחרי תאונה חמורה מחליפים חגורות. ניקוי ידני במים וסבון עדין בלי להרטיב את המגלגל. כל חגורה לאדם אחד.',k:'חגורה חגורות מותח בטיחות'},
+{c:'drive',t:'תקופת התרגלות (רודג׳)',b:'בתקופת השימוש הראשונה מומלץ להימנע מתאוצות חזקות, נסיעה ממושכת במהירות גבוהה ובלימות פתאומיות. הספר לא מציין מספר קילומטרים מדויק.',k:'רודג התרגלות רכב חדש'},
+{c:'battery',t:'מצבר – ניתוק וחיבור',b:'לפני ניתוק או חיבור: מתנע ל-STOP, דלת נהג סגורה, והמתנים לפחות דקה. אין צורך להוסיף מים מזוקקים. מצבר שנשאר מתחת ל-50% טעינה זמן רב נפגע (סולפציה). טעינה איטית בזרם נמוך כ-24 שעות. החלפה מומלצת במוסך עם אותו מפרט, בגלל מערכת סטופ-סטארט.',k:'מצבר ניתוק חיבור טעינה חילוף בטרייה'},
+{c:'specs',t:'נתוני מנוע וקיבולות',b:'מנוע 1.4 טורבו MultiAir (קוד 940A2000 בגרסת 170 כ״ס): נפח 1,368 סמ״ק, 170 כ״ס ב-5,500 סל״ד, מומנט 250 ננ״מ במצב דינמי או 230 בטבעי. יש גם גרסאות 163 ו-120 כ״ס. שמן מנוע: 3.5 ליטר עם החלפת מסנן (3.1 בלי). נוזל קירור 5.7 ליטר (חצי-חצי מים ו-PARAFLU UP). מיכל דלק 60 ליטר כולל רזרבה 8–10. מיכל שמשות 2.8 ליטר (4.6 עם שטיפת פנסים). נוזל בלמים 0.83 ליטר. תיבה ודיפרנציאל 2 ליטר.',k:'נפח מנוע שמן ליטר קיבולת מיכל קירור שמשות כוחות סוס הספק מומנט'},
+{c:'specs',t:'ביצועים ומידות',b:'1.4 טורבו 170 כ״ס: מהירות מרבית 218 קמ״ש, 0–100 ב-7.8 שניות (7.7 ב-TCT). 163 כ״ס: אותם נתונים. 120 כ״ס: 195 קמ״ש ו-9.4 שניות. אורך 4,351 מ״מ. נפח תא מטען 350 ליטר.',k:'מהירות מרבית תאוצה אורך תא מטען נפח'},
+{c:'tyres',t:'גלגל חלופי קטן – מגבלות',b:'הגלגל החלופי הקטן (T135/70 R16, או T125/80 R17) מנופח ל-4.2 בר, ומותר לנסוע איתו עד 80 קמ״ש ובערך עד 3,000 ק״מ. להחליף בהקדם לצמיג רגיל.',k:'גלגל חלופי קטן פלאצק רזרבה ספייר'},
+{c:'tyres',t:'מתי להחליף צמיגים',b:'מחליפים ב-1.6 מ״מ עומק סוליה. בדיקת לחץ אחת לשבועיים ולפני נסיעה ארוכה. לחץ בצמיג חם גבוה בכ-0.3 בר; לצמיגי שלג מוסיפים 0.2 בר. צמיגים בני יותר מ-6 שנים כדאי לבדוק אצל מומחה, גם אם הסוליה טובה.',k:'צמיגים החלפה גיל סוליה עומק לחץ'},
 {c:'lights',t:'🔴 נוזל בלמים נמוך / בלם יד',b:'נוזל בלמים נמוך: להשלים ולוודא שהנורית כבתה. בלם יד פעיל: לשחרר. אם הנורית נשארת – למוסך.',k:'נורה אדומה בלם יד נוזל בלמים'},
 {c:'lights',t:'🔴🟡 תקלת EBD (אדום וכתום יחד)',b:'הגלגלים האחוריים עלולים להינעל בבלימה חזקה. לנסוע בזהירות למוסך לבדיקה מיידית.',k:'ebd בלימה נורה'},
 {c:'lights',t:'🔴 תקלת כריות אוויר',b:'אמורה לכבות כמה שניות אחרי ההתנעה. אם נשארת דולקת – מערכת כריות האוויר תקולה; למוסך מיד.',k:'כרית אוויר airbag'},
@@ -769,6 +816,10 @@ function ctx(){
   var T=today(),cs=allCalc(),L=[];
   L.push('תאריך היום: '+iso(T)+'. ק״מ נוכחי: '+S.odo+' (עודכן '+S.odoDate+'). קצב נסיעה ממוצע: כ-'+Math.round(S.rate*365)+' ק״מ בשנה.');
   L.push('טסט שנתי: עד '+S.test.due+', אגרה '+(S.test.paid?'שולמה':'טרם שולמה')+'.');
+  var cpx=curPol();
+  if(cpx)L.push('ביטוח: '+(cpx.insurer||'')+' '+(cpx.type||'')+', תקף עד '+cpx.end+(cpx.premium?', פרמיה ₪'+cpx.premium:'')+'. היסטוריית פרמיות: '+D.pols.filter(function(x){return x.premium;}).map(function(x){return polYear(x)+'=₪'+x.premium;}).join(', ')+'.');
+  var cl=D.contacts.filter(function(c){return c.phone;});if(cl.length)L.push('אנשי קשר לחירום: '+cl.map(function(c){return c.role+(c.name?' ('+c.name+')':'')+' '+c.phone;}).join('; ')+'.');
+  if(D.lic&&(D.lic.plate||D.lic.expiry))L.push('רישיון רכב: מספר '+(D.lic.plate||'?')+', תוקף עד '+(D.lic.expiry||'?')+'.');
   L.push('--- מצב מעקב הפריטים (מחושב) ---');
   cs.forEach(function(c){var it=c.it;L.push('- '+it.name+': סטטוס '+LABEL[c.status]+'; אחרון: '+(it.lastDate||'לא ידוע')+(it.lastKm!=null?' ב-'+(it.est?'~':'')+it.lastKm+' ק״מ':'')+(it.est?' (משוער)':'')+'; מרווח: '+intervalText(it)+'; יעד: '+(c.dueDate?iso(c.dueDate):'-')+' / '+(c.dueKm!=null?c.dueKm+' ק״מ':'-')+(c.status==='verify'&&it.verify?'; הערה: '+it.verify:''));});
   L.push('--- רישומי טיפולים והיסטוריה (מהישן לחדש) ---');
@@ -851,6 +902,143 @@ function fileToImg(file){
     fr.readAsDataURL(file);
   });
 }
+/* ---------- documents, insurance, contacts ---------- */
+var DKEY='giulietta-docs-v1';
+var DCON=[{id:'c_ins',role:'חברת ביטוח'},{id:'c_tow',role:'גרר (ביטוח)'},{id:'c_glass',role:'שמשות'},{id:'c_talatan',role:'מוסך תלתן'},{id:'c_piaut',role:'פיאוט'}];
+function dload(){
+  var d={imgs:{license:null,insurance:null},lic:{},pols:[],contacts:[]};
+  try{var o=JSON.parse(localStorage.getItem(DKEY)||'null');if(o){d.imgs=Object.assign(d.imgs,o.imgs||{});d.lic=o.lic||{};d.pols=o.pols||[];d.contacts=o.contacts||[];}}catch(e){}
+  DCON.forEach(function(c){if(!d.contacts.some(function(x){return x.id===c.id;}))d.contacts.push({id:c.id,role:c.role,name:'',phone:''});});
+  return d;
+}
+var D=dload();
+function dsave(){try{localStorage.setItem(DKEY,JSON.stringify(D));return true;}catch(e){toast('⚠ אין מספיק מקום לשמירת התמונה');return false;}}
+function telNum(s){return String(s||'').replace(/[^\d+*]/g,'');}
+function curPol(){var p=D.pols.filter(function(x){return x.end;}).sort(function(a,b){return b.end.localeCompare(a.end);});return p[0]||null;}
+function insDays(p){return p&&p.end?dd(today(),pd(p.end)):null;}
+function polYear(p){return p.start?p.start.slice(0,4)+(p.end&&p.end.slice(0,4)!==p.start.slice(0,4)?'–'+p.end.slice(0,4):''):(p.end?p.end.slice(0,4):'');}
+function insBrief(){
+  var cp=curPol();
+  if(!cp)return '<div class="card"><div class="row between"><div><b>ביטוח ומסמכים</b><div class="mut" style="font-size:12.5px">הוסף טופס ביטוח ורישוי: מועד סיום, עלויות ואנשי קשר לחירום</div></div></div><div class="acts"><button class="btn red" data-tab="docs">📇 למסמכים</button></div></div>';
+  var n=insDays(cp),bad=n<0,warn=n>=0&&n<=30;
+  return '<div class="card"><div class="row between"><div><div class="mut" style="font-size:12.5px">ביטוח'+(cp.insurer?' · '+esc(cp.insurer):'')+' · עד '+esc(fmtD(pd(cp.end)))+'</div><div class="big" style="'+(bad?'color:var(--over)':'')+'">'+(bad?(-n):n)+'<small>'+(bad?'ימי איחור':'ימים')+'</small></div></div><div style="text-align:left;display:flex;flex-direction:column;gap:7px;align-items:flex-end"><span class="chip '+(bad?'warn':warn?'warn':'ok')+'">'+(bad?'⚠ פג תוקף':warn?'⏰ לחדש בקרוב':'✓ בתוקף')+'</span><button class="btn" data-tab="docs">📇 מסמכים וחירום</button></div></div></div>';
+}
+function contactCard(c){
+  return '<div class="card compact"><div class="row between" style="gap:8px"><div style="min-width:0"><b>'+esc(c.role)+'</b>'+(c.name?'<div class="mut" style="font-size:12.5px">'+esc(c.name)+'</div>':'')+'</div><div class="row" style="gap:6px">'+(c.phone?'<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.phone)+'</a>':'<span class="mut" style="font-size:12.5px">אין מספר</span>')+'<button class="btn" data-a="dcedit" data-id="'+c.id+'" aria-label="עריכה">✏️</button></div></div></div>';
+}
+function viewDocs(){
+  var cp=curPol(),h='<h2>ביטוח</h2>';
+  if(cp){
+    var n=insDays(cp);
+    h+='<div class="card"><div class="row between"><div><b>'+esc(cp.insurer||'פוליסה')+(cp.type?' · '+esc(cp.type):'')+'</b><div class="mut" style="font-size:12.5px">'+(cp.start?esc(fmtD(pd(cp.start)))+' – ':'')+'עד '+esc(fmtD(pd(cp.end)))+(cp.policyNo?' · מס׳ '+esc(cp.policyNo):'')+'</div></div><div style="text-align:left"><div class="big" style="font-size:30px;'+(n<0?'color:var(--over)':'')+'">'+(n<0?(-n):n)+'<small>'+(n<0?'ימי איחור':'ימים')+'</small></div></div></div>'+(cp.premium?'<p style="margin:8px 0 0">פרמיה: <b>₪'+fmtN(cp.premium)+'</b></p>':'')+'</div>';
+  }else h+='<div class="card mut">עוד לא נוספה פוליסה.</div>';
+  h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="ins">📷 צלם טופס ביטוח</button><button class="btn" data-a="dgal" data-k="ins">🖼️ גלריה</button><button class="btn ghost" data-a="padd">✍️ ידני</button>'+(D.imgs.insurance?'<button class="btn ghost" data-a="dview" data-k="insurance">👁 הצג טופס</button>':'')+'</div>';
+  var ps=D.pols.slice().sort(function(a,b){return (b.end||'').localeCompare(a.end||'');});
+  if(ps.length){
+    var tot=0,cnt=0;ps.forEach(function(p){if(p.premium){tot+=p.premium;cnt++;}});
+    h+='<h2>עלות הביטוח לאורך השנים'+(cnt?' · סה״כ ₪'+fmtN(tot):'')+'</h2>';
+    var pr=ps.filter(function(p){return p.premium;}).slice().reverse();
+    if(pr.length>1){var mx=Math.max.apply(null,pr.map(function(p){return p.premium;}));h+='<div class="card"><div class="bars">'+pr.map(function(p){return '<div><i style="height:'+Math.round(p.premium/mx*70)+'px"></i>'+esc(polYear(p).slice(0,4))+'</div>';}).join('')+'</div><p class="mut" style="font-size:12.5px;margin:4px 0 0">ממוצע לשנה: ₪'+fmtN(Math.round(tot/cnt))+'</p></div>';}
+    ps.forEach(function(p){h+='<div class="card compact"><div class="row between"><div><b>'+esc(polYear(p))+(p.insurer?' · '+esc(p.insurer):'')+'</b><div class="mut" style="font-size:12.5px">'+(p.type?esc(p.type)+' · ':'')+'עד '+esc(p.end?fmtD(pd(p.end)):'-')+'</div></div><div class="row" style="gap:6px"><b>'+(p.premium?'₪'+fmtN(p.premium):'-')+'</b><button class="btn" data-a="pedit" data-id="'+p.id+'" aria-label="עריכה">✏️</button></div></div></div>';});
+  }
+  var L=D.lic||{};
+  h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
+  h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
+  h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
+  h+='<p class="foot">התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  return h;
+}
+var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":פרמיה כוללת לתקופה כמספר או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
+var LIC_SYS='אתה מחלץ נתונים מרישיון רכב / טופס רישוי ישראלי. החזר JSON בלבד, בלי טקסט נוסף:\n{"plate":"מספר רכב","expiry":"YYYY-MM-DD (תוקף הרישיון / עד תאריך)","year":שנת ייצור כמספר או null,"model":"יצרן ודגם","vin":"מספר שלדה","color":""}\nתאריכים בישראל הם DD/MM/YYYY. אל תנחש שדה שלא נראה: null.';
+var df=null;
+function parseJson(t){var m=String(t).match(/\{[\s\S]*\}/);if(!m)throw new Error('לא התקבל JSON תקין');return JSON.parse(m[0]);}
+function okDate(s){return /^\d{4}-\d{2}-\d{2}$/.test(s||'')?s:'';}
+function conKey(c){
+  var n=(c.name||'')+' '+(c.role||'');
+  if(/תלתן/.test(n))return 'c_talatan';
+  if(/פיאוט|פיאט|פיג׳ו|פז׳ו/.test(n))return 'c_piaut';
+  if(c.role==='tow')return 'c_tow';if(c.role==='glass')return 'c_glass';if(c.role==='insurer')return 'c_ins';
+  if(/גרר|דרך/.test(n))return 'c_tow';if(/שמש|זגוג/.test(n))return 'c_glass';
+  return null;
+}
+function roleLabel(c){var k=conKey(c);var f=k&&DCON.filter(function(x){return x.id===k;})[0];return f?f.role:(c.name||'אחר');}
+function scanDoc(kind,file){
+  openSheet('<h3>📷 קורא את המסמך…</h3><p class="mut">זה לוקח כמה שניות.</p>');
+  var img0=null;
+  fileToImg(file).then(function(img){
+    img0=img;D.imgs[kind==='ins'?'insurance':'license']=img.url;dsave();
+    return llmRaw(kind==='ins'?INS_SYS:LIC_SYS,'תאריך היום: '+iso(today())+'. החזר את ה-JSON.',img,true);
+  }).then(function(t){
+    var j=parseJson(t);
+    if(kind==='ins'){
+      df={kind:'ins',id:null,insurer:j.insurer||'',type:j.type||'',policyNo:j.policyNo||'',start:okDate(j.start),end:okDate(j.end),premium:j.premium!=null&&!isNaN(Number(j.premium))?Number(j.premium):'',
+        contacts:(j.contacts||[]).filter(function(c){return c&&c.phone;}).map(function(c){return {on:true,role:roleLabel(c),name:c.name||'',phone:String(c.phone),key:conKey(c)};})};
+      polSheet('בדוק את הפרטים ותקן לפני שמירה. הטופס עצמו נשמר במכשיר.');
+    }else{
+      df={kind:'lic',plate:j.plate||'',expiry:okDate(j.expiry),year:j.year||'',model:j.model||'',vin:j.vin||'',color:j.color||'',setTest:true};
+      licSheet('בדוק את הפרטים ותקן לפני שמירה.');
+    }
+  }).catch(function(e){
+    if(kind==='ins'){df={kind:'ins',id:null,insurer:'',type:'',policyNo:'',start:'',end:'',premium:'',contacts:[]};polSheet(imgNote(e)+'אפשר למלא ידנית. הטופס נשמר ותוכל לצפות בו.');}
+    else{df={kind:'lic',plate:'',expiry:'',year:'',model:'',vin:'',color:'',setTest:true};licSheet(imgNote(e)+'אפשר למלא ידנית.');}
+  });
+}
+function imgNote(e){return e&&e.nokey?'💡 אין חיבור לבינה מלאכותית (מפתח ב-⚙️). ':'⚠ לא הצלחתי לקרוא את המסמך'+(e&&e.message&&e.message!=='nokey'?' ('+esc(String(e.message).slice(0,80))+')':'')+'. ';}
+function polSheet(msg){
+  var f=df,types=['','חובה','מקיף','צד ג׳','אחר'];
+  var cons=(f.contacts||[]).map(function(c,i){return '<div class="rrow"><label class="chk"><input type="checkbox" data-dc="'+i+':on"'+(c.on?' checked':'')+'><span style="font-size:13px">שמור</span></label><input type="text" data-dc="'+i+':role" value="'+esc(c.role)+'" placeholder="תפקיד"><input type="text" style="grid-column:1/3" data-dc="'+i+':phone" inputmode="tel" value="'+esc(c.phone)+'"></div>';}).join('');
+  openSheet('<h3>🛡️ פוליסת ביטוח</h3><p class="mut" style="font-size:12.5px;margin:0 0 10px">'+msg+'</p>'+
+   '<div class="g2"><div class="field"><label>חברת ביטוח</label><input type="text" data-d="insurer" value="'+esc(f.insurer)+'"></div><div class="field"><label>סוג</label><select data-d="type">'+types.map(function(t){return '<option'+(t===f.type?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'+
+   '<div class="field"><label>תחילת ביטוח</label><input type="date" data-d="start" value="'+esc(f.start)+'"></div><div class="field"><label>סיום ביטוח</label><input type="date" data-d="end" value="'+esc(f.end)+'"></div>'+
+   '<div class="field"><label>פרמיה (₪)</label><input type="number" inputmode="decimal" data-d="premium" value="'+esc(f.premium)+'"></div><div class="field"><label>מספר פוליסה</label><input type="text" data-d="policyNo" value="'+esc(f.policyNo)+'"></div></div>'+
+   (cons?'<b style="font-size:13px">טלפונים שזוהו בטופס</b><div style="margin-top:8px">'+cons+'</div>':'')+
+   '<div class="row" style="margin-top:8px"><button class="btn red grow" data-a="psave">שמירה</button>'+(f.id?'<button class="btn ghost" data-a="pdel">מחיקה</button>':'')+'<button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function licSheet(msg){
+  var f=df;
+  openSheet('<h3>🪪 טופס רישוי</h3><p class="mut" style="font-size:12.5px;margin:0 0 10px">'+msg+'</p>'+
+   '<div class="g2"><div class="field"><label>מספר רכב</label><input type="text" data-d="plate" value="'+esc(f.plate)+'"></div><div class="field"><label>תוקף עד</label><input type="date" data-d="expiry" value="'+esc(f.expiry)+'"></div>'+
+   '<div class="field"><label>דגם</label><input type="text" data-d="model" value="'+esc(f.model)+'"></div><div class="field"><label>שנת ייצור</label><input type="text" data-d="year" value="'+esc(f.year)+'"></div></div>'+
+   '<div class="field"><label>מספר שלדה</label><input type="text" dir="ltr" data-d="vin" value="'+esc(f.vin)+'"></div>'+
+   '<label class="chk" style="margin-bottom:10px"><input type="checkbox" data-d="setTest"'+(f.setTest?' checked':'')+'> עדכן גם את מועד הטסט לתאריך התוקף</label>'+
+   '<div class="row"><button class="btn red grow" data-a="lsave">שמירה</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function conSheet(c){
+  df={kind:'con',id:c?c.id:null,role:c?c.role:'',name:c?c.name:'',phone:c?c.phone:'',fixed:c&&DCON.some(function(x){return x.id===c.id;})};
+  openSheet('<h3>📞 איש קשר</h3><div class="field"><label>תפקיד</label><input type="text" data-d="role" value="'+esc(df.role)+'"'+(df.fixed?' readonly':'')+'></div><div class="field"><label>שם (אופציונלי)</label><input type="text" data-d="name" value="'+esc(df.name)+'"></div><div class="field"><label>טלפון</label><input type="tel" inputmode="tel" dir="ltr" data-d="phone" value="'+esc(df.phone)+'"></div>'+
+   '<div class="row"><button class="btn red grow" data-a="csave">שמירה</button>'+(c&&!df.fixed?'<button class="btn ghost" data-a="cdel">מחיקה</button>':'')+'<button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
+}
+function dfUpdate(el){
+  if(!df)return;var k=el.getAttribute('data-d'),c=el.getAttribute('data-dc');
+  if(c!=null){var p=c.split(':'),it=df.contacts[Number(p[0])];if(!it)return;it[p[1]]=p[1]==='on'?el.checked:el.value;return;}
+  df[k]=el.type==='checkbox'?el.checked:el.value;
+}
+function savePol(){
+  var f=df;if(!f.end){toast('נא למלא תאריך סיום');return;}
+  var p=f.id?D.pols.filter(function(x){return x.id===f.id;})[0]:null;
+  if(!p){p={id:'p'+Date.now()};D.pols.push(p);}
+  p.insurer=f.insurer;p.type=f.type;p.policyNo=f.policyNo;p.start=f.start;p.end=f.end;p.premium=num(f.premium)||null;
+  (f.contacts||[]).forEach(function(c){
+    if(!c.on||!c.phone)return;
+    var t=c.key?D.contacts.filter(function(x){return x.id===c.key;})[0]:null;
+    if(t){t.phone=c.phone;if(c.name)t.name=c.name;}
+    else if(!D.contacts.some(function(x){return telNum(x.phone)===telNum(c.phone);}))D.contacts.push({id:'c'+Date.now()+Math.random().toString(36).slice(2,5),role:c.role||c.name||'אחר',name:c.name||'',phone:c.phone});
+  });
+  var ci=D.contacts.filter(function(x){return x.id==='c_ins';})[0];if(ci&&!ci.name&&f.insurer)ci.name=f.insurer;
+  dsave();df=null;closeSheet();render();toast('נשמר');
+}
+function saveLic(){
+  var f=df;D.lic={plate:f.plate,expiry:f.expiry,year:f.year,model:f.model,vin:f.vin,color:f.color};
+  if(f.setTest&&f.expiry&&f.expiry!==S.test.due){S.test.due=f.expiry;save();}
+  dsave();df=null;closeSheet();render();toast('נשמר');
+}
+function saveCon(){
+  var f=df;if(!f.role){toast('נא למלא תפקיד');return;}
+  var c=f.id?D.contacts.filter(function(x){return x.id===f.id;})[0]:null;
+  if(!c){c={id:'c'+Date.now()};D.contacts.push(c);}
+  c.role=f.role;c.name=f.name;c.phone=f.phone;dsave();df=null;closeSheet();render();toast('נשמר');
+}
+
 /* ---------- receipts ---------- */
 var rcp=null;
 var RSYS='אתה מחלץ נתונים מחשבוניות וקבלות של מוסך/חנות חלפים לרכב (בעברית, ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד, במבנה:\n'+
@@ -919,7 +1107,7 @@ function applyReceipt(){
 function viewBot(){
   var h='<div class="msgs">'+chat.map(function(m){return '<div class="bub '+m.r+'">'+(m.img?'<img src="'+m.img+'" alt="תמונה">':'')+(m.r==='u'?esc(m.t):m.h)+'</div>';}).join('')+'</div>';
   h+='<div class="sugs">'+SUGS.map(function(s){return '<button class="fchip" data-a="ask" data-q="'+esc(s)+'">'+esc(s)+'</button>';}).join('')+'</div>';
-  h+='<div class="askbar"><button class="btn ic" data-a="cam" aria-label="צלם נורית או חלק">📷</button><button class="btn ic" data-a="gal" aria-label="בחר תמונה">🖼️</button><input type="text" id="b_in" placeholder="שאל, או צלם נורית / הודעה / חלק…" autocomplete="off"><button class="btn red" data-a="send">שלח</button>'+
+  h+='<div class="askbar"><button class="btn ic" data-a="cam" aria-label="צלם נורית או חלק">📷</button><button class="btn ic" data-a="gal" aria-label="בחר תמונה">🖼️</button><input type="text" id="b_in" placeholder="שאל, או צלם נורית / הודעה / חלק…" autocomplete="off"><button class="btn red" data-a="send">🔍 חפש</button>'+
    '<input type="file" accept="image/*" capture="environment" id="b_cam" hidden><input type="file" accept="image/*" id="b_gal" hidden></div>';
   return h;
 }
@@ -974,7 +1162,7 @@ function viewSet(){
 var tab='dash',catF='all';
 function render(){
   var v=document.getElementById('view');
-  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,manual:viewManual,bot:viewBot,set:viewSet})[tab]();
+  v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,manual:viewManual,bot:viewBot,set:viewSet,docs:viewDocs})[tab]();
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'),function(b){b.classList.toggle('on',b.getAttribute('data-tab')===tab);});
   document.getElementById('todayPill').textContent=fmtD(today());
 }
@@ -1047,6 +1235,20 @@ document.addEventListener('click',function(e){
   else if(a==='radd'){rcp.lines.push({on:true,item:'oil',desc:''});rcpSheet('');}
   else if(a==='rdel'){rcp.lines.splice(Number(b.getAttribute('data-i')),1);rcpSheet('');}
   else if(a==='rsave')applyReceipt();
+  else if(a==='dscan'){var di=document.getElementById('d_'+b.getAttribute('data-k')+'_cam');if(di)di.click();}
+  else if(a==='dgal'){var dg=document.getElementById('d_'+b.getAttribute('data-k')+'_gal');if(dg)dg.click();}
+  else if(a==='padd'){df={kind:'ins',id:null,insurer:'',type:'',policyNo:'',start:'',end:'',premium:'',contacts:[]};polSheet('הזן את פרטי הפוליסה.');}
+  else if(a==='pedit'){var pp=D.pols.filter(function(x){return x.id===id;})[0];if(pp){df=Object.assign({kind:'ins',id:pp.id,contacts:[]},pp,{premium:pp.premium||''});polSheet('עריכת פוליסה.');}}
+  else if(a==='psave')savePol();
+  else if(a==='pdel'){D.pols=D.pols.filter(function(x){return x.id!==df.id;});dsave();df=null;closeSheet();render();}
+  else if(a==='ledit'){df=Object.assign({kind:'lic',plate:'',expiry:'',year:'',model:'',vin:'',color:'',setTest:true},D.lic||{});licSheet('פרטי הרישיון.');}
+  else if(a==='lsave')saveLic();
+  else if(a==='dcedit'){conSheet(D.contacts.filter(function(x){return x.id===id;})[0]);}
+  else if(a==='cadd')conSheet(null);
+  else if(a==='csave')saveCon();
+  else if(a==='cdel'){D.contacts=D.contacts.filter(function(x){return x.id!==df.id;});dsave();df=null;closeSheet();render();}
+  else if(a==='dview'){var im=D.imgs[b.getAttribute('data-k')];if(im)openSheet('<img src="'+im+'" alt="מסמך" style="width:100%;border-radius:10px"><div class="row" style="margin-top:10px"><button class="btn ghost grow" data-a="closeSheet">סגור</button></div>');}
+  else if(a==='mq'){tab='manual';mc='all';mq=b.getAttribute('data-q')||'';render();window.scrollTo(0,0);}
   else if(a==='cam'){var ci=document.getElementById('b_cam');if(ci)ci.click();}
   else if(a==='gal'){var gi=document.getElementById('b_gal');if(gi)gi.click();}
   else if(a==='openlights'){tab='manual';mc='lights';mq='';render();window.scrollTo(0,0);}
@@ -1065,6 +1267,7 @@ document.addEventListener('click',function(e){
   else if(a==='reset2'){S=fresh();save();closeSheet();render();toast('אופס');}
 });
 document.addEventListener('input',function(e){
+  if(e.target.getAttribute&&(e.target.getAttribute('data-d')!=null||e.target.getAttribute('data-dc')!=null)&&e.target.type!=='checkbox'&&e.target.tagName!=='SELECT'){dfUpdate(e.target);}
   if(e.target.getAttribute&&e.target.getAttribute('data-r')&&e.target.type!=='checkbox'&&e.target.tagName!=='SELECT'){rcpUpdate(e.target);}
   if(e.target.id==='m_q'){mq=e.target.value;var ml=document.getElementById('mlist');if(ml)ml.innerHTML=manualList();}
   if(e.target.id==='h_q'){hq=e.target.value;var hl=document.getElementById('hlist');if(hl)hl.innerHTML=histList();}
@@ -1074,6 +1277,9 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('change',function(e){
   var el=e.target;
+  var dm=/^d_(ins|lic)_/.exec(el.id||'');
+  if(dm){var df0=el.files&&el.files[0];el.value='';if(df0)scanDoc(dm[1],df0);return;}
+  if(el.getAttribute('data-d')!=null||el.getAttribute('data-dc')!=null){dfUpdate(el);return;}
   if(el.id==='r_cam'||el.id==='r_gal'){var rf=el.files&&el.files[0];el.value='';if(rf)openReceipt(rf);return;}
   if(el.getAttribute('data-r')){rcpUpdate(el);return;}
   if(el.id==='b_cam'||el.id==='b_gal'){var f=el.files&&el.files[0];el.value='';pickImage(f);return;}
