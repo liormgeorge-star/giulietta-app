@@ -401,11 +401,11 @@ function gauge(frac,odo,intKm){
    '<path d="'+arc(a0+(a1-a0)*.8,a1,r+1.5)+'" stroke="#c4162a" stroke-width="3" fill="none"/>'+
    tk+lb+
    '<text x="'+cx+'" y="'+(cy-26)+'" text-anchor="middle" font-size="8" letter-spacing="1.2" fill="#9a9ca4" font-family="Rubik,sans-serif">x1000 KM</text>'+
-   '<polygon points="'+b1[0].toFixed(1)+','+b1[1].toFixed(1)+' '+tip[0].toFixed(1)+','+tip[1].toFixed(1)+' '+b2[0].toFixed(1)+','+b2[1].toFixed(1)+' '+tail[0].toFixed(1)+','+tail[1].toFixed(1)+'" fill="#e3202f" stroke="#7a0b16" stroke-width=".6" stroke-linejoin="round"/>'+
+   '<g id="ndl" data-fin="'+ang.toFixed(2)+'"><polygon points="'+b1[0].toFixed(1)+','+b1[1].toFixed(1)+' '+tip[0].toFixed(1)+','+tip[1].toFixed(1)+' '+b2[0].toFixed(1)+','+b2[1].toFixed(1)+' '+tail[0].toFixed(1)+','+tail[1].toFixed(1)+'" fill="#e3202f" stroke="#7a0b16" stroke-width=".6" stroke-linejoin="round"/></g>'+
    '<circle cx="'+cx+'" cy="'+cy+'" r="8" fill="url(#gcap)" stroke="#202227" stroke-width="1.5"/>'+
    '<rect x="80" y="122" width="60" height="25" rx="6" fill="#020203" stroke="#3a3d45"/>'+
    '<rect x="80" y="143" width="60" height="2.5" rx="1.2" fill="#c4162a"/>'+
-   '<text x="110" y="139" text-anchor="middle" font-size="13.5" font-weight="500" fill="#f5f5f5" font-family="Rubik,sans-serif" letter-spacing="1">'+fmtN(odo)+'</text>'+
+   '<text id="odoT" x="110" y="139" text-anchor="middle" font-size="13.5" font-weight="500" fill="#f5f5f5" font-family="Rubik,sans-serif" letter-spacing="1">'+fmtN(odo)+'</text>'+
    '<text x="110" y="160" text-anchor="middle" font-size="9" fill="#9a9ca4" font-family="Rubik,sans-serif">ק״מ</text>'+
   '</svg>';
 }
@@ -1125,7 +1125,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 23.11.2026 כג · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 23.11.2026 כד · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":הסכום הכולל לתשלום עבור כל תקופת הביטוח (פרמיה / סה״כ לתשלום / אגרה כולל), כמספר בלי סימנים, או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
@@ -1579,6 +1579,49 @@ function viewSet(){
 
 /* ---------- render ---------- */
 var tab='dash',catF='all';
+
+/* ---------- start-up rev animation ---------- */
+function revUp(){
+  var nd=document.getElementById('ndl');
+  if(!nd||tab!=='dash')return;
+  var fin=Number(nd.getAttribute('data-fin')),A0=135,AM=135+270*0.93,DUR=3000;
+  var els=[],rings=[];
+  Array.prototype.forEach.call(document.querySelectorAll('#view .num,#view .big,#view .ring text:first-of-type,#odoT'),function(el){
+    var tn=null;for(var i=0;i<el.childNodes.length;i++){if(el.childNodes[i].nodeType===3&&/\d/.test(el.childNodes[i].nodeValue)){tn=el.childNodes[i];break;}}
+    if(!tn)return;
+    var m=/^(\s*~?)([\d,]+)(.*)$/.exec(tn.nodeValue);if(!m)return;
+    var fv=Number(m[2].replace(/,/g,''));if(!isFinite(fv)||fv<=0)return;
+    els.push({tn:tn,pre:m[1],post:m[3],fv:fv,comma:m[2].indexOf(',')>=0});
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#view .ring circle:nth-of-type(2)'),function(c){
+    var d=(c.getAttribute('stroke-dasharray')||'').split(' ');rings.push({c:c,a:Number(d[0]),b:d[1]});
+  });
+  function eo(u){u=Math.min(1,Math.max(0,u));return 1-Math.pow(1-u,3);}
+  function eio(u){u=Math.min(1,Math.max(0,u));return u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;}
+  var t0=null,done=false;
+  function frame(ts){
+    if(done)return;
+    if(t0===null)t0=ts;
+    var t=ts-t0,ang;
+    if(!document.getElementById('ndl')||document.getElementById('ndl')!==nd){return;}
+    if(t<1100)ang=A0+(AM-A0)*eo(t/1100);
+    else if(t<1550)ang=AM+Math.sin((t-1100)/45)*2.2;
+    else ang=AM+(fin-AM)*eio((t-1550)/1450);
+    nd.setAttribute('transform','rotate('+(ang-fin).toFixed(2)+' 110 102)');
+    var k=eo(t/2400);
+    els.forEach(function(o){
+      var v=Math.round(o.fv*k);
+      o.tn.nodeValue=o.pre+(o.comma?v.toLocaleString('en-US'):String(v))+o.post;
+    });
+    rings.forEach(function(r){r.c.setAttribute('stroke-dasharray',(r.a*k).toFixed(1)+' '+r.b);});
+    if(t<DUR)requestAnimationFrame(frame);
+    else{done=true;nd.removeAttribute('transform');els.forEach(function(o){o.tn.nodeValue=o.pre+(o.comma?o.fv.toLocaleString('en-US'):String(o.fv))+o.post;});rings.forEach(function(r){r.c.setAttribute('stroke-dasharray',r.a+' '+r.b);});}
+  }
+  nd.setAttribute('transform','rotate('+(A0-fin)+' 110 102)');
+  els.forEach(function(o){o.tn.nodeValue=o.pre+'0'+o.post;});
+  rings.forEach(function(r){r.c.setAttribute('stroke-dasharray','0 '+r.b);});
+  requestAnimationFrame(frame);
+}
 function render(){
   var v=document.getElementById('view');
   v.innerHTML=({dash:viewDash,km:viewKm,year:viewYear,hist:viewHist,manual:viewManual,bot:viewBot,set:viewSet,docs:viewDocs})[tab]();
@@ -1775,6 +1818,7 @@ document.addEventListener('change',function(e){
 });
 
 render();
+setTimeout(function(){try{revUp();}catch(e){}},2950);
 })();
 </script>
 </body>
