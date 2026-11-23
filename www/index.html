@@ -328,7 +328,7 @@ function load(){
   }catch(e){}
   return base;
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));return true;}catch(e){try{toast('⚠ השמירה נכשלה: אין מספיק מקום במכשיר');}catch(x){}return false;}}
 function items(){return DEFS.map(function(d){return Object.assign({},d,S.items[d.id]);});}
 
 /* ---------- calculation ---------- */
@@ -598,9 +598,9 @@ function histList(){
   list.forEach(function(x){
     var y=x.d.slice(0,4);
     if(y!==cy){cy=y;out+='<div class="yr" style="font-size:22px;margin-top:10px">'+y+'</div>';}
-    out+='<div class="card hcard" data-del="'+(x.src==='user'&&x.id?'log:'+x.id:'hist:'+x.d+'|'+x.t)+'"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
+    out+='<div class="card hcard" data-del="'+(x.id?'log:'+x.id:'hist:'+x.d+'|'+x.t)+'"><div class="top"><b>'+esc(x.t)+'</b><span class="d">'+fmtD(pd(x.d))+(x.dEst?' ~':'')+'</span></div>'+
      '<div class="k"><span class="tag'+(x.src==='user'?' user':'')+'">'+(x.src==='user'?'עדכון שלך':CATS[x.c])+'</span>'+(x.km!=null?'<span class="num">'+(x.kmEst?'~':'')+fmtN(x.km)+'</span> ק״מ':'')+(x.cost?' <span class="cost">· ₪'+fmtN(x.cost)+'</span>':'')+'</div>'+
-     (x.i&&x.i.length?'<ul>'+x.i.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul>':'')+'</div>';
+     (x.i&&x.i.length?'<ul>'+x.i.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul>':'')+(x.img?'<div style="margin-top:6px"><button class="btn" data-a="dview" data-k="l:'+x.id+'">📎 הצג את המסמך</button></div>':'')+'</div>';
   });
   if(list.length)out+='<p class="mut" style="font-size:11.5px;text-align:center">לחיצה ארוכה על רישום מאפשרת למחוק אותו</p>';
   if(!list.length)out+='<div class="card mut">לא נמצאו רישומים. נסה מילה אחרת, שנה אחרת או "כל השנים".</div>';
@@ -933,7 +933,7 @@ async function testConn(){
 function makeBackup(){return JSON.stringify({app:'giulietta',v:1,t:iso(today()),state:localStorage.getItem(KEY),docs:localStorage.getItem(DKEY)});}
 function backupSheet(){
   var j=makeBackup();
-  openSheet('<h3>📤 גיבוי נתונים</h3><p class="mut" style="font-size:12.5px;margin:0 0 8px">לחץ "העתק", והדבק את הטקסט במקום בטוח (הודעה לעצמך, מייל, Keep). כך אפשר לשחזר בכל התקנה.</p><textarea id="bk_t" readonly dir="ltr" style="width:100%;height:120px;background:#0b0c0f;color:#ddd;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:11px">'+esc(j)+'</textarea><div class="row" style="margin-top:10px"><button class="btn red grow" data-a="bkcopy">📋 העתק</button><button class="btn ghost" data-a="closeSheet">סגור</button></div><p class="mut" style="font-size:11.5px">גודל: '+Math.round(j.length/1024)+' KB</p>');
+  openSheet('<h3>📤 גיבוי נתונים</h3><p class="mut" style="font-size:12.5px;margin:0 0 8px">לחץ "העתק", והדבק את הטקסט במקום בטוח (הודעה לעצמך, מייל, Keep). כך אפשר לשחזר בכל התקנה. תמונות המסמכים עצמן נשמרות במכשיר ואינן נכללות בטקסט הגיבוי.</p><textarea id="bk_t" readonly dir="ltr" style="width:100%;height:120px;background:#0b0c0f;color:#ddd;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:11px">'+esc(j)+'</textarea><div class="row" style="margin-top:10px"><button class="btn red grow" data-a="bkcopy">📋 העתק</button><button class="btn ghost" data-a="closeSheet">סגור</button></div><p class="mut" style="font-size:11.5px">גודל: '+Math.round(j.length/1024)+' KB</p>');
 }
 function restoreSheet(){
   openSheet('<h3>📥 שחזור מגיבוי</h3><p class="mut" style="font-size:12.5px;margin:0 0 8px">הדבק כאן את טקסט הגיבוי. הנתונים הקיימים באפליקציה יוחלפו.</p><textarea id="bk_in" dir="ltr" style="width:100%;height:120px;background:#0b0c0f;color:#ddd;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:11px" placeholder="{...}"></textarea><div class="row" style="margin-top:10px"><button class="btn red grow" data-a="bkrestore">שחזר</button><button class="btn ghost" data-a="closeSheet">ביטול</button></div>');
@@ -1016,7 +1016,58 @@ function dload(){
   DCON.forEach(function(c){if(!d.contacts.some(function(x){return x.id===c.id;}))d.contacts.push({id:c.id,role:c.role,name:'',phone:c.ph||''});});
   return d;
 }
+
+/* ---------- durable image store (IndexedDB) ---------- */
+var _idb=null;
+function idbOpen(){
+  if(_idb)return _idb;
+  _idb=new Promise(function(res,rej){
+    try{
+      var q=indexedDB.open('giulietta-files',1);
+      q.onupgradeneeded=function(){q.result.createObjectStore('f');};
+      q.onsuccess=function(){res(q.result);};
+      q.onerror=function(){rej(q.error);};
+    }catch(e){rej(e);}
+  });
+  return _idb;
+}
+function imgPut(url){
+  if(!url)return Promise.resolve(url);
+  if(String(url).indexOf('idb:')===0)return Promise.resolve(url);
+  var id='idb:'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  return idbOpen().then(function(db){return new Promise(function(res,rej){
+    var tx=db.transaction('f','readwrite');tx.objectStore('f').put(url,id);
+    tx.oncomplete=function(){res(id);};tx.onerror=function(){rej(tx.error);};tx.onabort=function(){rej(tx.error);};
+  });}).catch(function(){return url;});
+}
+function imgGet(ref){
+  if(!ref||String(ref).indexOf('idb:')!==0)return Promise.resolve(ref||null);
+  return idbOpen().then(function(db){return new Promise(function(res){
+    var q=db.transaction('f','readonly').objectStore('f').get(ref);
+    q.onsuccess=function(){res(q.result||null);};q.onerror=function(){res(null);};
+  });}).catch(function(){return null;});
+}
+function imgDel(ref){
+  if(!ref||String(ref).indexOf('idb:')!==0)return;
+  idbOpen().then(function(db){db.transaction('f','readwrite').objectStore('f').delete(ref);}).catch(function(){});
+}
+function srcUrl(doc){return doc?(doc.url||(doc.b64?'data:'+(doc.mime||'application/pdf')+';base64,'+doc.b64:null)):null;}
+function showDoc(ref){
+  imgGet(ref).then(function(u){
+    if(!u){toast('הקובץ לא נמצא במכשיר');return;}
+    var pdf=String(u).indexOf('data:application/pdf')===0;
+    openSheet((pdf?'<p class="mut">קובץ PDF שמור. אפשר לפתוח אותו כאן:</p><a class="btn red" href="'+u+'" download="document.pdf">⬇ פתח / הורד PDF</a>':'<img src="'+u+'" alt="מסמך" style="width:100%;border-radius:10px">')+'<div class="row" style="margin-top:10px"><button class="btn ghost grow" data-a="closeSheet">סגור</button></div>');
+  });
+}
+function migrateImgs(){
+  var ch=0,jobs=[];
+  ['license','insurance'].forEach(function(k){var v=D.imgs[k];if(v&&String(v).indexOf('data:')===0){jobs.push(imgPut(v).then(function(r){if(r!==v){D.imgs[k]=r;ch=1;}}));}});
+  D.pols.forEach(function(pl){if(pl.img&&String(pl.img).indexOf('data:')===0){jobs.push(imgPut(pl.img).then(function(r){if(r!==pl.img){pl.img=r;ch=1;}}));}});
+  Promise.all(jobs).then(function(){if(ch)dsave();});
+}
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
 var D=dload();
+setTimeout(function(){try{migrateImgs();}catch(e){}},600);
 function dsave(){try{localStorage.setItem(DKEY,JSON.stringify(D));return true;}catch(e){toast('⚠ אין מספיק מקום לשמירת התמונה');return false;}}
 function telNum(s){return String(s||'').replace(/[^\d+*]/g,'');}
 function curPol(){var p=D.pols.filter(function(x){return x.end;}).sort(function(a,b){return b.end.localeCompare(a.end);});return p[0]||null;}
@@ -1074,7 +1125,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 23.11.2026 כב · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 23.11.2026 כג · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":הסכום הכולל לתשלום עבור כל תקופת הביטוח (פרמיה / סה״כ לתשלום / אגרה כולל), כמספר בלי סימנים, או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
@@ -1107,7 +1158,7 @@ function mergeContacts(list,keep){
 function commitPol(f,imgUrl){
   var p=D.pols.filter(function(x){return x.end===f.end&&((x.insurer||'')===(f.insurer||'')||(f.policyNo&&x.policyNo===f.policyNo));})[0],isNew=!p;
   if(!p){p={id:'p'+Date.now()+Math.random().toString(36).slice(2,5)};D.pols.push(p);}
-  p.insurer=f.insurer;p.type=f.type;p.policyNo=f.policyNo;p.start=f.start;p.end=f.end;p.premium=num(f.premium)||p.premium||null;if(imgUrl)p.img=imgUrl;
+  p.insurer=f.insurer;p.type=f.type;p.policyNo=f.policyNo;p.start=f.start;p.end=f.end;p.premium=num(f.premium)||p.premium||null;if(imgUrl){(function(pp){imgPut(imgUrl).then(function(r){pp.img=r;dsave();});})(p);}
   mergeContacts(f.contacts,true);
   var ci=D.contacts.filter(function(x){return x.id==='c_ins';})[0];if(ci&&!ci.name&&f.insurer)ci.name=f.insurer;
   return {p:p,isNew:isNew};
@@ -1122,7 +1173,7 @@ async function scanIns(files){
       var img=await fileToImg(files[i]);
       if(tk!==scanTok)return;
       stage('טופס '+(i+1)+' / '+total+': שולח לבינה מלאכותית… (עד חצי דקה)');
-      D.imgs.insurance=img.url;
+      imgPut(img.url).then(function(r){D.imgs.insurance=r;dsave();});
       var t=await llmRaw(INS_SYS,'תאריך היום: '+iso(today())+'. החזר את ה-JSON.',img,true);
       if(tk!==scanTok)return;
       var f=insFromJson(parseJson(t));
@@ -1133,7 +1184,7 @@ async function scanIns(files){
       fail.push('טופס '+(i+1)+': '+((e&&e.message)?String(e.message).slice(0,90):'שגיאה'));failedFiles.push(files[i]);
     }
   }
-  if(!dsave()){D.pols.forEach(function(p){delete p.img;});dsave();}
+  if(!dsave()){D.pols.forEach(function(p){if(p.img&&String(p.img).indexOf('data:')===0)delete p.img;});if(D.imgs.insurance&&String(D.imgs.insurance).indexOf('data:')===0)D.imgs.insurance=null;dsave();}
   render();
   var s='<h3>'+(added.length?'✅ נקראו '+added.length+' פוליסות':'⚠ לא נקרא מידע')+'</h3>';
   added.forEach(function(r){var p=r.p;s+='<div class="card compact"><b>'+esc(polYear(p))+(p.insurer?' · '+esc(p.insurer):'')+'</b><div class="mut" style="font-size:12.5px">'+(p.type?esc(p.type)+' · ':'')+'עד '+esc(fmtD(pd(p.end)))+' · '+(p.premium?'₪'+fmtN(p.premium):'פרמיה לא זוהתה')+(r.isNew?'':' · עודכן')+'</div></div>';});
@@ -1250,7 +1301,7 @@ function scanDoc(kind,file){
   fileToImg(file).then(function(img){
     if(tk!==scanTok)throw new Error('cancelled');
     stage('שולח לבינה מלאכותית… (עד חצי דקה)');
-    img0=img;D.imgs[kind==='ins'?'insurance':'license']=img.url;dsave();
+    img0=img;(function(k){imgPut(img.url).then(function(r){D.imgs[k]=r;dsave();});})(kind==='ins'?'insurance':'license');
     return llmRaw(kind==='ins'?INS_SYS:LIC_SYS,'תאריך היום: '+iso(today())+'. החזר את ה-JSON.',img,true);
   }).then(function(t){
     if(tk!==scanTok)throw new Error('cancelled');
@@ -1305,7 +1356,7 @@ function savePol(){
   var p=f.id?D.pols.filter(function(x){return x.id===f.id;})[0]:null;
   if(!p){p={id:'p'+Date.now()};D.pols.push(p);}
   p.insurer=f.insurer;p.type=f.type;p.policyNo=f.policyNo;p.start=f.start;p.end=f.end;p.premium=num(f.premium)||null;
-  mergeContacts(f.contacts);if(f.img)p.img=f.img;
+  mergeContacts(f.contacts);if(f.img){if(String(f.img).indexOf('data:')===0){(function(pp,u){imgPut(u).then(function(r){pp.img=r;dsave();});})(p,f.img);}else p.img=f.img;}
   var ci=D.contacts.filter(function(x){return x.id==='c_ins';})[0];if(ci&&!ci.name&&f.insurer)ci.name=f.insurer;
   dsave();df=null;closeSheet();render();toast('נשמר');
 }
@@ -1358,7 +1409,7 @@ function applyRecord(r){
   if(km!=null&&km>S.odo&&d>=S.odoDate){S.odo=km;S.odoDate=d;}
   var onlyBrk=done.length>0&&done.every(function(x){return x==='brk';});
   S.log.push({id:'i'+Date.now()+Math.random().toString(36).slice(2,5),d:d,km:km,t:(r.title||'טיפול')+(r.vendor?' – '+r.vendor:''),c:onlyBrk?'brakes':'service',cost:numClean(r.total)||null,i:lines.map(function(l){return l.desc;}),src:'import'});
-  return {ok:true,d:d,km:km,title:r.title||'טיפול',cost:numClean(r.total)||null,items:done};
+  return {ok:true,id:S.log[S.log.length-1].id,src:r._src||null,d:d,km:km,title:r.title||'טיפול',cost:numClean(r.total)||null,items:done};
 }
 async function scanSrv(files){
   var total=files.length,recs=[],fail=[],failedFiles=[];
@@ -1376,7 +1427,7 @@ async function scanSrv(files){
         stage('קובץ '+(i+1)+' / '+total+': שולח לבינה מלאכותית… (עד דקה)');
         var t=await llmRaw(SRV_SYS,'תאריך היום: '+iso(today())+'. החזר את ה-JSON.',doc,true);
         if(tk!==scanTok)return;
-        parseRecords(t).forEach(function(r){recs.push(r);});
+        parseRecords(t).forEach(function(r){r._src=srcUrl(doc);recs.push(r);});
       }catch(e){
         if(e&&e.nokey){var rest=files.slice(i);llmMax=4096;needKey(function(){scanSrv(rest);},function(){df=null;openSheet('<h3>הוספה ידנית</h3><p class="mut">אפשר להוסיף רישום בלשונית היסטוריה ← + רישום.</p><div class="row"><button class="btn red grow" data-a="closeSheet">סגור</button></div>');});return;}
         fail.push('קובץ '+(i+1)+': '+((e&&e.message)?String(e.message).slice(0,90):'שגיאה'));failedFiles.push(files[i]);
@@ -1385,7 +1436,7 @@ async function scanSrv(files){
   }finally{llmMax=4096;}
   recs.sort(function(a,b){return String(okDate(a.date)).localeCompare(String(okDate(b.date)));});
   var res=recs.map(applyRecord),ok=res.filter(function(x){return x.ok;}),sk=res.filter(function(x){return x.skip;});
-  if(ok.length){save();window._snap=snap;}
+  if(ok.length){save();window._snap=snap;(function(){var cache={};ok.forEach(function(x){if(!x.src)return;var lg=S.log.filter(function(l){return l.id===x.id;})[0];if(!lg)return;if(!cache[x.src])cache[x.src]=imgPut(x.src);cache[x.src].then(function(ref){lg.img=ref;save();render();});});})();}
   window._failedSrv=failedFiles;
   render();
   var s='<h3>'+(ok.length?'✅ נוספו '+ok.length+' רישומי טיפול':(recs.length?'לא נוספו רישומים חדשים':'⚠ לא נקרא מידע'))+'</h3>';
@@ -1412,6 +1463,7 @@ function openReceipt(file){
     if(tk!==scanTok)throw new Error('cancelled');
     stage('שולח לבינה מלאכותית… (עד חצי דקה)');
     var user='תאריך היום: '+iso(today())+'. החזר את ה-JSON.';
+    window._rcpSrc=img.url;
     return llmRaw(RSYS,user,img,true);
   }).then(function(t){
     if(tk!==scanTok)throw new Error('cancelled');
@@ -1420,7 +1472,7 @@ function openReceipt(file){
     var ok={};DEFS.forEach(function(d){ok[d.id]=1;});
     var lines=(j.lines||[]).filter(function(l){return l&&l.desc;}).map(function(l){var it=ok[l.item]?l.item:'other';return {on:it!=='other',item:it,desc:String(l.desc)};});
     var d=/^\d{4}-\d{2}-\d{2}$/.test(j.date||'')?j.date:iso(today());
-    rcp={date:d,km:j.km!=null&&!isNaN(Number(j.km))?Number(j.km):'',vendor:j.vendor||'',total:j.total!=null&&!isNaN(Number(j.total))?Number(j.total):'',lines:lines,ai:true};
+    rcp={date:d,km:j.km!=null&&!isNaN(Number(j.km))?Number(j.km):'',vendor:j.vendor||'',total:j.total!=null&&!isNaN(Number(j.total))?Number(j.total):'',lines:lines,ai:true,src:window._rcpSrc||null};
     rcpSheet('בדוק את מה שזוהה ותקן לפני שמירה. רק שורות מסומנות "עדכן" ישפיעו על המעקב.');
   }).catch(function(e){
     if(tk!==scanTok||(e&&e.message==='cancelled'))return;
@@ -1460,6 +1512,7 @@ function applyReceipt(){
   if(km!=null&&km>S.odo&&r.date>=S.odoDate){S.odo=km;S.odoDate=r.date;}
   var cats=done.indexOf('brk')>=0&&done.length===1?'brakes':(done.length?'service':'other');
   S.log.push({id:'u'+Date.now(),d:r.date,km:km!=null?km:null,t:'חשבונית'+(r.vendor?' – '+r.vendor:''),c:cats,cost:num(r.total)||null,i:r.lines.filter(function(l){return l.desc;}).map(function(l){return l.desc;})});
+  if(r.src){(function(lg,u){imgPut(u).then(function(ref){lg.img=ref;save();render();});})(S.log[S.log.length-1],r.src);}
   save();
   var cs=allCalc(),sum='';
   done.forEach(function(id){var c=cs.filter(function(x){return x.it.id===id;})[0];sum+='<div class="card compact"><b>'+c.it.ico+' '+esc(c.it.name)+'</b><div class="meta" style="margin-top:4px"><span>עודכן: '+esc(fmtD(pd(c.it.lastDate)))+' · '+(c.it.est?'~':'')+fmtN(c.it.lastKm)+' ק״מ</span></div><div class="meta"><span>המועד הבא: '+esc(c.dueDate?fmtD(c.dueDate):'-')+'</span><span>'+(c.dueKm!=null?esc('או ב-'+fmtN(c.dueKm)+' ק״מ'):'')+'</span></div></div>';});
@@ -1595,9 +1648,9 @@ function askDel(k){
 }
 function doDel(){
   var k=window._delK||'',i=k.indexOf(':'),kind=k.slice(0,i),id=k.slice(i+1);
-  if(kind==='log'){S.log=S.log.filter(function(x){return x.id!==id;});save();}
+  if(kind==='log'){S.log.filter(function(x){return x.id===id;}).forEach(function(x){imgDel(x.img);});S.log=S.log.filter(function(x){return x.id!==id;});save();}
   else if(kind==='hist'){S.hide=S.hide||[];if(S.hide.indexOf(id)<0)S.hide.push(id);save();}
-  else if(kind==='pol'){D.pols=D.pols.filter(function(x){return x.id!==id;});dsave();}
+  else if(kind==='pol'){D.pols.filter(function(x){return x.id===id;}).forEach(function(x){imgDel(x.img);});D.pols=D.pols.filter(function(x){return x.id!==id;});dsave();}
   else if(kind==='con'){D.contacts=D.contacts.filter(function(x){return x.id!==id;});dsave();}
   window._delK=null;closeSheet();render();toast('נמחק');
 }
@@ -1654,7 +1707,7 @@ document.addEventListener('click',function(e){
   else if(a==='cadd')conSheet(null);
   else if(a==='csave')saveCon();
   else if(a==='cdel'){D.contacts=D.contacts.filter(function(x){return x.id!==df.id;});dsave();df=null;closeSheet();render();}
-  else if(a==='dview'){var dk=b.getAttribute('data-k'),im=dk.indexOf('p:')===0?(D.pols.filter(function(x){return x.id===dk.slice(2);})[0]||{}).img:D.imgs[dk];if(im)openSheet('<img src="'+im+'" alt="מסמך" style="width:100%;border-radius:10px"><div class="row" style="margin-top:10px"><button class="btn ghost grow" data-a="closeSheet">סגור</button></div>');}
+  else if(a==='dview'){var dk=b.getAttribute('data-k'),im=dk.indexOf('p:')===0?(D.pols.filter(function(x){return x.id===dk.slice(2);})[0]||{}).img:(dk.indexOf('l:')===0?(S.log.filter(function(x){return x.id===dk.slice(2);})[0]||{}).img:D.imgs[dk]);if(im)showDoc(im);else toast('אין קובץ שמור');}
   else if(a==='bkmake')backupSheet();
   else if(a==='bkrest')restoreSheet();
   else if(a==='tconn')testConn();
