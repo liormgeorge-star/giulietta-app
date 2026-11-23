@@ -457,11 +457,6 @@ function viewDash(){
    '</div></div>'+
    '<div class="row between" style="margin-top:8px"><span class="mut" style="font-size:12px">מד הקילומטרים עודכן ב-'+fmtD(pd(S.odoDate))+'</span><button class="btn" data-a="odo">עדכון ק״מ</button></div></div>';
 
-  h+=nextService();
-  h+=insBrief();
-  var ec=D.contacts.filter(function(c){return c.phone;});
-  h+='<div class="card"><div class="row between"><b>🆘 אנשי קשר לחירום</b><button class="btn" data-tab="docs">עריכה</button></div><div class="acts" style="margin-top:8px">'+(ec.length?ec.map(function(c){return '<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.role)+'</a>';}).join(''):'<span class="mut" style="font-size:12.5px">עוד לא הוזנו מספרים</span>')+'</div></div>';
-  h+='<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn" data-a="sfiles">📂 קובצי טיפולים</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';
   h+='<div class="card test '+(urgent?'':'calm')+(urgent&&!S.test.paid?' pulse':'')+'">'+
    '<div class="row between"><div><div class="mut" style="font-size:12.5px">טסט שנתי · עד '+fmtD(pd(S.test.due))+'</div>'+
    (testDays>=0?'<div class="big">'+testDays+'<small>'+(testDays===1?'יום':'ימים')+'</small></div>':'<div class="big" style="color:var(--over)">'+(-testDays)+'<small>ימי איחור</small></div>')+'</div>'+
@@ -469,6 +464,7 @@ function viewDash(){
    '<span class="chip">'+(testDays<=7&&testDays>=0?'⏰ לקבוע תור השבוע':testDays<0?'⚠ יש לבצע מיד':'מצב: מתוכנן')+'</span></div></div>'+
    '<div class="acts"><button class="btn red" data-a="testdone">הטסט בוצע</button><button class="btn ghost" data-tab="set">שינוי מועד</button></div></div>';
 
+  h+=insBrief();
   if(nx){
     var daysFrac=nx.dT!=null?clamp(nx.dT/((nx.it.intMonths||12)*30.4),0,1):0;
     var kmFrac=nx.kmLeft!=null&&nx.it.intKm?clamp(nx.kmLeft/nx.it.intKm,0,1):0;
@@ -480,6 +476,9 @@ function viewDash(){
      (nx.bind?'<p class="mut" style="text-align:center;font-size:12px;margin:8px 0 0">'+(nx.bind==='time'?'התאריך קובע (לפי קצב נסיעה של כ-'+fmtN(S.rate*365)+' ק״מ בשנה)':'הקילומטראז׳ קובע')+'</p>':'')+
      '<div class="acts"><button class="btn red" data-a="done" data-id="'+nx.it.id+'">סמן כבוצע</button></div></div>';
   }
+  h+=nextService();
+  var ec=D.contacts.filter(function(c){return c.phone;});
+  h+='<div class="card"><div class="row between"><b>🆘 אנשי קשר לחירום</b><button class="btn" data-tab="docs">עריכה</button></div><div class="acts" style="margin-top:8px">'+(ec.length?ec.map(function(c){return '<a class="btn red" href="tel:'+esc(telNum(c.phone))+'">📞 '+esc(c.role)+'</a>';}).join(''):'<span class="mut" style="font-size:12.5px">עוד לא הוזנו מספרים</span>')+'</div></div>';
   h+='<h2>דורש תשומת לב <span class="n">'+attn.length+'</span></h2>';
   if(!attn.length)h+='<div class="card mut">הכול תקין 👌</div>';
   attn.forEach(function(c){h+=itemCard(c,true);});
@@ -1054,8 +1053,9 @@ function insDash(ps){
   });
   return o+'</table></div>';
 }
+function rcpCard(){return '<h2>חשבוניות וקובצי טיפולים</h2>'+'<div class="card"><div class="row between"><div><b>עדכון חשבונית</b><div class="mut" style="font-size:12.5px">צלם קבלה או חשבונית והמעקב יתעדכן לבד</div></div></div><div class="acts"><button class="btn red" data-a="rcam">📷 צלם חשבונית</button><button class="btn" data-a="rgal">🖼️ מהגלריה</button><button class="btn" data-a="sfiles">📂 קובצי טיפולים</button><button class="btn ghost" data-a="rman">✍️ ידני</button></div></div>';}
 function viewDocs(){
-  var cp=curPol(),h='<h2>ביטוח</h2>';
+  var cp=curPol(),h=rcpCard()+'<h2>ביטוח</h2>';
   if(cp){
     var n=insDays(cp);
     h+='<div class="card"><div class="row between"><div><b>'+esc(cp.insurer||'פוליסה')+(cp.type?' · '+esc(cp.type):'')+'</b><div class="mut" style="font-size:12.5px">'+(cp.start?esc(fmtD(pd(cp.start)))+' – ':'')+'עד '+esc(fmtD(pd(cp.end)))+(cp.policyNo?' · מס׳ '+esc(cp.policyNo):'')+'</div></div><div style="text-align:left"><div class="big" style="font-size:30px;'+(n<0?'color:var(--over)':'')+'">'+(n<0?(-n):n)+'<small>'+(n<0?'ימי איחור':'ימים')+'</small></div></div></div>'+(cp.premium?'<p style="margin:8px 0 0">פרמיה: <b>₪'+fmtN(cp.premium)+'</b></p>':'')+'</div>';
@@ -1074,7 +1074,7 @@ function viewDocs(){
   h+='<h2>טופס רישוי</h2><div class="card">'+((L.plate||L.expiry)?'<div class="row between"><div><b>'+(L.plate?esc(L.plate):'רישיון רכב')+'</b><div class="mut" style="font-size:12.5px">'+(L.model?esc(L.model)+' · ':'')+(L.year?esc(L.year)+' · ':'')+(L.vin?'שלדה '+esc(L.vin):'')+'</div></div><div style="text-align:left"><div class="mut" style="font-size:12px">תוקף עד</div><b>'+(L.expiry?esc(fmtD(pd(L.expiry))):'-')+'</b></div></div>':'<span class="mut">עוד לא נוסף טופס רישוי.</span>')+'</div>';
   h+='<div class="acts"><button class="btn red" data-a="dscan" data-k="lic">📷 צלם רישוי</button><button class="btn" data-a="dgal" data-k="lic">🖼️ גלריה</button><button class="btn ghost" data-a="ledit">✍️ ידני</button>'+(D.imgs.license?'<button class="btn ghost" data-a="dview" data-k="license">👁 הצג</button>':'')+'</div>';
   h+='<h2>אנשי קשר לחירום</h2>'+D.contacts.map(contactCard).join('')+'<div class="acts"><button class="btn" data-a="cadd">+ איש קשר</button></div>';
-  h+='<p class="foot">גרסה: 22.11.2026 כא · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
+  h+='<p class="foot">גרסה: 23.11.2026 כב · התמונות והפרטים נשמרים רק במכשיר שלך. קריאה אוטומטית של טפסים דורשת חיבור לבינה מלאכותית (⚙️), ובלי זה אפשר למלא ידנית.</p>';
   return h;
 }
 var INS_SYS='אתה מחלץ נתונים מטופס או פוליסת ביטוח רכב בעברית (ישראל). החזר JSON בלבד, בלי טקסט נוסף ובלי גדרות קוד:\n{"insurer":"שם חברת הביטוח","type":"חובה / מקיף / צד ג׳ / אחר","policyNo":"","start":"YYYY-MM-DD","end":"YYYY-MM-DD","premium":הסכום הכולל לתשלום עבור כל תקופת הביטוח (פרמיה / סה״כ לתשלום / אגרה כולל), כמספר בלי סימנים, או null,"contacts":[{"role":"tow|glass|insurer|garage|other","name":"שם","phone":"הטלפון כפי שמופיע"}]}\nכללים: תאריכים בישראל הם DD/MM/YYYY. חפש "תקופת הביטוח" ו"תאריך סיום". contacts = כל מספרי הטלפון שבטופס: גרר ושירותי דרך (tow), שמשות (glass), מוקד חברת הביטוח (insurer), מוסכים מורשים כמו תלתן או פיאוט (garage), אחר (other). אל תמציא מספרים ואל תנחש; שדה שלא מופיע = null או השמט.';
