@@ -1,0 +1,8 @@
+{
+  "appId": "com.liorg.pcremote",
+  "appName": "שלט מחשב",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0f1117"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "pc-remote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Turn a Windows PC on and off from the phone",
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0"
+  }
+}

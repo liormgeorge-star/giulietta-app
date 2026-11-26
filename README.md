@@ -10,3 +10,6 @@ The default icon is an original design (`icons/`). To use your own icon, add a s
 ## Updating without losing data
 Builds are signed with the fixed key in `signing/debug.keystore`, so a new APK installs over the old one
 and keeps your data (no uninstall needed). Use Settings > Backup before the first switch to this key.
+
+## PC Remote
+A separate app in `pc-remote/` turns a Windows PC on and off from the phone. See `pc-remote/README.md`.

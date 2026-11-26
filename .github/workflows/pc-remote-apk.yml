@@ -1,0 +1,75 @@
+name: Build PC Remote APK
+
+on:
+  push:
+    paths:
+      - 'pc-remote/**'
+      - '.github/workflows/pc-remote-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pc-remote
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+          SRC=android/app/src/main/java/com/liorg/pcremote
+          cp android-src/MainActivity.java android-src/PcRemotePlugin.java "$SRC/"
+          M=android/app/src/main/AndroidManifest.xml
+          # The agent on the PC speaks plain HTTP on the home network.
+          sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$M"
+          grep -n "usesCleartextTraffic\|INTERNET" "$M"
+          sed -i 's#<color name="ic_launcher_background">.*</color>#<color name="ic_launcher_background">\#11141C</color>#' \
+            android/app/src/main/res/values/ic_launcher_background.xml || true
+          pip install --quiet --break-system-packages pillow 2>/dev/null || pip install --quiet pillow
+          python3 ../scripts/custom_icon.py icon.png android/app/src/main/res
+
+      - name: Use the repo's fixed signing key (updates install over the old app)
+        run: |
+          mkdir -p ~/.android
+          cp ../signing/debug.keystore ~/.android/debug.keystore
+          sed 's#/../signing/debug.keystore#/../../signing/debug.keystore#' ../signing/signing.gradle >> android/app/build.gradle
+
+      - name: Build debug APK
+        working-directory: pc-remote/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc-remote-apk
+          path: pc-remote/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk pc-remote.apk
+          zip -j pc-remote-windows.zip windows/*
+          gh release delete pc-remote-latest --yes --cleanup-tag || true
+          gh release create pc-remote-latest pc-remote.apk pc-remote-windows.zip \
+            --title "PC Remote (latest)" \
+            --notes "pc-remote.apk: install on the phone. pc-remote-windows.zip: unzip on the PC and run install.cmd. Built from ${GITHUB_SHA::7} (${GITHUB_REF_NAME})." \
+            --target "$GITHUB_SHA"
