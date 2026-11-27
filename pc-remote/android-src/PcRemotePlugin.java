@@ -92,7 +92,7 @@ public class PcRemotePlugin extends Plugin {
         final String method = call.getString("method", "GET");
         final String token = call.getString("token", "");
         final int timeout = call.getInt("timeout", 4000);
-        final String body = call.getString("body", "");
+        final String reqBody = call.getString("body", "");
         new Thread(() -> {
             HttpURLConnection conn = null;
             try {
@@ -103,7 +103,7 @@ public class PcRemotePlugin extends Plugin {
                 conn.setUseCaches(false);
                 if (token != null && !token.isEmpty()) conn.setRequestProperty("X-Token", token);
                 if ("POST".equals(method)) {
-                    byte[] out = body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8);
+                    byte[] out = reqBody == null ? new byte[0] : reqBody.getBytes(StandardCharsets.UTF_8);
                     conn.setDoOutput(true);
                     if (out.length > 0) conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                     conn.setFixedLengthStreamingMode(out.length);
