@@ -292,6 +292,20 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   </div>
 </div>
 
+<!-- Sunshine login -->
+<div class="overlay" id="creds-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cr-title">
+    <h2 id="cr-title">שם משתמש וסיסמה ל-Sunshine</h2>
+    <p>אלה הפרטים לכניסה לממשק של Sunshine במחשב (https://localhost:47990). הם נשלחים למחשב מוצפנים, והאפליקציה ממשיכה לעבוד איתם.</p>
+    <div class="field"><label for="cr-user">שם משתמש</label><input class="text" id="cr-user" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="lior"></div>
+    <div class="field"><label for="cr-pass">סיסמה (לפחות 8 תווים, בלי רווחים)</label><input class="text" id="cr-pass" type="password" autocomplete="new-password"></div>
+    <div class="field"><label for="cr-pass2">שוב את הסיסמה</label><input class="text" id="cr-pass2" type="password" autocomplete="new-password"></div>
+    <div class="msg" id="cr-msg" role="status"></div>
+    <button class="btn primary block" id="cr-save">שמירה במחשב</button>
+    <button class="btn block" id="cr-close">סגירה</button>
+  </div>
+</div>
+
 <!-- settings -->
 <div class="overlay" id="settings" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="s-title">
@@ -300,6 +314,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     <button class="btn block" id="s-skin">עיצוב</button>
     <button class="btn block" id="s-remote">גישה מחוץ לבית</button>
     <button class="btn block" id="s-stream">הגדרת סטרימינג</button>
+    <button class="btn block" id="s-creds">שם משתמש וסיסמה ל-Sunshine</button>
     <button class="btn block" id="s-diag">יומן מהמחשב</button>
     <button class="btn block" id="s-edit">שינוי פרטי חיבור</button>
     <button class="btn block danger" id="s-forget">ניתוק מהמחשב</button>
@@ -316,7 +331,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   'use strict';
   var KEY = 'pcremote.config.v1';          // unchanged since v1, so saved details survive updates
   var SKIN_KEY = 'pcremote.skin';
-  var AGENT_TARGET = 4;                     // PC agent version this app expects (windows/version.txt)
+  var AGENT_TARGET = 5;                     // PC agent version this app expects (windows/version.txt)
   var BUILD = window.PCR_BUILD || {};
   var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
   var TS_PKG = 'com.tailscale.ipn', ML_PKG = 'com.limelight';
@@ -806,6 +821,26 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   $('dg-retry').onclick = function () { retryInstall(); closeSheet('diag-sheet'); };
   $('dg-close').onclick = function () { closeSheet('diag-sheet'); };
   $('s-diag').onclick = function () { closeSheet('settings'); openDiag(); };
+
+  // ================= Sunshine login =================
+  $('s-creds').onclick = function () { closeSheet('settings'); $('cr-msg').textContent = ''; $('cr-pass').value = ''; $('cr-pass2').value = ''; openSheet('creds-sheet'); };
+  $('cr-close').onclick = function () { closeSheet('creds-sheet'); };
+  $('cr-save').onclick = function () {
+    var u = $('cr-user').value.trim(), pw = $('cr-pass').value, msg = $('cr-msg');
+    function err(t) { msg.textContent = t; msg.className = 'msg err'; }
+    if (!/^[A-Za-z0-9._@-]{1,32}$/.test(u)) return err('שם משתמש: אותיות באנגלית, ספרות ו-. _ - @ בלבד.');
+    if (pw.length < 8 || /[\s"]/.test(pw)) return err('סיסמה: לפחות 8 תווים, בלי רווחים ובלי מרכאות.');
+    if (pw !== $('cr-pass2').value) return err('הסיסמאות לא זהות.');
+    if (power !== 'on') return err('המחשב צריך להיות דלוק.');
+    if (agentV < 5) return err('התוכנה במחשב מתעדכנת. נסו שוב בעוד דקה.');
+    var btn = this; btn.disabled = true; msg.textContent = 'שומר…'; msg.className = 'msg';
+    holdOffline = Date.now() + 45000;
+    authed('/stream/creds', 'POST', { user: u, pass: pw }, 45000).then(function (r) {
+      holdOffline = 0; var b = r.body || {};
+      if (b.ok) { msg.textContent = 'נשמר. במחשב נכנסים עם ' + u + ' והסיסמה החדשה.'; msg.className = 'msg ok'; $('cr-pass').value = ''; $('cr-pass2').value = ''; }
+      else err(b.error === 'bad-user' ? 'שם המשתמש לא תקין.' : b.error === 'bad-pass' ? 'הסיסמה לא תקינה.' : 'השינוי נכשל. אפשר לראות את היומן מהמחשב.');
+    }).catch(function () { holdOffline = 0; err('המחשב לא ענה.'); }).then(function () { btn.disabled = false; });
+  };
 
   // ================= settings =================
   $('gear').onclick = function () {

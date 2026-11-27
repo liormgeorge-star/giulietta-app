@@ -272,3 +272,24 @@ function Unprotect-Body([byte[]]$encKey, [string]$bodyText) {
         return ([Text.Encoding]::UTF8.GetString($plain) | ConvertFrom-Json)
     } finally { $aes.Dispose() }
 }
+
+function Set-SunshineCreds([string]$user, [string]$pass) {
+    # Sets the Sunshine Web UI login chosen by the user and keeps a copy for the agent,
+    # so pairing from the app keeps working.
+    $exe = Find-Sunshine
+    if (-not $exe) { throw 'not-installed' }
+    Stop-Service -Name 'SunshineService' -Force -ErrorAction SilentlyContinue
+    $p = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -Wait -PassThru -WindowStyle Hidden `
+        -ArgumentList ('--creds "' + $user + '" "' + $pass + '"')
+    Start-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
+    if ($p.ExitCode -ne 0) { throw "sunshine --creds exited with $($p.ExitCode)" }
+    $cfg = Read-Config
+    Set-ConfigValue $cfg 'sunUser' $user
+    Set-ConfigValue $cfg 'sunPass' $pass
+    Save-Config $cfg
+    for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Seconds 1
+        try { Invoke-SunshineApi GET '/api/clients/list' -timeoutSec 3 | Out-Null; return $true } catch { }
+    }
+    return $false
+}

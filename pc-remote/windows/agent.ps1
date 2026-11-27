@@ -249,7 +249,7 @@ function Invoke-Update([string]$sha) {
 
 # ---------- Requests ----------
 
-$PostOnly = @('/shutdown', '/restart', '/sleep', '/stream/install', '/stream/pair', '/update', '/tailscale/setup')
+$PostOnly = @('/shutdown', '/restart', '/sleep', '/stream/install', '/stream/pair', '/stream/creds', '/update', '/tailscale/setup')
 
 function Invoke-Request($ctx) {
     $req = $ctx.Request
@@ -300,6 +300,15 @@ function Invoke-Request($ctx) {
         }
         '/stream/install' { Start-SunshineInstall -Force; Send-Json $ctx 200 @{ ok = $true } $nonce }
         '/diag' { Send-Json $ctx 200 (Get-Diag) $nonce }
+        '/stream/creds' {
+            $u = [string]$data.user; $pw = [string]$data.pass
+            # No quotes or spaces (they are passed on a command line); sensible lengths.
+            if ($u -notmatch '^[A-Za-z0-9._@-]{1,32}$') { Send-Json $ctx 200 @{ ok = $false; error = 'bad-user' } $nonce; break }
+            if ($pw.Length -lt 8 -or $pw.Length -gt 128 -or $pw -match '[\s"]') { Send-Json $ctx 200 @{ ok = $false; error = 'bad-pass' } $nonce; break }
+            Log "Sunshine login changed from $ip"
+            try { $okApi = Set-SunshineCreds $u $pw; Send-Json $ctx 200 @{ ok = $true; verified = [bool]$okApi } $nonce }
+            catch { Log "Sunshine login change failed: $($_.Exception.Message)"; Send-Json $ctx 200 @{ ok = $false; error = 'failed' } $nonce }
+        }
         '/stream/pair' {
             Log "Pairing requested from $ip"
             Send-Json $ctx 200 (Invoke-Pair ([string]$data.pin)) $nonce
