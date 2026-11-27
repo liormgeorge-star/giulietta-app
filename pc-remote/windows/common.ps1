@@ -351,7 +351,19 @@ function Install-SunshinePackage([switch]$Visible) {
     $file = Get-SunshineInstaller $dl
     # Sunshine's installers are signed by its maintainer (David Lane, LizardByte).
     Assert-Signed $file 'David Lane|LizardByte' -AllowUnsigned
-    if ($file -match '(?i)\.msi$') { Invoke-Msi $file '' 'sunshine-install.log' -Visible:$Visible }
+    Stop-SunshineForUpdate
+    if ($file -match '(?i)\.msi$') {
+        try { Invoke-Msi $file '' 'sunshine-install.log' -Visible:$Visible }
+        catch {
+            $first = $_.Exception.Message
+            Log "Sunshine install failed: $first. $(Get-MsiFailureHint (Join-Path $dl 'sunshine-install.log'))"
+            # An older Sunshine from the .exe (NSIS) installer blocks the MSI: remove it and try once more.
+            if (Remove-OldSunshineExeInstall) {
+                Stop-SunshineForUpdate
+                Invoke-Msi $file '' 'sunshine-install.log' -Visible:$Visible
+            } else { throw "$first $(Get-MsiFailureHint (Join-Path $dl 'sunshine-install.log'))" }
+        }
+    }
     else {
         $p = Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
         if ($p.ExitCode -ne 0) { throw "Sunshine installer failed (code $($p.ExitCode))." }
@@ -372,4 +384,46 @@ function Initialize-SunshineService([string]$exe) {
         if (Test-Path $bat) { Log "Running Sunshine's $script"; Start-Process cmd.exe -ArgumentList "/c `"$bat`"" -Wait -WindowStyle Hidden }
     }
     if (-not (Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue)) { throw 'The Sunshine service was not created by the installer.' }
+}
+
+function Stop-SunshineForUpdate {
+    # Running Sunshine locks its files; an update over it fails with msiexec 1603.
+    Stop-Service -Name 'SunshineService' -Force -ErrorAction SilentlyContinue
+    Get-Process -Name 'sunshine', 'sunshinesvc' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
+
+function Remove-OldSunshineExeInstall {
+    # Returns $true if an NSIS (.exe) Sunshine install was found and removed.
+    foreach ($key in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                     'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') {
+        $e = Get-ItemProperty $key -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -like 'Sunshine*' -and $_.UninstallString -and $_.UninstallString -notmatch '(?i)msiexec' } | Select-Object -First 1
+        if ($e) {
+            $exe = if ($e.UninstallString -match '^\s*"([^"]+)"') { $Matches[1] } else { ($e.UninstallString -split '\s+/')[0].Trim() }
+            if (Test-Path $exe) {
+                Log "Removing the older Sunshine (.exe installer) before installing the MSI"
+                Stop-SunshineForUpdate
+                Start-Process -FilePath $exe -ArgumentList '/S' -Wait | Out-Null
+                Start-Sleep -Seconds 5
+                return $true
+            }
+        }
+    }
+    return $false
+}
+
+function Get-MsiFailureHint([string]$logPath) {
+    # The lines just before "Return value 3" in a verbose MSI log usually name the failing step.
+    try {
+        $lines = @(Get-Content $logPath -Encoding Unicode -ErrorAction Stop)
+        if ($lines.Count -lt 5) { $lines = @(Get-Content $logPath -ErrorAction Stop) }
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match 'Return value 3') {
+                $from = [math]::Max(0, $i - 6)
+                return 'MSI: ' + ((($lines[$from..$i] | ForEach-Object { $_.Trim() }) -join ' | ') -replace '\s+', ' ')
+            }
+        }
+    } catch { }
+    return ''
 }

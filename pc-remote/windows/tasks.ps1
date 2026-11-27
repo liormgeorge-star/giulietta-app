@@ -16,20 +16,12 @@ function Install-Sunshine {
         $dl = Join-Path $Dir 'dl'
         New-Item -ItemType Directory -Path $dl -Force | Out-Null
         Log "Getting Sunshine (installed: '$(Get-SunshineVersion)', minimum $SunshineMinVersion)"
-        $file = Get-SunshineInstaller $dl
-        # Sunshine's installers are signed by its maintainer (David Lane, LizardByte).
-        Assert-Signed $file 'David Lane|LizardByte' -AllowUnsigned
-
         Write-StreamState 'installing' 'install'
-        if ($file -match '(?i)\.msi$') { Invoke-Msi $file '' 'sunshine-install.log' }
-        else {
-            $p = Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "Sunshine installer failed (code $($p.ExitCode))." }
+        try { $exe = Install-SunshinePackage }
+        catch {
+            if ($exe) { Log "Could not update Sunshine, keeping $(Get-SunshineVersion): $($_.Exception.Message)" }
+            else { throw }
         }
-        Remove-Item $file -Force -ErrorAction SilentlyContinue
-        for ($i = 0; $i -lt 20 -and -not (Find-Sunshine); $i++) { Start-Sleep -Seconds 1 }
-        $exe = Find-Sunshine
-        if (-not $exe) { throw 'Sunshine was installed but sunshine.exe was not found.' }
         if (-not (Test-SunshineCurrent)) { Log "Warning: Sunshine $(Get-SunshineVersion) is still below $SunshineMinVersion" }
     }
 

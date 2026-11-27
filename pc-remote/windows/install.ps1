@@ -131,8 +131,16 @@ try {
     } else {
         if ($sunExe) { Write-Host "   ..  Sunshine $(Get-SunshineVersion) is out of date, updating" } else { Write-Host '   ..  Downloading Sunshine (about 30 MB)...' }
         Write-StreamState 'installing' 'download'
-        $sunExe = Install-SunshinePackage -Visible
-        Ok "Sunshine $(Get-SunshineVersion) installed"
+        try {
+            $sunExe = Install-SunshinePackage -Visible
+            Ok "Sunshine $(Get-SunshineVersion) installed"
+        } catch {
+            if ($sunExe) {
+                # Keep the installed version (it already has the critical May 2026 fix) and carry on.
+                Warn "Could not update Sunshine: $($_.Exception.Message)"
+                Warn "Keeping the installed Sunshine $(Get-SunshineVersion). The app will try the update again later."
+            } else { throw }
+        }
     }
     Initialize-SunshineService $sunExe
     if (Set-SunshineConf $SunshineHardening) { Ok 'Security settings applied (web page only on this PC, encryption on, UPnP off)' }

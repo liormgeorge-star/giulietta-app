@@ -135,7 +135,10 @@ function Start-SunshineInstall([switch]$Force) {
     if ($s -and $s.state -eq 'installing' -and ((Get-Date) - [datetime]$s.at).TotalMinutes -lt 20) { return }
     if (-not $Force) {
         $c = Read-Config
-        if ($c.sunTriedAt -and ((Get-Date) - [datetime]$c.sunTriedAt).TotalMinutes -lt 30) { return }
+        # Missing Sunshine: retry every 30 minutes. Installed but outdated: at most once a day,
+        # because an update attempt stops Sunshine for a moment.
+        $gap = if (Find-Sunshine) { 24 * 60 } else { 30 }
+        if ($c.sunTriedAt -and ((Get-Date) - [datetime]$c.sunTriedAt).TotalMinutes -lt $gap) { return }
         Set-ConfigValue $c 'sunTriedAt' (Get-Date).ToString('o'); Save-Config $c
     }
     Write-StreamState 'installing' 'queued'
