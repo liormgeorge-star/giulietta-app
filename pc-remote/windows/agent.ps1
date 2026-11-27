@@ -70,9 +70,10 @@ function Test-Locked([string]$ip) {
 function Add-Failure([string]$ip) {
     $now = Get-Date
     $f = $script:Fails[$ip]
-    if (-not $f -or $f.first -lt $now.AddMinutes(-10)) { $f = @{ count = 0; first = $now; until = [datetime]::MinValue } }
-    $f.count++
-    if ($f.count -ge 8) { $f.until = $now.AddMinutes(15); Log "Locked out $ip for 15 minutes after repeated bad requests" }
+    # Note: not "count" - on a hashtable that name is the built-in read-only Count property.
+    if (-not $f -or $f.first -lt $now.AddMinutes(-10)) { $f = @{ n = 0; first = $now; until = [datetime]::MinValue } }
+    $f.n = $f.n + 1
+    if ($f.n -ge 8) { $f.until = $now.AddMinutes(15); Log "Locked out $ip for 15 minutes after repeated bad requests" }
     $script:Fails[$ip] = $f
 }
 
@@ -247,6 +248,24 @@ function Invoke-Update([string]$sha) {
     }
 }
 
+# Sleep through powrprof directly and write the outcome to the log. If Windows refuses, the log also
+# gets "powercfg /requests" (which program is keeping the PC awake) so the app can show why.
+$SleepScript = @'
+Start-Sleep -Seconds 3
+$log = '__LOG__'
+function L($m) { Add-Content -Path $log -Value ('{0:yyyy-MM-dd HH:mm:ss}  {1}' -f (Get-Date), $m) }
+try {
+    Add-Type -Namespace PcrPower -Name Native -MemberDefinition '[DllImport("powrprof.dll", SetLastError = true)] public static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);'
+    $t0 = Get-Date
+    $ok = [PcrPower.Native]::SetSuspendState($false, $true, $false)
+    $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    $slept = ((Get-Date) - $t0).TotalSeconds
+    if ($ok -and $slept -gt 10) { L "Woke up after sleeping $([int]$slept) seconds" }
+    elseif ($ok) { L "Sleep returned after $([int]$slept) seconds without sleeping. Power requests: $((powercfg /requests 2>&1) -join ' | ')" }
+    else { L "Sleep refused by Windows (error $err). Power requests: $((powercfg /requests 2>&1) -join ' | ')" }
+} catch { L "Sleep failed: $($_.Exception.Message)" }
+'@
+
 # ---------- Requests ----------
 
 $PostOnly = @('/shutdown', '/restart', '/sleep', '/stream/install', '/stream/pair', '/stream/creds', '/update', '/tailscale/setup')
@@ -286,17 +305,17 @@ function Invoke-Request($ctx) {
         '/shutdown' {
             Log "Shutdown requested from $ip"
             Send-Json $ctx 200 @{ ok = $true } $nonce
-            Start-Hidden 'Start-Sleep -Seconds 3; shutdown.exe /s /t 2'
+            Start-Hidden "Start-Sleep -Seconds 3; `$o = shutdown.exe /s /t 2 2>&1; if (`$LASTEXITCODE -ne 0) { `$m = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') + '  Shutdown failed (code ' + `$LASTEXITCODE + '): ' + (`$o -join ' '); Add-Content -Path '$LogFile' -Value `$m }"
         }
         '/restart' {
             Log "Restart requested from $ip"
             Send-Json $ctx 200 @{ ok = $true } $nonce
-            Start-Hidden 'Start-Sleep -Seconds 3; shutdown.exe /r /t 2'
+            Start-Hidden "Start-Sleep -Seconds 3; `$o = shutdown.exe /r /t 2 2>&1; if (`$LASTEXITCODE -ne 0) { `$m = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') + '  Restart failed (code ' + `$LASTEXITCODE + '): ' + (`$o -join ' '); Add-Content -Path '$LogFile' -Value `$m }"
         }
         '/sleep' {
             Log "Sleep requested from $ip"
             Send-Json $ctx 200 @{ ok = $true } $nonce
-            Start-Hidden "Start-Sleep -Seconds 3; Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend', `$false, `$false)"
+            Start-Hidden ($SleepScript -replace '__LOG__', $LogFile)
         }
         '/stream/install' { Start-SunshineInstall -Force; Send-Json $ctx 200 @{ ok = $true } $nonce }
         '/diag' { Send-Json $ctx 200 (Get-Diag) $nonce }

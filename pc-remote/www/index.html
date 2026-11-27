@@ -331,7 +331,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   'use strict';
   var KEY = 'pcremote.config.v1';          // unchanged since v1, so saved details survive updates
   var SKIN_KEY = 'pcremote.skin';
-  var AGENT_TARGET = 6;                     // PC agent version this app expects (windows/version.txt)
+  var AGENT_TARGET = 7;                     // PC agent version this app expects (windows/version.txt)
   var BUILD = window.PCR_BUILD || {};
   var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
   var TS_PKG = 'com.tailscale.ipn', ML_PKG = 'com.limelight';
@@ -698,11 +698,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     }[kind];
     confirmBox(t[0], t[1], t[2], kind !== 'sleep').then(function (yes) {
       if (!yes) return;
-      authed('/' + kind, 'POST', null, 5000).then(function (r) {
+      authed('/' + kind, 'POST', null, 8000).then(function (r) {
         if (r.status === 401) { toast('המחשב לא מזהה את קוד הצימוד.'); return openSetup(true); }
-        if (r.status !== 200) throw new Error();
+        if (r.status === 429) { toast('המחשב חוסם את הטלפון ל-15 דקות אחרי ניסיונות שגויים.'); return; }
+        if (r.status !== 200) throw new Error('http-' + r.status);
         pending = { kind: kind, started: Date.now(), until: Date.now() + t[3] }; render();
-      }).catch(function () { toast('המחשב לא ענה. נסו שוב.'); });
+        if (kind === 'sleep') setTimeout(function () { if (power === 'on' && !pending) toast('המחשב לא נכנס לשינה. הסיבה ביומן: הגדרות ← יומן מהמחשב.'); }, 65000);
+      }).catch(function (e) {
+        var m = e && e.message;
+        toast(m === 'bad-sig' ? 'תשובה לא מאומתת מהמחשב נחסמה.' : m === 'offline' ? 'אין חיבור למחשב כרגע.' : /^http-/.test(m || '') ? 'המחשב החזיר שגיאה (' + m + ').' : 'המחשב לא ענה (' + (m || 'timeout') + ').');
+      });
     });
   }
   $('power-btn').onclick = function () { if (power === 'on') powerAction('shutdown'); else if (power === 'off') sendWake(); };
