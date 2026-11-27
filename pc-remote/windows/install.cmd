@@ -12,11 +12,11 @@ if not exist "%~dp0install.ps1" (
 net session >nul 2>&1
 if %errorlevel% neq 0 (
   echo Asking for administrator rights...
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath %~f0 -Verb RunAs"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
   exit /b
 )
 rem Files downloaded from the internet are marked as blocked; unblock ours before running.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -LiteralPath %~dp0 -File | Unblock-File"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -LiteralPath '%~dp0' -File | Unblock-File"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
 echo.
 pause
