@@ -63,7 +63,8 @@ function Install-Sunshine {
         New-Item -ItemType Directory -Path $dl -Force | Out-Null
         Log "Getting Sunshine (installed: '$(Get-SunshineVersion)', minimum $SunshineMinVersion)"
         $file = Get-SunshineInstaller $dl
-        Assert-Signed $file '' -AllowUnsigned
+        # Sunshine's installers are signed by its maintainer (David Lane, LizardByte).
+        Assert-Signed $file 'David Lane|LizardByte' -AllowUnsigned
 
         Write-StreamState 'installing' 'install'
         if ($file -match '(?i)\.msi$') { Invoke-Msi $file '' 'sunshine-install.log' }
