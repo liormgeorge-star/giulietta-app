@@ -4,383 +4,799 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>שלט מחשב</title>
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
-  :root {
-    --bg: #0f1117; --card: #181b24; --line: #262a36; --text: #eef0f5; --muted: #8d93a5;
-    --on: #40d68c; --off: #ef5b5b; --warn: #f2b84b; --accent: #5b8cff;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--bg); color: var(--text); height: 100%; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
-    display: flex; flex-direction: column; min-height: 100%;
-  }
-  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-  h1 { font-size: 20px; margin: 0; font-weight: 650; }
-  .icon-btn { background: none; border: 0; color: var(--muted); font-size: 22px; padding: 8px; border-radius: 10px; }
-  .icon-btn:active { background: var(--card); }
-  .hidden { display: none !important; }
+/* Layout: one "control deck" screen. Identity strip (machine + live link) on top,
+   the power unit below it, then the two stream modes as tiles, then setup steps if any. */
+:root {
+  --bg: #eef0f5;        /* cool paper */
+  --surface: #ffffff;
+  --sunken: #e4e7ee;
+  --line: #d5d9e3;
+  --ink: #141722;
+  --muted: #5c6376;
+  --accent: #2f55e4;    /* cobalt, the one action color */
+  --accent-ink: #ffffff;
+  --on: #13865a;        /* semantic: running */
+  --busy: #b0730f;      /* semantic: working / standby amber */
+  --off: #8b92a5;       /* semantic: off */
+  --danger: #c3343c;
+  --shadow: 0 1px 2px rgba(20, 23, 34, .06), 0 8px 24px rgba(20, 23, 34, .06);
 
-  /* main screen */
-  #main { flex: 1; display: flex; flex-direction: column; align-items: center; }
-  .pc-name { font-size: 15px; color: var(--muted); margin-bottom: 6px; direction: ltr; }
-  .status { display: flex; align-items: center; gap: 8px; font-size: 17px; margin-bottom: 34px; }
-  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--muted); }
-  .dot.on { background: var(--on); box-shadow: 0 0 10px var(--on); }
-  .dot.off { background: var(--off); }
-  .dot.busy { background: var(--warn); animation: pulse 1s infinite alternate; }
-  @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
+  --font-display: 'Rubik', 'Heebo', system-ui, sans-serif;
+  --font-body: 'Heebo', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-data: ui-monospace, 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
 
-  .power {
-    width: 190px; height: 190px; border-radius: 50%; border: 3px solid var(--line);
-    background: radial-gradient(circle at 50% 40%, #1f2330, #14161e);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-    color: var(--text); font-size: 19px; font-weight: 600; transition: border-color .25s, transform .1s;
+  --r-lg: 20px; --r-md: 14px; --r-sm: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0e14; --surface: #151924; --sunken: #0f121a; --line: #252a38;
+    --ink: #eceef5; --muted: #949bb0; --accent: #7d97ff; --accent-ink: #0c0e14;
+    --on: #41d08f; --busy: #f2b54d; --off: #697086; --danger: #f2686f;
+    --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(0, 0, 0, .35);
+    color-scheme: dark;
   }
-  .power:active { transform: scale(.97); }
-  .power svg { width: 64px; height: 64px; }
-  .power.wake { border-color: var(--on); color: var(--on); }
-  .power.shut { border-color: var(--off); color: var(--off); }
-  .power:disabled { opacity: .5; }
-  .row { display: flex; gap: 12px; margin-top: 34px; width: 100%; max-width: 380px; }
-  .row button { flex: 1; }
-  .hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 22px; line-height: 1.5; max-width: 360px; }
+}
+:root[data-theme="dark"] {
+  --bg: #0c0e14; --surface: #151924; --sunken: #0f121a; --line: #252a38;
+  --ink: #eceef5; --muted: #949bb0; --accent: #7d97ff; --accent-ink: #0c0e14;
+  --on: #41d08f; --busy: #f2b54d; --off: #697086; --danger: #f2686f;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
 
-  button.btn {
-    background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 14px;
-    padding: 14px 12px; font-size: 16px; font-family: inherit;
-  }
-  button.btn:active { background: #20242f; }
-  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  button.btn.danger { color: var(--off); }
-  button.btn:disabled { opacity: .5; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.data { font-family: var(--font-data); direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
 
-  /* setup */
-  #setup { flex: 1; max-width: 440px; width: 100%; margin: 0 auto; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-  .card p { margin: 0 0 10px; line-height: 1.55; color: var(--muted); font-size: 14px; }
-  .card p b { color: var(--text); }
-  label { display: block; font-size: 14px; margin: 12px 0 6px; }
-  input {
-    width: 100%; padding: 13px 12px; font-size: 17px; border-radius: 12px; border: 1px solid var(--line);
-    background: #11131a; color: var(--text); direction: ltr; text-align: left; font-family: ui-monospace, monospace;
-  }
-  input:focus { outline: none; border-color: var(--accent); }
-  details { margin-top: 12px; color: var(--muted); font-size: 14px; }
-  summary { cursor: pointer; padding: 4px 0; }
-  .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
-  .msg { min-height: 20px; font-size: 14px; margin-top: 10px; line-height: 1.5; }
-  .msg.err { color: var(--off); }
-  .msg.ok { color: var(--on); }
+/* ---------- top bar ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -.01em; margin: 0; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  display: grid; place-items: center; color: var(--muted); cursor: pointer;
+}
+.icon-btn svg { width: 20px; height: 20px; }
 
-  /* dialog + toast */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; padding: 16px; z-index: 10; }
-  .sheet { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; width: 100%; max-width: 420px; margin-bottom: env(safe-area-inset-bottom); }
-  .sheet h2 { margin: 0 0 8px; font-size: 18px; }
-  .sheet p { margin: 0 0 16px; color: var(--muted); line-height: 1.5; }
-  .sheet .row { margin-top: 0; max-width: none; }
-  #toast {
-    position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 60px); transform: translateX(-50%);
-    background: #262a36; color: var(--text); padding: 11px 16px; border-radius: 12px; font-size: 14px;
-    max-width: calc(100% - 32px); text-align: center; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20;
-  }
-  #toast.show { opacity: 1; }
+/* ---------- machine strip ---------- */
+.machine { display: flex; align-items: center; gap: 12px; padding: 4px 2px; }
+.led { width: 12px; height: 12px; border-radius: 50%; background: var(--off); flex: none; position: relative; }
+.led.on { background: var(--on); box-shadow: 0 0 0 4px color-mix(in srgb, var(--on) 18%, transparent); }
+.led.busy { background: var(--busy); animation: blink 1s ease-in-out infinite alternate; }
+.led.off { background: var(--off); }
+@keyframes blink { from { opacity: .35; } to { opacity: 1; } }
+.machine-text { min-width: 0; flex: 1; }
+.machine-name { font-family: var(--font-display); font-weight: 600; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.machine-sub { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+
+/* ---------- power unit ---------- */
+.power {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow);
+  padding: 18px; display: grid; gap: 14px;
+}
+.power-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.state-word { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: -.01em; }
+.state-word.on { color: var(--on); } .state-word.busy { color: var(--busy); } .state-word.off { color: var(--ink); }
+.state-note { color: var(--muted); font-size: 13px; text-align: left; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md);
+  padding: 13px 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px;
+}
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: default; transform: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.danger { color: var(--danger); }
+.btn.solid-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+.btn.block { width: 100%; }
+.btn.big { min-height: 56px; font-size: 17px; font-family: var(--font-display); }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ---------- stream tiles ---------- */
+.section-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--muted); margin: 6px 2px -4px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile {
+  text-align: right; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow);
+  padding: 16px 14px 14px; display: grid; gap: 10px; align-content: start; cursor: pointer; min-width: 0;
+}
+.tile:active { transform: translateY(1px); }
+.tile[aria-disabled="true"] { cursor: default; }
+.tile-art {
+  width: 100%; aspect-ratio: 16 / 10; max-width: 100%; border-radius: var(--r-sm); background: var(--sunken);
+  display: grid; place-items: center; color: var(--accent);
+}
+.tile-art svg { width: 46%; height: auto; }
+.tile-title { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.2; }
+.tile-sub { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.chip {
+  justify-self: start; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: var(--sunken); color: var(--muted); border: 1px solid var(--line);
+}
+.chip.ok { color: var(--on); border-color: color-mix(in srgb, var(--on) 35%, var(--line)); background: color-mix(in srgb, var(--on) 10%, var(--surface)); }
+.chip.warn { color: var(--busy); border-color: color-mix(in srgb, var(--busy) 35%, var(--line)); background: color-mix(in srgb, var(--busy) 10%, var(--surface)); }
+.chip.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
+
+/* ---------- notice cards ---------- */
+.notice {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; display: grid; gap: 10px;
+}
+.notice h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; text-wrap: balance; }
+.notice p { margin: 0; color: var(--muted); }
+.notice.warn { border-color: color-mix(in srgb, var(--busy) 45%, var(--line)); }
+
+/* steps (used in sheets and setup) */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: s; }
+.steps li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+.steps li::before {
+  counter-increment: s; content: counter(s); width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 14px;
+  background: var(--sunken); color: var(--muted); border: 1px solid var(--line);
+}
+.steps li.done::before { content: "✓"; background: var(--on); color: var(--surface); border-color: var(--on); }
+.steps li .step-body { display: grid; gap: 8px; min-width: 0; }
+.steps li .step-title { font-weight: 600; }
+.steps li .step-note { color: var(--muted); font-size: 14px; }
+
+/* ---------- forms ---------- */
+.field { display: grid; gap: 6px; }
+.field label { font-size: 14px; font-weight: 500; }
+.field .hint { font-size: 13px; color: var(--muted); }
+input.text {
+  width: 100%; padding: 13px 12px; font-size: 17px; border-radius: var(--r-md); border: 1px solid var(--line);
+  background: var(--sunken); color: var(--ink); font-family: var(--font-data); direction: ltr; text-align: left;
+}
+input.text:focus { outline: none; border-color: var(--accent); }
+input.pin { font-size: 28px; letter-spacing: .5em; text-align: center; padding: 10px 0 10px .5em; }
+.msg { font-size: 14px; min-height: 1.5em; }
+.msg.err { color: var(--danger); } .msg.ok { color: var(--on); }
+details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 4px 0; }
+details[open] summary { margin-bottom: 8px; }
+.linkbox {
+  background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px;
+  font-family: var(--font-data); font-size: 12.5px; direction: ltr; text-align: left; overflow-wrap: anywhere; user-select: all;
+}
+
+/* ---------- footer ---------- */
+.foot { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; padding-top: 4px; }
+
+/* ---------- sheet + toast ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 30; background: rgba(8, 10, 16, .55);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet {
+  width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 22px; padding: 20px;
+  display: grid; gap: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+}
+.sheet h2 { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 600; text-wrap: balance; }
+.sheet p { margin: 0; color: var(--muted); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+#toast {
+  position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  max-width: calc(100% - 32px); background: var(--ink); color: var(--bg);
+  padding: 10px 16px; border-radius: 12px; font-size: 14px; text-align: center;
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .led.busy { animation: none; } #toast { transition: none; } }
+@media (max-width: 360px) { .tiles { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>שלט מחשב</h1>
-  <button class="icon-btn hidden" id="gear" aria-label="הגדרות">⚙︎</button>
-</header>
+<div class="wrap">
 
-<!-- Setup -->
-<section id="setup" class="hidden">
-  <div class="card">
-    <p><b>לפני שמתחילים:</b> במחשב מורידים את <b>pc-remote-windows.zip</b> (מאותו מקום שממנו הורדת את האפליקציה), מחלצים ולוחצים פעמיים על <b>install.cmd</b>. בסוף ההתקנה יוצגו כתובת ה-IP של המחשב וקוד צימוד.</p>
-    <p>המחשב צריך להיות דלוק, והטלפון מחובר לאותה רשת Wi-Fi.</p>
+  <div class="top">
+    <h1 class="brand">שלט מחשב</h1>
+    <button class="icon-btn" id="gear" aria-label="הגדרות" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
   </div>
-  <div class="card">
-    <label for="f-ip">כתובת IP של המחשב</label>
-    <input id="f-ip" inputmode="decimal" placeholder="192.168.1.20" autocomplete="off">
-    <label for="f-token">קוד צימוד</label>
-    <input id="f-token" placeholder="ABCD2345" autocomplete="off" autocapitalize="characters" spellcheck="false">
-    <details id="adv">
-      <summary>הגדרות מתקדמות</summary>
-      <label for="f-port">פורט</label>
-      <input id="f-port" inputmode="numeric" value="8765">
-      <label for="f-mac">כתובת MAC (מתמלאת לבד כשמתחברים)</label>
-      <input id="f-mac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off" autocapitalize="characters" spellcheck="false">
-    </details>
-    <div class="msg" id="setup-msg"></div>
-    <div class="actions">
-      <button class="btn primary" id="connect">התחבר</button>
-      <button class="btn hidden" id="save-anyway">שמור בלי לבדוק (המחשב כבוי)</button>
-      <button class="btn hidden" id="cancel-setup">ביטול</button>
+
+  <!-- ================= first-time connection ================= -->
+  <section id="setup" class="notice" hidden>
+    <h2>חיבור למחשב</h2>
+    <ol class="steps">
+      <li><div class="step-body">
+        <div class="step-title">מתקינים את התוכנה במחשב</div>
+        <div class="step-note">במחשב מורידים את pc-remote-windows.zip, מחלצים ולוחצים פעמיים על install.cmd.</div>
+        <div class="linkbox" id="setup-link"></div>
+        <div class="btn-row"><button class="btn" id="setup-share">שליחת הקישור</button><button class="btn" id="setup-copy">העתקה</button></div>
+      </div></li>
+      <li><div class="step-body">
+        <div class="step-title">מזינים את מה שהמחשב הציג</div>
+        <div class="field">
+          <label for="f-ip">כתובת IP של המחשב</label>
+          <input class="text" id="f-ip" inputmode="decimal" placeholder="192.168.1.20" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-token">קוד צימוד</label>
+          <input class="text" id="f-token" placeholder="K7M2X9QP" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <details id="adv">
+          <summary>הגדרות מתקדמות</summary>
+          <div class="field">
+            <label for="f-port">פורט</label>
+            <input class="text" id="f-port" inputmode="numeric" value="8765">
+          </div>
+          <div class="field">
+            <label for="f-mac">כתובת MAC</label>
+            <input class="text" id="f-mac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <span class="hint">מתמלאת לבד בחיבור הראשון.</span>
+          </div>
+        </details>
+        <div class="msg" id="setup-msg" role="status"></div>
+        <button class="btn primary big block" id="connect">התחברות</button>
+        <button class="btn block" id="save-anyway" hidden>שמירה בלי בדיקה (המחשב כבוי)</button>
+        <button class="btn block" id="cancel-setup" hidden>ביטול</button>
+      </div></li>
+    </ol>
+  </section>
+
+  <!-- ================= control deck ================= -->
+  <section id="deck" hidden>
+    <div class="wrap">
+      <div class="machine">
+        <span class="led" id="led" aria-hidden="true"></span>
+        <div class="machine-text">
+          <div class="machine-name" id="m-name"></div>
+          <div class="machine-sub"><span class="data" id="m-ip"></span><span class="data" id="m-latency"></span></div>
+        </div>
+      </div>
+
+      <div class="power" aria-live="polite">
+        <div class="power-head">
+          <div class="state-word" id="state-word">בודק…</div>
+          <div class="state-note" id="state-note"></div>
+        </div>
+        <button class="btn big block" id="power-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.2 6.8a8 8 0 1 0 11.6 0"/></svg>
+          <span id="power-label">…</span>
+        </button>
+        <div class="btn-row">
+          <button class="btn" id="restart-btn" disabled>הפעלה מחדש</button>
+          <button class="btn" id="sleep-btn" disabled>שינה</button>
+        </div>
+        <button class="btn block" id="wake-again" hidden>שליחת אות הדלקה שוב</button>
+      </div>
+
+      <div class="section-label">מהטלפון למחשב</div>
+      <div class="tiles">
+        <button class="tile" id="tile-desktop">
+          <div class="tile-art" aria-hidden="true">
+            <svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+              <rect x="4" y="3" width="56" height="32" rx="3"/><path d="M24 41h16M32 35v6"/>
+              <path d="M30 13l12 7-5.5 1.4L34 27z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="tile-title">שליטה מרחוק</div>
+          <div class="tile-sub">שולחן העבודה של המחשב על המסך, עם מגע כעכבר.</div>
+          <span class="chip" id="chip-desktop">…</span>
+        </button>
+        <button class="tile" id="tile-games">
+          <div class="tile-art" aria-hidden="true">
+            <svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+              <path d="M18 10h28c7 0 11 6 12 14l1.5 9c.8 5-4.6 8-8.4 4.6L45 32H19l-6.1 5.6C9.1 41 3.7 38 4.5 33L6 24c1-8 5-14 12-14z"/>
+              <path d="M18 18v10M13 23h10"/><circle cx="44" cy="20" r="2" fill="currentColor"/><circle cx="49" cy="25" r="2" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="tile-title">משחקים</div>
+          <div class="tile-sub">סטרימינג של משחקים מהמחשב, גם עם שלט.</div>
+          <span class="chip" id="chip-games">…</span>
+        </button>
+      </div>
+
+      <section class="notice warn" id="notice" hidden>
+        <h2 id="notice-title"></h2>
+        <p id="notice-text"></p>
+        <button class="btn primary block" id="notice-btn" hidden></button>
+      </section>
+
+      <div class="foot" id="foot"></div>
     </div>
-  </div>
-</section>
+  </section>
+</div>
 
-<!-- Main -->
-<section id="main" class="hidden">
-  <div class="pc-name" id="pc-name"></div>
-  <div class="status"><span class="dot" id="dot"></span><span id="status-text">בודק…</span></div>
-  <button class="power" id="power" disabled>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.2 6.8a8 8 0 1 0 11.6 0"/></svg>
-    <span id="power-label">…</span>
-  </button>
-  <div class="row" id="extra">
-    <button class="btn" id="restart" disabled>הפעלה מחדש</button>
-    <button class="btn" id="sleep" disabled>שינה</button>
-  </div>
-  <button class="btn hidden" id="wake-anyway" style="margin-top:14px">שלח אות הדלקה בכל זאת</button>
-  <div class="hint" id="hint"></div>
-</section>
-
-<div class="overlay hidden" id="confirm">
-  <div class="sheet">
+<!-- generic confirm -->
+<div class="overlay" id="confirm" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="c-title">
     <h2 id="c-title"></h2>
     <p id="c-text"></p>
-    <div class="row">
-      <button class="btn" id="c-no">ביטול</button>
-      <button class="btn primary" id="c-yes"></button>
-    </div>
+    <div class="btn-row"><button class="btn" id="c-no">ביטול</button><button class="btn" id="c-yes"></button></div>
   </div>
 </div>
-<div class="overlay hidden" id="settings">
-  <div class="sheet">
-    <h2>הגדרות</h2>
-    <p id="s-info" style="direction:ltr;text-align:right;font-family:ui-monospace,monospace;font-size:13px"></p>
-    <div class="actions" style="margin-top:0">
-      <button class="btn" id="s-edit">שינוי פרטי חיבור</button>
-      <button class="btn danger" id="s-forget">ניתוק מהמחשב</button>
-      <button class="btn" id="s-close">סגור</button>
-    </div>
+
+<!-- streaming setup -->
+<div class="overlay" id="stream-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ss-title">
+    <h2 id="ss-title">הגדרת סטרימינג</h2>
+    <p>חד-פעמי. אחרי זה, לחיצה על "שליטה מרחוק" או "משחקים" פותחת את המחשב ישר.</p>
+    <ol class="steps">
+      <li id="st-server"><div class="step-body">
+        <div class="step-title">שרת הסטרימינג במחשב</div>
+        <div class="step-note" id="st-server-note"></div>
+        <button class="btn" id="st-server-btn" hidden>ניסיון חוזר</button>
+      </div></li>
+      <li id="st-app"><div class="step-body">
+        <div class="step-title">אפליקציית Moonlight בטלפון</div>
+        <div class="step-note" id="st-app-note">Moonlight מציגה את המסך של המחשב. חינמית, ב-Google Play.</div>
+        <button class="btn primary" id="st-app-btn">התקנה מ-Google Play</button>
+      </div></li>
+      <li id="st-pair"><div class="step-body">
+        <div class="step-title">צימוד</div>
+        <div class="step-note" id="st-pair-note"></div>
+        <div id="st-pair-form" class="step-body">
+          <button class="btn" id="st-open-ml">פתיחת Moonlight</button>
+          <div class="field">
+            <label for="f-pin">הקוד ש-Moonlight מציגה</label>
+            <input class="text pin" id="f-pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••">
+          </div>
+          <div class="msg" id="pair-msg" role="status"></div>
+          <button class="btn primary" id="st-pair-btn">צימוד</button>
+        </div>
+      </div></li>
+    </ol>
+    <button class="btn block" id="ss-close">סגירה</button>
   </div>
 </div>
-<div id="toast"></div>
+
+<!-- one-time agent upgrade (only for PCs that still run version 1) -->
+<div class="overlay" id="upgrade-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="up-title">
+    <h2 id="up-title">עדכון אחרון ידני במחשב</h2>
+    <p>התוכנה במחשב היא מהגרסה הראשונה, שעוד לא יודעת להתעדכן לבד. צריך להתקין אותה מחדש פעם אחת. מכאן והלאה היא תתעדכן לבד, וקוד הצימוד נשאר אותו קוד.</p>
+    <ol class="steps">
+      <li><div class="step-body">
+        <div class="step-title">פותחים במחשב את הקישור ומורידים</div>
+        <div class="linkbox" id="up-link"></div>
+        <div class="btn-row"><button class="btn" id="up-share">שליחת הקישור</button><button class="btn" id="up-copy">העתקה</button></div>
+      </div></li>
+      <li><div class="step-body">
+        <div class="step-title">מחלצים ולוחצים פעמיים על install.cmd</div>
+        <div class="step-note">ההתקנה לוקחת פחות מדקה. שרת הסטרימינג יותקן אחריה ברקע.</div>
+      </div></li>
+    </ol>
+    <button class="btn block" id="up-close">סגירה</button>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="overlay" id="settings" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="s-title">
+    <h2 id="s-title">הגדרות</h2>
+    <dl class="kv" id="s-info"></dl>
+    <button class="btn block" id="s-stream">הגדרת סטרימינג</button>
+    <button class="btn block" id="s-edit">שינוי פרטי חיבור</button>
+    <button class="btn block danger" id="s-forget">ניתוק מהמחשב</button>
+    <button class="btn block" id="s-close">סגירה</button>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
 
 <script>
 (function () {
   'use strict';
-  var KEY = 'pcremote.config.v1';
+  var KEY = 'pcremote.config.v1';                 // unchanged since v1, so saved details survive updates
+  var AGENT_TARGET = 2;                            // the PC agent version this app expects (windows/version.txt)
+  var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
+
   var cap = window.Capacitor;
   var isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.nativePromise);
   var $ = function (id) { return document.getElementById(id); };
 
   // ---------- storage ----------
   function load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
-  function save(c) { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) {} }
-  function forget() { try { localStorage.removeItem(KEY); } catch (e) {} }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} }
   var cfg = load();
 
-  // ---------- native bridge ----------
+  // ---------- native ----------
   function native(method, opts) {
     if (!isNative) return Promise.reject(new Error('web'));
-    return cap.nativePromise('PcRemote', method, opts);
+    return cap.nativePromise('PcRemote', method, opts || {});
   }
-  function api(path, method, timeout, c) {
+  function api(path, method, timeout, c, body) {
     c = c || cfg;
-    var url = 'http://' + c.ip + ':' + c.port + path;
-    return native('request', { url: url, method: method || 'GET', token: c.token, timeout: timeout || 4000 })
-      .then(function (r) {
-        var body = {}; try { body = JSON.parse(r.body || '{}'); } catch (e) {}
-        return { status: r.status, body: body };
-      });
+    return native('request', { url: 'http://' + c.ip + ':' + c.port + path, method: method || 'GET', token: c.token, timeout: timeout || 4000 })
+      .then(function (r) { var b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) {} return { status: r.status, body: b }; });
   }
-  function wake() { return native('wake', { mac: cfg.mac, ip: cfg.ip }); }
+  // POST with a JSON body (used to send the Moonlight pairing code).
+  function apiJson(path, data, timeout) {
+    return native('request', {
+      url: 'http://' + cfg.ip + ':' + cfg.port + path, method: 'POST', token: cfg.token,
+      timeout: timeout || 8000, body: JSON.stringify(data)
+    }).then(function (r) { var b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) {} return { status: r.status, body: b }; });
+  }
 
-  // ---------- ui helpers ----------
+  // ---------- small ui helpers ----------
   var toastTimer;
   function toast(t) {
     var el = $('toast'); el.textContent = t; el.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove('show'); }, 3200);
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove('show'); }, 3400);
   }
-  function show(id) {
-    ['setup', 'main'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); });
-    $('gear').classList.toggle('hidden', id !== 'main');
-  }
+  function openSheet(id) { $(id).hidden = false; }
+  function closeSheet(id) { $(id).hidden = true; }
   function confirmBox(title, text, yes, danger) {
     return new Promise(function (resolve) {
       $('c-title').textContent = title; $('c-text').textContent = text;
-      var y = $('c-yes'); y.textContent = yes;
-      y.className = 'btn ' + (danger ? 'primary' : 'primary');
-      y.style.background = danger ? 'var(--off)' : ''; y.style.borderColor = danger ? 'var(--off)' : '';
-      $('confirm').classList.remove('hidden');
-      function done(v) { $('confirm').classList.add('hidden'); y.onclick = null; $('c-no').onclick = null; resolve(v); }
-      y.onclick = function () { done(true); };
-      $('c-no').onclick = function () { done(false); };
+      var y = $('c-yes'); y.textContent = yes; y.className = 'btn ' + (danger ? 'solid-danger' : 'primary');
+      openSheet('confirm');
+      function done(v) { closeSheet('confirm'); y.onclick = null; $('c-no').onclick = null; resolve(v); }
+      y.onclick = function () { done(true); }; $('c-no').onclick = function () { done(false); };
     });
   }
-  function normMac(m) {
-    var h = String(m || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
-    return h.length === 12 ? h.match(/../g).join(':') : '';
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { toast('הועתק'); }, function () { toast('לא הצלחתי להעתיק. אפשר לסמן את הקישור ידנית.'); });
+    } else toast('אפשר לסמן את הקישור ולהעתיק ידנית.');
   }
+  function shareLink() {
+    native('share', { text: ZIP_URL, title: 'שליחת הקישור למחשב' }).catch(function () { copyText(ZIP_URL); });
+  }
+  function normMac(m) { var h = String(m || '').replace(/[^0-9a-f]/gi, '').toUpperCase(); return h.length === 12 ? h.match(/../g).join(':') : ''; }
   function validIp(ip) { return /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(ip) && ip.split('.').every(function (n) { return +n <= 255; }); }
 
-  // ---------- setup ----------
+  ['setup-link', 'up-link'].forEach(function (id) { $(id).textContent = ZIP_URL; });
+  $('setup-share').onclick = $('up-share').onclick = shareLink;
+  $('setup-copy').onclick = $('up-copy').onclick = function () { copyText(ZIP_URL); };
+
+  // ================= first-time connection =================
   function openSetup(editing) {
     var c = cfg || {};
     $('f-ip').value = c.ip || ''; $('f-token').value = c.token || '';
     $('f-port').value = c.port || 8765; $('f-mac').value = c.mac || '';
-    $('setup-msg').textContent = ''; $('setup-msg').className = 'msg';
-    $('save-anyway').classList.add('hidden');
-    $('cancel-setup').classList.toggle('hidden', !editing);
-    if (c.mac) $('adv').open = true;
-    stopPolling(); show('setup');
-  }
-  function readForm() {
-    return {
-      ip: $('f-ip').value.trim(),
-      token: $('f-token').value.trim().toUpperCase(),
-      port: parseInt($('f-port').value, 10) || 8765,
-      mac: normMac($('f-mac').value),
-      name: (cfg && cfg.name) || ''
-    };
+    setupMsg(''); $('save-anyway').hidden = true; $('cancel-setup').hidden = !editing;
+    stopPolling(); $('deck').hidden = true; $('gear').hidden = true; $('setup').hidden = false;
   }
   function setupMsg(t, kind) { var m = $('setup-msg'); m.textContent = t; m.className = 'msg ' + (kind || ''); }
-
+  function readForm() {
+    var base = cfg || {};
+    var c = JSON.parse(JSON.stringify(base));
+    c.ip = $('f-ip').value.trim(); c.token = $('f-token').value.trim().toUpperCase();
+    c.port = parseInt($('f-port').value, 10) || 8765; c.mac = normMac($('f-mac').value) || base.mac || '';
+    return c;
+  }
   $('connect').onclick = function () {
     var c = readForm();
     if (!validIp(c.ip)) return setupMsg('כתובת ה-IP לא תקינה. היא נראית כך: 192.168.1.20', 'err');
-    if (!c.token) return setupMsg('צריך להזין את קוד הצימוד שהופיע במחשב.', 'err');
-    if (!isNative) return setupMsg('האפליקציה עובדת רק כשהיא מותקנת בטלפון (APK).', 'err');
+    if (!c.token) return setupMsg('צריך להזין את קוד הצימוד שהמחשב הציג.', 'err');
+    if (!isNative) return setupMsg('האפליקציה עובדת רק כשהיא מותקנת בטלפון.', 'err');
     var btn = $('connect'); btn.disabled = true; setupMsg('מתחבר…');
     api('/info', 'GET', 5000, c).then(function (r) {
       if (r.status === 401) throw { code: 'token' };
       if (r.status !== 200 || !r.body.ok) throw { code: 'other' };
-      c.mac = normMac(r.body.mac) || c.mac; c.name = r.body.name || c.name;
-      cfg = c; save(cfg);
-      toast('מחובר ל-' + (c.name || 'מחשב'));
-      startMain();
+      c.mac = normMac(r.body.mac) || c.mac; c.name = r.body.name || c.name || '';
+      cfg = c; save(); toast('מחובר ל-' + (c.name || 'מחשב')); startDeck();
     }).catch(function (e) {
-      if (e && e.code === 'token') setupMsg('קוד הצימוד שגוי.', 'err');
+      if (e && e.code === 'token') setupMsg('קוד הצימוד לא נכון. בודקים את הקובץ "PC Remote - pairing" בשולחן העבודה של המחשב.', 'err');
       else {
-        setupMsg('המחשב לא עונה. בדוק שהוא דלוק, שההתקנה הסתיימה, שכתובת ה-IP נכונה ושהטלפון מחובר לאותה רשת Wi-Fi.', 'err');
-        if (c.mac) $('save-anyway').classList.remove('hidden');
-        else { $('adv').open = true; }
+        setupMsg('המחשב לא עונה. בודקים שהוא דלוק, שההתקנה הסתיימה ושהטלפון מחובר ל-Wi-Fi של הבית.', 'err');
+        if (c.mac) $('save-anyway').hidden = false; else $('adv').open = true;
       }
     }).then(function () { btn.disabled = false; });
   };
   $('save-anyway').onclick = function () {
     var c = readForm();
     if (!validIp(c.ip) || !c.token || !c.mac) return setupMsg('צריך כתובת IP, קוד צימוד וכתובת MAC.', 'err');
-    cfg = c; save(cfg); startMain();
+    cfg = c; save(); startDeck();
   };
-  $('cancel-setup').onclick = function () { startMain(); };
+  $('cancel-setup').onclick = function () { startDeck(); };
 
-  // ---------- main ----------
-  var state = 'unknown';   // on | off | unknown
-  var pending = null;      // { kind: 'wake'|'shutdown'|'restart'|'sleep', until: ms }
-  var pollTimer = null, polling = false, failures = 0;
+  // ================= control deck state =================
+  var power = 'unknown';      // on | off | unknown
+  var latency = null;
+  var agentV = null;          // version the PC reports on /ping (1 when it doesn't say)
+  var status = null;          // last /status body
+  var pending = null;         // { kind, started, until, wentDown }
+  var launchAfterWake = null; // 'desktop' | 'games'
+  var moonlight = null;       // true / false / null (unknown)
+  var holdOffline = 0;        // timestamp until which failed pings are ignored (agent busy pairing)
+  var updateAsked = false;
+  var pollTimer = null, polling = false, failures = 0, lastStatusAt = 0;
 
-  function render() {
-    var dot = $('dot'), txt = $('status-text'), power = $('power'), label = $('power-label'), hint = $('hint');
-    $('pc-name').textContent = cfg.name ? cfg.name + ' · ' + cfg.ip : cfg.ip;
-    dot.className = 'dot'; power.className = 'power';
-    var busy = !!pending;
-    if (busy) {
-      dot.classList.add('busy');
-      txt.textContent = { wake: 'מדליק…', shutdown: 'מכבה…', restart: 'מפעיל מחדש…', sleep: 'נכנס לשינה…' }[pending.kind];
-      label.textContent = 'רגע…'; power.disabled = true;
-    } else if (state === 'on') {
-      dot.classList.add('on'); txt.textContent = 'דלוק';
-      label.textContent = 'כיבוי'; power.classList.add('shut'); power.disabled = false;
-    } else if (state === 'off') {
-      dot.classList.add('off'); txt.textContent = 'כבוי';
-      label.textContent = 'הדלקה'; power.classList.add('wake'); power.disabled = !cfg.mac;
-    } else {
-      txt.textContent = 'בודק…'; label.textContent = '…'; power.disabled = true;
+  var STREAM_STEP = { queued: 'בתור להתקנה', download: 'מוריד את Sunshine', install: 'מתקין את Sunshine', configure: 'מגדיר', start: 'מפעיל' };
+
+  function streamInfo() {
+    // Returns { ready, chipText, chipKind, reason }
+    if (agentV !== null && agentV < 2) return { ready: false, chip: 'דרוש עדכון במחשב', kind: 'warn', reason: 'upgrade' };
+    var s = status && status.stream;
+    if (!s) {
+      if (cfg.streamReady) return { ready: true, chip: power === 'off' ? 'מדליק ומתחבר' : 'מוכן', kind: 'ok' };
+      return { ready: false, chip: power === 'off' ? 'המחשב כבוי' : 'בודק…', kind: '', reason: 'unknown' };
     }
-    $('restart').disabled = $('sleep').disabled = busy || state !== 'on';
-    $('wake-anyway').classList.toggle('hidden', !(pending && pending.kind === 'wake' && Date.now() > pending.started + 25000));
-    if (!isNative) hint.textContent = 'תצוגה בדפדפן בלבד: הכפתורים עובדים רק באפליקציה שמותקנת בטלפון.';
-    else if (pending && pending.kind === 'wake') hint.textContent = 'מחשב לוקח בדרך כלל 20–60 שניות לעלות.';
-    else if (state === 'off' && !cfg.mac) hint.textContent = 'חסרה כתובת MAC להדלקה. היכנס להגדרות כשהמחשב דלוק.';
-    else if (state === 'off') hint.textContent = 'הטלפון צריך להיות מחובר ל-Wi-Fi של הבית כדי להדליק.';
-    else hint.textContent = '';
+    if (s.state === 'installing') return { ready: false, chip: (STREAM_STEP[s.step] || 'מתקין') + '…', kind: 'warn', reason: 'installing' };
+    if (s.state === 'error') return { ready: false, chip: 'ההתקנה נכשלה', kind: 'bad', reason: 'error' };
+    if (s.state !== 'ready') return { ready: false, chip: 'לא מותקן', kind: 'warn', reason: 'missing' };
+    if (moonlight === false) return { ready: false, chip: 'צריך את Moonlight', kind: 'warn', reason: 'moonlight' };
+    if (!s.paired) return { ready: false, chip: 'דרוש צימוד', kind: 'warn', reason: 'pair' };
+    return { ready: true, chip: 'מוכן', kind: 'ok' };
   }
 
+  function render() {
+    var led = $('led'), word = $('state-word'), note = $('state-note'), pbtn = $('power-btn'), plabel = $('power-label');
+    $('m-name').textContent = cfg.name || 'המחשב';
+    $('m-ip').textContent = cfg.ip + (cfg.port && +cfg.port !== 8765 ? ':' + cfg.port : '');
+    $('m-latency').textContent = power === 'on' && latency !== null ? latency + ' ms' : '';
+
+    led.className = 'led'; word.className = 'state-word'; pbtn.className = 'btn big block';
+    var busy = !!pending;
+    if (busy) {
+      led.classList.add('busy'); word.classList.add('busy');
+      word.textContent = { wake: 'מדליק…', shutdown: 'מכבה…', restart: 'מפעיל מחדש…', sleep: 'נכנס לשינה…' }[pending.kind];
+      var secs = Math.round((Date.now() - pending.started) / 1000);
+      note.textContent = pending.kind === 'wake' ? secs + ' שנ׳ · בדרך כלל עד דקה' : secs + ' שנ׳';
+      plabel.textContent = 'רגע…'; pbtn.disabled = true;
+    } else if (power === 'on') {
+      led.classList.add('on'); word.classList.add('on'); word.textContent = 'דלוק';
+      note.textContent = '';
+      plabel.textContent = 'כיבוי'; pbtn.classList.add('danger'); pbtn.disabled = false;
+    } else if (power === 'off') {
+      led.classList.add('off'); word.classList.add('off'); word.textContent = 'כבוי';
+      note.textContent = cfg.mac ? 'Wake-on-LAN' : 'חסרה כתובת MAC';
+      plabel.textContent = 'הדלקה'; pbtn.classList.add('primary'); pbtn.disabled = !cfg.mac;
+    } else {
+      word.textContent = 'בודק…'; note.textContent = ''; plabel.textContent = '…'; pbtn.disabled = true;
+    }
+    $('restart-btn').disabled = $('sleep-btn').disabled = busy || power !== 'on';
+    $('wake-again').hidden = !(pending && pending.kind === 'wake' && Date.now() - pending.started > 25000);
+
+    // tiles
+    var si = streamInfo();
+    ['desktop', 'games'].forEach(function (k) {
+      var chip = $('chip-' + k);
+      var waiting = launchAfterWake === k;
+      chip.textContent = waiting ? 'מדליק ומתחבר…' : si.chip;
+      chip.className = 'chip ' + (waiting ? 'warn' : si.kind);
+    });
+
+    // notice card
+    var n = noticeFor(si);
+    $('notice').hidden = !n;
+    if (n) {
+      $('notice-title').textContent = n.title; $('notice-text').textContent = n.text;
+      var b = $('notice-btn'); b.hidden = !n.btn; if (n.btn) { b.textContent = n.btn; b.onclick = n.act; }
+    }
+
+    // footer: real versions, only what we know
+    var parts = [];
+    if (agentV) parts.push('תוכנת מחשב v' + agentV);
+    if (status && status.stream && status.stream.version) parts.push('Sunshine ' + status.stream.version);
+    if (cfg.mac) parts.push('MAC ' + cfg.mac);
+    $('foot').innerHTML = '';
+    parts.forEach(function (p) { var s = document.createElement('span'); s.className = 'data'; s.textContent = p; $('foot').appendChild(s); });
+  }
+
+  function noticeFor(si) {
+    if (!isNative) return { title: 'תצוגה בדפדפן', text: 'הכפתורים עובדים רק באפליקציה שמותקנת בטלפון.' };
+    if (si.reason === 'upgrade') return { title: 'עדכון חד-פעמי במחשב', text: 'כדי להוסיף שליטה מרחוק ומשחקים, צריך להתקין פעם אחת את הגרסה החדשה במחשב. אחרי זה היא מתעדכנת לבד.', btn: 'איך מעדכנים', act: function () { openSheet('upgrade-sheet'); } };
+    if (agentV !== null && agentV >= 2 && agentV < AGENT_TARGET) return { title: 'מעדכן את התוכנה במחשב', text: 'זה קורה לבד ולוקח כחצי דקה.' };
+    if (si.reason === 'installing') return { title: 'מתקין את שרת הסטרימינג במחשב', text: 'Sunshine יורד ומותקן ברקע, בדרך כלל תוך 2–3 דקות. אפשר בינתיים להתקין את Moonlight בטלפון.', btn: moonlight === false ? 'התקנת Moonlight' : '', act: function () { native('openStore', { package: 'com.limelight' }); } };
+    if (si.reason === 'error') return { title: 'ההתקנה של Sunshine נכשלה', text: (status.stream.error || '') + ' אפשר לנסות שוב.', btn: 'ניסיון חוזר', act: retryInstall };
+    if (si.reason === 'moonlight' || si.reason === 'pair') return { title: 'עוד צעד אחד לסטרימינג', text: si.reason === 'moonlight' ? 'צריך להתקין את Moonlight בטלפון ולצמד אותה פעם אחת.' : 'צריך לצמד את Moonlight למחשב, פעם אחת.', btn: 'להמשך', act: openStreamSheet };
+    if (power === 'off' && pending && pending.kind === 'wake' && Date.now() - pending.started > 60000) return { title: 'המחשב עוד לא עלה', text: 'בודקים שכבל הרשת מחובר ושב-BIOS מופעל Wake on LAN. פרטים בקובץ ההוראות.' };
+    return null;
+  }
+
+  // ---------- polling ----------
   function poll() {
-    if (polling || document.hidden) return;
+    if (polling || document.hidden || !cfg) return;
     polling = true;
-    api('/ping', 'GET', 1800).then(function (r) { return r.status === 200 && r.body.ok; })
-      .catch(function () { return false; })
-      .then(function (up) {
-        polling = false;
-        if (up) { failures = 0; state = 'on'; }
-        else if (++failures >= 2 || state === 'unknown') state = 'off';
-        if (pending) {
-          var k = pending.kind;
-          var reached = (k === 'wake' && up) || ((k === 'shutdown' || k === 'sleep') && !up && state === 'off');
-          if (k === 'restart') {
-            if (!up) pending.wentDown = true;
-            reached = pending.wentDown && up;
-          }
-          if (reached) {
-            toast({ wake: 'המחשב דלוק', shutdown: 'המחשב כבוי', restart: 'המחשב עלה מחדש', sleep: 'המחשב במצב שינה' }[k]);
-            pending = null;
-          } else if (Date.now() > pending.until) {
-            toast(k === 'wake' ? 'המחשב לא עלה. ראה טיפים בקובץ ההוראות (BIOS / Fast Startup).' : 'לא התקבל אישור מהמחשב.');
-            pending = null;
-          }
-        }
-        render();
-      });
+    var t0 = Date.now();
+    api('/ping', 'GET', 1800).then(function (r) {
+      if (r.status === 200 && r.body.ok) { latency = Date.now() - t0; agentV = r.body.v || 1; return true; }
+      return false;
+    }).catch(function () { return false; }).then(function (up) {
+      polling = false;
+      if (!up && Date.now() < holdOffline) return;
+      if (up) { failures = 0; power = 'on'; }
+      else if (++failures >= 2 || power === 'unknown') { power = 'off'; latency = null; }
+      progressPending(up);
+      if (up && agentV >= 2 && (Date.now() - lastStatusAt > (status && status.stream && status.stream.state === 'installing' ? 3000 : 15000))) refreshStatus();
+      if (up && agentV >= 2 && agentV < AGENT_TARGET && !updateAsked) askAgentUpdate();
+      render();
+    });
+  }
+  function refreshStatus() {
+    lastStatusAt = Date.now();
+    return api('/status', 'GET', 9000).then(function (r) {
+      if (r.status === 401) { toast('קוד הצימוד השתנה. מזינים אותו מחדש.'); openSetup(true); return; }
+      if (r.status !== 200 || !r.body.ok) return;
+      status = r.body; agentV = r.body.v || agentV;
+      if (r.body.mac && !cfg.mac) cfg.mac = normMac(r.body.mac);
+      if (r.body.name) cfg.name = r.body.name;
+      var s = r.body.stream || {};
+      if (s.uuid) cfg.uuid = s.uuid;
+      cfg.streamReady = s.state === 'ready' && s.paired > 0;
+      save(); render(); renderStreamSheet();
+    }).catch(function () {});
+  }
+  function askAgentUpdate() {
+    updateAsked = true;
+    api('/update', 'POST', 70000).then(function (r) {
+      if (r.body && /^staged/.test(r.body.result || '')) toast('התוכנה במחשב מתעדכנת');
+    }).catch(function () {});
+  }
+  function checkMoonlight() {
+    return native('appInstalled', { package: 'com.limelight' }).then(function (r) { moonlight = !!r.installed; render(); renderStreamSheet(); }).catch(function () {});
   }
   function startPolling() { stopPolling(); failures = 0; poll(); pollTimer = setInterval(poll, 3000); }
   function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
-  document.addEventListener('visibilitychange', function () { if (!document.hidden && cfg && !$('main').classList.contains('hidden')) poll(); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && cfg && !$('deck').hidden) { checkMoonlight(); poll(); }
+  });
 
-  function sendWake() {
-    return wake().then(function () {
-      pending = { kind: 'wake', started: Date.now(), until: Date.now() + 150000 }; render();
-      toast('נשלח אות הדלקה');
-    }).catch(function (e) { toast('שליחה נכשלה: ' + ((e && e.message) || '')); });
+  function progressPending(up) {
+    if (!pending) {
+      if (launchAfterWake && up && streamReadyToLaunch()) doLaunch(launchAfterWake);
+      return;
+    }
+    var k = pending.kind, reached = false;
+    if (k === 'wake') reached = up;
+    else if (k === 'shutdown' || k === 'sleep') reached = !up && power === 'off';
+    else if (k === 'restart') { if (!up) pending.wentDown = true; reached = pending.wentDown && up; }
+    if (reached) {
+      if (!launchAfterWake) toast({ wake: 'המחשב דלוק', shutdown: 'המחשב כבוי', restart: 'המחשב עלה מחדש', sleep: 'המחשב במצב שינה' }[k]);
+      pending = null;
+      if (k === 'wake' && launchAfterWake) refreshStatus();
+    } else if (Date.now() > pending.until) {
+      toast(k === 'wake' ? 'המחשב לא עלה.' : 'לא התקבל אישור מהמחשב.');
+      pending = null; launchAfterWake = null;
+    }
   }
 
+  // ---------- power ----------
+  function sendWake(quiet) {
+    return native('wake', { mac: cfg.mac, ip: cfg.ip }).then(function () {
+      pending = { kind: 'wake', started: Date.now(), until: Date.now() + 150000 };
+      if (!quiet) toast('נשלח אות הדלקה');
+      render();
+    }).catch(function (e) { launchAfterWake = null; toast('שליחה נכשלה: ' + ((e && e.message) || '')); render(); });
+  }
   function powerAction(kind) {
-    var texts = {
+    var t = {
       shutdown: ['לכבות את המחשב?', 'תוכנות פתוחות ייסגרו, ועבודה שלא נשמרה תאבד.', 'כיבוי', 150000],
       restart: ['להפעיל מחדש?', 'תוכנות פתוחות ייסגרו, ועבודה שלא נשמרה תאבד.', 'הפעלה מחדש', 240000],
-      sleep: ['להכניס את המחשב לשינה?', 'אפשר להעיר אותו אחר כך עם כפתור ההדלקה.', 'שינה', 60000]
+      sleep: ['להכניס את המחשב לשינה?', 'אפשר להעיר אותו מכאן עם "הדלקה".', 'שינה', 60000]
     }[kind];
-    confirmBox(texts[0], texts[1], texts[2], kind !== 'sleep').then(function (yes) {
+    confirmBox(t[0], t[1], t[2], kind !== 'sleep').then(function (yes) {
       if (!yes) return;
       api('/' + kind, 'POST', 5000).then(function (r) {
-        if (r.status === 401) { toast('קוד הצימוד כבר לא תקף. הזן אותו מחדש.'); return openSetup(true); }
-        if (r.status !== 200) throw new Error('HTTP ' + r.status);
-        pending = { kind: kind, started: Date.now(), until: Date.now() + texts[3] }; render();
-      }).catch(function () { toast('המחשב לא ענה. נסה שוב.'); });
+        if (r.status === 401) { toast('קוד הצימוד השתנה. מזינים אותו מחדש.'); return openSetup(true); }
+        if (r.status !== 200) throw new Error();
+        pending = { kind: kind, started: Date.now(), until: Date.now() + t[3] }; render();
+      }).catch(function () { toast('המחשב לא ענה. נסו שוב.'); });
     });
   }
+  $('power-btn').onclick = function () { if (power === 'on') powerAction('shutdown'); else if (power === 'off') sendWake(); };
+  $('restart-btn').onclick = function () { powerAction('restart'); };
+  $('sleep-btn').onclick = function () { powerAction('sleep'); };
+  $('wake-again').onclick = function () { native('wake', { mac: cfg.mac, ip: cfg.ip }).then(function () { toast('נשלח שוב'); }); };
 
-  $('power').onclick = function () {
-    if (state === 'on') powerAction('shutdown');
-    else if (state === 'off') sendWake();
+  // ---------- streaming ----------
+  function streamReadyToLaunch() {
+    var s = status && status.stream;
+    return !!(s && s.state === 'ready' && s.running && s.paired > 0);
+  }
+  function doLaunch(kind) {
+    launchAfterWake = null; render();
+    native('openMoonlight', { uuid: cfg.uuid || '', name: cfg.name || '', appName: kind === 'desktop' ? 'Desktop' : '' })
+      .catch(function () { toast('לא הצלחתי לפתוח את Moonlight'); });
+  }
+  function onTile(kind) {
+    if (!isNative) return toast('עובד רק באפליקציה בטלפון');
+    var si = streamInfo();
+    if (si.reason === 'upgrade') return openSheet('upgrade-sheet');
+    if (!si.ready && power === 'on') return openStreamSheet();
+    if (!si.ready && power !== 'on') {
+      if (!cfg.mac) return toast('המחשב כבוי ואין כתובת MAC להדלקה');
+      toast('מדליק את המחשב קודם'); launchAfterWake = kind; return sendWake(true);
+    }
+    if (power === 'on' && streamReadyToLaunch()) return doLaunch(kind);
+    if (power === 'on') { launchAfterWake = kind; render(); refreshStatus(); return; }
+    // off: wake, then launch when the PC and Sunshine answer
+    if (!cfg.mac) return toast('המחשב כבוי ואין כתובת MAC להדלקה');
+    launchAfterWake = kind; sendWake(true);
+  }
+  $('tile-desktop').onclick = function () { onTile('desktop'); };
+  $('tile-games').onclick = function () { onTile('games'); };
+
+  function retryInstall() {
+    api('/stream/install', 'POST', 6000).then(function () { toast('ההתקנה התחילה מחדש'); refreshStatus(); }).catch(function () { toast('המחשב לא ענה'); });
+  }
+
+  function openStreamSheet() { renderStreamSheet(); openSheet('stream-sheet'); checkMoonlight(); refreshStatus(); }
+  function renderStreamSheet() {
+    var s = (status && status.stream) || {};
+    var serverOk = s.state === 'ready';
+    $('st-server').classList.toggle('done', serverOk);
+    $('st-server-note').textContent =
+      serverOk ? 'Sunshine ' + (s.version || '') + ' מותקן ופועל.' :
+      s.state === 'installing' ? (STREAM_STEP[s.step] || 'מתקין') + '… זה קורה לבד במחשב.' :
+      s.state === 'error' ? 'ההתקנה נכשלה: ' + (s.error || '') :
+      power === 'on' ? 'עוד לא מותקן.' : 'המחשב כבוי. מדליקים אותו כדי להמשיך.';
+    $('st-server-btn').hidden = !(power === 'on' && (s.state === 'error' || s.state === 'missing'));
+    var mlOk = moonlight === true;
+    $('st-app').classList.toggle('done', mlOk);
+    $('st-app-btn').hidden = mlOk;
+    $('st-app-note').textContent = mlOk ? 'מותקנת.' : 'Moonlight מציגה את המסך של המחשב. חינמית, ב-Google Play.';
+    var paired = serverOk && s.paired > 0;
+    $('st-pair').classList.toggle('done', paired);
+    $('st-pair-form').hidden = paired || !serverOk || !mlOk;
+    $('st-pair-note').textContent = paired ? 'Moonlight מצומדת למחשב. אפשר לסגור ולהתחיל.' :
+      'פותחים את Moonlight ובוחרים במחשב \u2068' + (cfg.name || '') + '\u2069. היא תציג קוד בן 4 ספרות. חוזרים לכאן ומקלידים אותו.';
+  }
+  $('st-server-btn').onclick = retryInstall;
+  $('st-app-btn').onclick = function () { native('openStore', { package: 'com.limelight' }); };
+  $('st-open-ml').onclick = function () { native('openMoonlight', { direct: false }).catch(function () { toast('Moonlight לא מותקנת'); }); };
+  $('f-pin').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 4); });
+  $('st-pair-btn').onclick = function () {
+    var pin = $('f-pin').value, msg = $('pair-msg');
+    if (!/^\d{4}$/.test(pin)) { msg.textContent = 'הקוד הוא 4 ספרות.'; msg.className = 'msg err'; return; }
+    var btn = this; btn.disabled = true; msg.textContent = 'מצמד…'; msg.className = 'msg';
+    holdOffline = Date.now() + 50000;
+    apiJson('/stream/pair', { pin: pin }, 50000).then(function (r) {
+      holdOffline = 0;
+      var b = r.body || {};
+      if (b.ok) {
+        msg.textContent = 'מצומד.'; msg.className = 'msg ok'; $('f-pin').value = '';
+        toast('הצימוד הצליח. אפשר להתחיל.'); refreshStatus();
+        setTimeout(function () { closeSheet('stream-sheet'); }, 900);
+      } else {
+        msg.className = 'msg err';
+        msg.textContent = b.error === 'no-request' ? 'Moonlight לא מחכה לצימוד. פותחים אותה, בוחרים במחשב, ואז מקלידים את הקוד שמופיע.' :
+          b.error === 'wrong-pin' ? 'הקוד לא התאים. בוחרים שוב במחשב ב-Moonlight ומקלידים את הקוד החדש.' :
+          'הצימוד לא הצליח. נסו שוב.';
+      }
+    }).catch(function () { holdOffline = 0; msg.textContent = 'המחשב לא ענה. נסו שוב.'; msg.className = 'msg err'; })
+      .then(function () { btn.disabled = false; });
   };
-  $('restart').onclick = function () { powerAction('restart'); };
-  $('sleep').onclick = function () { powerAction('sleep'); };
-  $('wake-anyway').onclick = function () { wake().then(function () { toast('נשלח שוב'); }); };
+  $('ss-close').onclick = function () { closeSheet('stream-sheet'); };
+  $('up-close').onclick = function () { closeSheet('upgrade-sheet'); };
 
-  // settings
+  // ---------- settings ----------
   $('gear').onclick = function () {
-    $('s-info').textContent = 'IP ' + cfg.ip + ':' + cfg.port + '\nMAC ' + (cfg.mac || '—');
-    $('s-info').style.whiteSpace = 'pre-line';
-    $('settings').classList.remove('hidden');
+    var rows = [['מחשב', cfg.name || '—'], ['IP', cfg.ip + ':' + cfg.port], ['MAC', cfg.mac || '—'],
+      ['תוכנת מחשב', agentV ? 'v' + agentV : '—'], ['Sunshine', (status && status.stream && status.stream.version) || '—']];
+    var dl = $('s-info'); dl.innerHTML = '';
+    rows.forEach(function (r) { var dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = r[0]; dd.textContent = r[1]; dd.className = 'data'; dl.appendChild(dt); dl.appendChild(dd); });
+    openSheet('settings');
   };
-  $('s-close').onclick = function () { $('settings').classList.add('hidden'); };
-  $('s-edit').onclick = function () { $('settings').classList.add('hidden'); openSetup(true); };
+  $('s-close').onclick = function () { closeSheet('settings'); };
+  $('s-stream').onclick = function () { closeSheet('settings'); openStreamSheet(); };
+  $('s-edit').onclick = function () { closeSheet('settings'); openSetup(true); };
   $('s-forget').onclick = function () {
-    $('settings').classList.add('hidden');
-    confirmBox('להתנתק מהמחשב?', 'פרטי החיבור יימחקו מהטלפון.', 'ניתוק', true).then(function (yes) {
-      if (!yes) return; forget(); cfg = null; state = 'unknown'; pending = null; openSetup(false);
+    closeSheet('settings');
+    confirmBox('להתנתק מהמחשב?', 'פרטי החיבור יימחקו מהטלפון. התוכנה במחשב נשארת.', 'ניתוק', true).then(function (yes) {
+      if (!yes) return;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      cfg = null; status = null; agentV = null; power = 'unknown'; pending = null; openSetup(false);
     });
   };
 
-  function startMain() { state = 'unknown'; pending = null; show('main'); render(); startPolling(); }
+  function startDeck() {
+    power = 'unknown'; pending = null; status = null; agentV = null; updateAsked = false;
+    $('setup').hidden = true; $('deck').hidden = false; $('gear').hidden = false;
+    render(); checkMoonlight(); startPolling();
+  }
 
-  if (cfg && cfg.ip && cfg.token) startMain(); else openSetup(false);
+  if (cfg && cfg.ip && cfg.token) startDeck(); else openSetup(false);
 })();
 </script>
 </body>

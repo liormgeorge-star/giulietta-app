@@ -28,6 +28,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Check app and PC agent versions match
+        run: |
+          WANT=$(grep -o "AGENT_TARGET = [0-9]*" www/index.html | grep -o "[0-9]*$")
+          HAVE=$(tr -d '[:space:]' < windows/version.txt)
+          echo "app expects agent v$WANT, windows/version.txt is v$HAVE"
+          test "$WANT" = "$HAVE"
+
       - name: Install dependencies
         run: npm install
 
@@ -40,7 +47,9 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           # The agent on the PC speaks plain HTTP on the home network.
           sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$M"
-          grep -n "usesCleartextTraffic\|INTERNET" "$M"
+          # Android 11+ hides other apps unless declared: needed to check for and open Moonlight.
+          sed -i 's#<application#<queries>\n        <package android:name="com.limelight" />\n    </queries>\n\n    <application#' "$M"
+          grep -n "usesCleartextTraffic\|INTERNET\|com.limelight" "$M"
           sed -i 's#<color name="ic_launcher_background">.*</color>#<color name="ic_launcher_background">\#11141C</color>#' \
             android/app/src/main/res/values/ic_launcher_background.xml || true
           pip install --quiet --break-system-packages pillow 2>/dev/null || pip install --quiet pillow

@@ -1,5 +1,11 @@
 package com.liorg.pcremote;
 
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -26,6 +32,7 @@ import java.util.Set;
  * Native helpers the web page can't do itself:
  *  - wake: send a Wake-on-LAN "magic packet" (UDP broadcast) to turn the PC on.
  *  - request: plain-HTTP call to the agent on the PC (no CORS, no mixed-content blocking).
+ *  - appInstalled / openMoonlight / openStore / share: hand off to other apps.
  */
 @CapacitorPlugin(name = "PcRemote")
 public class PcRemotePlugin extends Plugin {
@@ -85,6 +92,7 @@ public class PcRemotePlugin extends Plugin {
         final String method = call.getString("method", "GET");
         final String token = call.getString("token", "");
         final int timeout = call.getInt("timeout", 4000);
+        final String body = call.getString("body", "");
         new Thread(() -> {
             HttpURLConnection conn = null;
             try {
@@ -95,9 +103,11 @@ public class PcRemotePlugin extends Plugin {
                 conn.setUseCaches(false);
                 if (token != null && !token.isEmpty()) conn.setRequestProperty("X-Token", token);
                 if ("POST".equals(method)) {
+                    byte[] out = body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8);
                     conn.setDoOutput(true);
-                    conn.setFixedLengthStreamingMode(0);
-                    try (OutputStream os = conn.getOutputStream()) { os.flush(); }
+                    if (out.length > 0) conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                    conn.setFixedLengthStreamingMode(out.length);
+                    try (OutputStream os = conn.getOutputStream()) { os.write(out); os.flush(); }
                 }
                 int status = conn.getResponseCode();
                 InputStream in = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
@@ -121,6 +131,98 @@ public class PcRemotePlugin extends Plugin {
                 if (conn != null) conn.disconnect();
             }
         }).start();
+    }
+
+    private static final String MOONLIGHT = "com.limelight";
+
+    @PluginMethod
+    public void appInstalled(PluginCall call) {
+        String pkg = call.getString("package", MOONLIGHT);
+        boolean installed;
+        try {
+            getContext().getPackageManager().getPackageInfo(pkg, 0);
+            installed = true;
+        } catch (PackageManager.NameNotFoundException e) {
+            installed = false;
+        }
+        JSObject ret = new JSObject();
+        ret.put("installed", installed);
+        call.resolve(ret);
+    }
+
+    /**
+     * Opens Moonlight. With a host UUID it goes straight to that PC (Moonlight's own
+     * shortcut entry point); with an app name too ("Desktop") it starts that stream.
+     */
+    @PluginMethod
+    public void openMoonlight(PluginCall call) {
+        String uuid = call.getString("uuid", "");
+        String name = call.getString("name", "");
+        String appName = call.getString("appName", "");
+        boolean direct = call.getBoolean("direct", true);
+        PackageManager pm = getContext().getPackageManager();
+        try {
+            if (direct && (!uuid.isEmpty() || !name.isEmpty())) {
+                Intent i = new Intent();
+                i.setComponent(new ComponentName(MOONLIGHT, "com.limelight.ShortcutTrampoline"));
+                if (!uuid.isEmpty()) i.putExtra("UUID", uuid);
+                if (!name.isEmpty()) i.putExtra("Name", name);
+                if (!appName.isEmpty()) i.putExtra("AppName", appName);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+                JSObject ret = new JSObject();
+                ret.put("mode", "direct");
+                call.resolve(ret);
+                return;
+            }
+        } catch (Exception ignored) {
+            // fall through to the app's main screen
+        }
+        Intent launch = pm.getLaunchIntentForPackage(MOONLIGHT);
+        if (launch == null) { call.reject("not-installed"); return; }
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(launch);
+        JSObject ret = new JSObject();
+        ret.put("mode", "main");
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openStore(PluginCall call) {
+        String pkg = call.getString("package", MOONLIGHT);
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+        } catch (ActivityNotFoundException e) {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void openUrl(PluginCall call) {
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(call.getString("url", "")));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
+    @PluginMethod
+    public void share(PluginCall call) {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_TEXT, call.getString("text", ""));
+        Intent chooser = Intent.createChooser(send, call.getString("title", ""));
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(chooser);
+        call.resolve();
     }
 
     private static byte[] parseMac(String mac) {

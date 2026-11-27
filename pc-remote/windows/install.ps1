@@ -85,16 +85,22 @@ New-Item -ItemType Directory -Path $Dir -Force | Out-Null
 & icacls.exe $Dir /inheritance:r /grant:r 'SYSTEM:(OI)(CI)F' 'Administrators:(OI)(CI)F' | Out-Null
 $cfgPath = Join-Path $Dir 'config.json'
 $token = $null
-if (Test-Path $cfgPath) { try { $token = (Get-Content $cfgPath -Raw | ConvertFrom-Json).token } catch { } }
+$old = $null
+if (Test-Path $cfgPath) { try { $old = Get-Content $cfgPath -Raw | ConvertFrom-Json; $token = $old.token } catch { } }
 if (-not $token) {
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
     $bytes = New-Object byte[] 8
     [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
     $token = -join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] })
 }
-@{ port = $Port; token = $token; mac = $mac; ifIndex = $nic.ifIndex } | ConvertTo-Json | Set-Content -Path $cfgPath -Encoding ASCII
-Copy-Item (Join-Path $Here 'agent.ps1') (Join-Path $Dir 'agent.ps1') -Force
-Unblock-File (Join-Path $Dir 'agent.ps1') -ErrorAction SilentlyContinue
+$cfgOut = [ordered]@{ port = $Port; token = $token; mac = $mac; ifIndex = $nic.ifIndex }
+if ($old -and $old.sunUser) { $cfgOut.sunUser = $old.sunUser; $cfgOut.sunPass = $old.sunPass }
+$cfgOut | ConvertTo-Json | Set-Content -Path $cfgPath -Encoding ASCII
+Remove-Item (Join-Path $Dir 'update') -Recurse -Force -ErrorAction SilentlyContinue
+foreach ($f in 'launcher.ps1', 'agent.ps1', 'common.ps1', 'tasks.ps1', 'version.txt') {
+    Copy-Item (Join-Path $Here $f) (Join-Path $Dir $f) -Force
+    Unblock-File (Join-Path $Dir $f) -ErrorAction SilentlyContinue
+}
 Ok "Files in $Dir"
 
 # 5. Firewall: only devices on the local network can reach the agent.
@@ -111,10 +117,10 @@ Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | ForEach-Ob
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
 Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
-    Where-Object { $_.CommandLine -like '*PcRemote\agent.ps1*' } |
+    Where-Object { $_.CommandLine -like '*PcRemote\agent.ps1*' -or $_.CommandLine -like '*PcRemote\launcher.ps1*' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Dir\agent.ps1`""
+    -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Dir\launcher.ps1`""
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
@@ -125,11 +131,11 @@ Ok 'Scheduled task created and started'
 
 Step 'Checking that the agent answers'
 $up = $false
-for ($i = 0; $i -lt 10 -and -not $up; $i++) {
+for ($i = 0; $i -lt 20 -and -not $up; $i++) {
     Start-Sleep -Seconds 1
     try { $up = (Invoke-RestMethod -Uri "http://127.0.0.1:$Port/ping" -TimeoutSec 2).ok } catch { }
 }
-if ($up) { Ok 'Agent is running' } else { Warn "Agent did not answer yet. Log: $Dir\agent.log" }
+if ($up) { Ok 'Agent is running. It now installs Sunshine (game streaming) in the background.' } else { Warn "Agent did not answer yet. Log: $Dir\agent.log" }
 
 $info = @"
 PC Remote - details for the phone app
