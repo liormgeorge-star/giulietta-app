@@ -60,7 +60,7 @@ jobs:
           # The agent on the PC speaks plain HTTP on the home network.
           sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$M"
           # Android 11+ hides other apps unless declared: needed to check for and open Moonlight.
-          sed -i 's#<application#<queries>\n        <package android:name="com.limelight" />\n        <package android:name="com.tailscale.ipn" />\n    </queries>\n\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n\n    <application#' "$M"
+          sed -i 's#<application#<queries>\n        <package android:name="com.limelight" />\n        <package android:name="com.tailscale.ipn" />\n        <package android:name="com.carriez.flutter_hbb" />\n        <package android:name="com.valvesoftware.steamlink" />\n    </queries>\n\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n\n    <application#' "$M"
           # Keep the pairing code out of cloud/adb backups. (App updates still keep the data.)
           sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$M"
           grep -q 'allowBackup="false"' "$M" || sed -i 's#<application#<application android:allowBackup="false"#' "$M"

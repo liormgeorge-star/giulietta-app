@@ -96,15 +96,28 @@ function Setup-Tailscale {
     throw 'Tailscale did not come online.'
 }
 
+function Install-Remote {
+    Write-RemoteState 'installing' 'rustdesk'
+    Install-RustDesk | Out-Null
+    Write-RemoteState 'installing' 'configure'
+    Set-RustDeskSecurity
+    $cfg = Read-Config
+    if ($cfg.wantSteam -and -not (Find-Steam)) { Write-RemoteState 'installing' 'steam'; Install-Steam | Out-Null }
+    Write-RemoteState 'ready'
+    Log "Remote control ready (RustDesk ID $(Get-RustDeskId))"
+}
+
 try {
     switch ($Task) {
+        'InstallRemote' { Install-Remote }
         'InstallSunshine' { Install-Sunshine }
         'SetupTailscale' { Setup-Tailscale }
         default { throw "Unknown task $Task" }
     }
 } catch {
     Log "Task $Task failed: $($_.Exception.Message)"
-    if ($Task -eq 'SetupTailscale') { Write-TsState 'error' $_.Exception.Message; Remove-Item $TsKeyPath -Force -ErrorAction SilentlyContinue }
+    if ($Task -eq 'InstallRemote') { Write-RemoteState 'error' '' $_.Exception.Message }
+    elseif ($Task -eq 'SetupTailscale') { Write-TsState 'error' $_.Exception.Message; Remove-Item $TsKeyPath -Force -ErrorAction SilentlyContinue }
     else { Write-StreamState 'error' '' $_.Exception.Message }
     exit 1
 }

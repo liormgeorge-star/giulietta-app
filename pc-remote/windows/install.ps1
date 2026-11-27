@@ -116,8 +116,8 @@ New-NetFirewallRule -DisplayName $RuleName -Direction Inbound -Action Allow -Pro
     -RemoteAddress @('LocalSubnet', '100.64.0.0/10') -Profile Any | Out-Null
 Ok "TCP $Port allowed from the home network and Tailscale"
 
-# 5b. Sunshine (the streaming server), installed here in front of the user, with a login they choose.
-Step 'Sunshine (streaming server for remote control and games)'
+# 5b. Remote control (RustDesk) and games (Steam), installed here in front of the user.
+Step 'Remote control (RustDesk) and games (Steam)'
 # Stop a running agent first, so it does not start its own background install at the same time.
 Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | Stop-ScheduledTask -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
@@ -125,34 +125,19 @@ Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 . (Join-Path $Dir 'common.ps1')
 try {
-    $sunExe = Find-Sunshine
-    if ($sunExe -and (Test-SunshineCurrent)) {
-        Ok "Sunshine $(Get-SunshineVersion) is already installed"
-    } else {
-        if ($sunExe) { Write-Host "   ..  Sunshine $(Get-SunshineVersion) is out of date, updating" } else { Write-Host '   ..  Downloading Sunshine (about 30 MB)...' }
-        Write-StreamState 'installing' 'download'
-        try {
-            $sunExe = Install-SunshinePackage -Visible
-            Ok "Sunshine $(Get-SunshineVersion) installed"
-        } catch {
-            if ($sunExe) {
-                # Keep the installed version (it already has the critical May 2026 fix) and carry on.
-                Warn "Could not update Sunshine: $($_.Exception.Message)"
-                Warn "Keeping the installed Sunshine $(Get-SunshineVersion). The app will try the update again later."
-            } else { throw }
-        }
+    if (Find-RustDesk) { Ok 'RustDesk is already installed' }
+    else {
+        Write-Host '   ..  Downloading and installing RustDesk (about 25 MB)...'
+        Write-RemoteState 'installing' 'rustdesk'
+        Install-RustDesk | Out-Null
+        Ok 'RustDesk installed (runs as a Windows service, also before you log in)'
     }
-    Initialize-SunshineService $sunExe
-    if (Set-SunshineConf $SunshineHardening) { Ok 'Security settings applied (web page only on this PC, encryption on, UPnP off)' }
+    Set-RustDeskSecurity
+    Ok 'RustDesk security: permanent password only, direct connections only from home network/Tailscale'
 
     Write-Host ''
-    Write-Host '   Choose the username and password for the Sunshine web page.' -ForegroundColor Cyan
-    Write-Host '   (English letters/digits, password 8+ characters, no spaces)'
-    while ($true) {
-        $sunUser = (Read-Host '   Username').Trim()
-        if ($sunUser -match '^[A-Za-z0-9._@-]{1,32}$') { break }
-        Warn 'Use English letters, digits and . _ - @ only.'
-    }
+    Write-Host '   Choose the password for remote control (you will type it once in the RustDesk app on the phone).' -ForegroundColor Cyan
+    Write-Host '   (8+ characters, no spaces)'
     while ($true) {
         $p1 = Read-Host '   Password' -AsSecureString
         $p2 = Read-Host '   Password again' -AsSecureString
@@ -163,17 +148,25 @@ try {
         if ($s1.Length -lt 8 -or $s1 -match '[\s"]') { Warn 'At least 8 characters, no spaces or quotes.'; continue }
         break
     }
-    Write-Host '   ..  Saving the login in Sunshine and starting it'
-    $verified = Set-SunshineCreds $sunUser $s1
+    Set-RustDeskPassword $s1
     $s1 = $null; $s2 = $null
-    Set-Service -Name 'SunshineService' -StartupType Automatic -ErrorAction SilentlyContinue
-    Write-StreamState 'ready'
-    if ($verified) { Ok "Sunshine is running. Web page: https://localhost:47990 (user: $sunUser)" }
-    else { Warn 'Sunshine was installed but did not answer yet. It usually starts within a minute.' }
+    for ($i = 0; $i -lt 15 -and -not ($rdId = Get-RustDeskId); $i++) { Start-Sleep -Seconds 2 }
+    if ($rdId) { Ok "Remote control ready. RustDesk ID: $rdId" } else { Warn 'RustDesk is installed; its ID will show in the phone app.' }
+
+    if (Find-Steam) { Ok 'Steam is installed (for games: Steam Link on the phone)' }
+    else {
+        $ans = Read-Host '   Install Steam for streaming games to the phone? (Y/N)'
+        if ($ans -match '^(?i)y') {
+            Write-Host '   ..  Installing Steam...'
+            Install-Steam | Out-Null
+            Ok 'Steam installed. Open it once and sign in to your Steam account.'
+        }
+    }
+    Write-RemoteState 'ready'
 } catch {
-    Write-Host "   !!  Sunshine setup failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "   !!  Remote control setup failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "       The phone app can retry later. Details: $Dir\agent.log"
-    Write-StreamState 'error' '' $_.Exception.Message
+    Write-RemoteState 'error' '' $_.Exception.Message
 }
 
 # 6. Start at boot, as SYSTEM, before anyone logs in.
@@ -201,7 +194,7 @@ for ($i = 0; $i -lt 20 -and -not $up; $i++) {
     Start-Sleep -Seconds 1
     try { $up = (Invoke-RestMethod -Uri "http://127.0.0.1:$Port/ping" -TimeoutSec 2).ok } catch { }
 }
-if ($up) { Ok 'Agent is running. It now installs Sunshine (game streaming) in the background.' } else { Warn "Agent did not answer yet. Log: $Dir\agent.log" }
+if ($up) { Ok 'Agent is running.' } else { Warn "Agent did not answer yet. Log: $Dir\agent.log" }
 
 Write-Host ''
 Write-Host '==========================================' -ForegroundColor Green

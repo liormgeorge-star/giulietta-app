@@ -456,3 +456,118 @@ function Get-MsiFailureHint([string]$logPath) {
     } catch { }
     return ''
 }
+
+# ---------- RustDesk (remote control) and Steam (games) ----------
+$RemoteStatePath = Join-Path $Dir 'remote-state.json'
+
+function Find-RustDesk {
+    foreach ($p in (Join-Path $env:ProgramFiles 'RustDesk\rustdesk.exe'), (Join-Path ${env:ProgramFiles(x86)} 'RustDesk\rustdesk.exe')) {
+        if ($p -and (Test-Path $p)) { return $p }
+    }
+    return $null
+}
+
+function Find-Steam {
+    foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam', 'HKLM:\SOFTWARE\Valve\Steam') {
+        $p = (Get-ItemProperty $k -ErrorAction SilentlyContinue).InstallPath
+        if ($p -and (Test-Path (Join-Path $p 'steam.exe'))) { return (Join-Path $p 'steam.exe') }
+    }
+    return $null
+}
+
+function Read-RemoteState { try { Get-Content $RemoteStatePath -Raw | ConvertFrom-Json } catch { $null } }
+function Write-RemoteState([string]$state, [string]$step = '', [string]$err = '') {
+    @{ state = $state; step = $step; error = $err; at = (Get-Date).ToString('o') } | ConvertTo-Json | Set-Content -Path $RemoteStatePath -Encoding UTF8
+}
+
+function Invoke-RustDesk([string[]]$cliArgs, [int]$timeoutSec = 30) {
+    # Runs rustdesk.exe with arguments and returns what it printed (it prints for --get-id / --option).
+    $exe = Find-RustDesk
+    if (-not $exe) { throw 'RustDesk is not installed.' }
+    $out = Join-Path $Dir 'rustdesk-cli.out'
+    Remove-Item $out -Force -ErrorAction SilentlyContinue
+    $quoted = ($cliArgs | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    $p = Start-Process -FilePath $exe -ArgumentList $quoted -RedirectStandardOutput $out -PassThru -WindowStyle Hidden
+    if (-not $p.WaitForExit($timeoutSec * 1000)) { try { $p.Kill() } catch { } }
+    try { return ((Get-Content $out -Raw -ErrorAction SilentlyContinue) -as [string]).Trim() } finally { Remove-Item $out -Force -ErrorAction SilentlyContinue }
+}
+
+function Get-RustDeskId {
+    $id = ''
+    try { $id = Invoke-RustDesk @('--get-id') 10 } catch { }
+    if ($id -match '(\d{6,12})') { return $Matches[1] }
+    # Some versions print nothing to a redirected console: read the service's config file instead.
+    foreach ($f in "$env:WINDIR\ServiceProfiles\LocalService\AppData\Roaming\RustDesk\config\RustDesk.toml",
+                   "$env:WINDIR\System32\config\systemprofile\AppData\Roaming\RustDesk\config\RustDesk.toml") {
+        if (Test-Path $f) {
+            $m = Select-String -Path $f -Pattern "^\s*id\s*=\s*'?(\d{6,12})'?" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($m) { return $m.Matches[0].Groups[1].Value }
+        }
+    }
+    return ''
+}
+
+function Get-RustDeskInstaller([string]$dl) {
+    $ProgressPreference = 'SilentlyContinue'
+    $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/rustdesk/rustdesk/releases/latest' -UseBasicParsing -TimeoutSec 60 `
+        -Headers @{ 'User-Agent' = 'pc-remote-agent'; Accept = 'application/vnd.github+json' }
+    $asset = @($rel.assets) | Where-Object { $_.name -match '^rustdesk-[\d.]+-x86_64\.exe$' } | Select-Object -First 1
+    if (-not $asset) { throw "No Windows .exe found in RustDesk release $($rel.tag_name)." }
+    if ($asset.browser_download_url -notmatch '^https://github\.com/rustdesk/rustdesk/') { throw 'Unexpected download address.' }
+    $out = Join-Path $dl $asset.name
+    Log "Downloading RustDesk $($rel.tag_name)"
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $out -UseBasicParsing -TimeoutSec 900
+    if ((Get-Item $out).Length -lt 5MB) { throw 'The RustDesk download looks incomplete.' }
+    return $out
+}
+
+function Install-RustDesk {
+    # Installs RustDesk with its own installer (no Windows Installer/MSI involved).
+    if (Find-RustDesk) { return (Find-RustDesk) }
+    $dl = Join-Path $Dir 'dl'
+    New-Item -ItemType Directory -Path $dl -Force | Out-Null
+    $file = Get-RustDeskInstaller $dl
+    Assert-Signed $file '' -AllowUnsigned
+    Log 'Installing RustDesk (silent)'
+    Start-Process -FilePath $file -ArgumentList '--silent-install' -WindowStyle Hidden | Out-Null
+    for ($i = 0; $i -lt 90 -and -not ((Find-RustDesk) -and (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue)); $i++) { Start-Sleep -Seconds 2 }
+    Remove-Item $file -Force -ErrorAction SilentlyContinue
+    $exe = Find-RustDesk
+    if (-not $exe) { throw 'RustDesk did not finish installing.' }
+    Set-Service -Name 'RustDesk' -StartupType Automatic -ErrorAction SilentlyContinue
+    Start-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
+    return $exe
+}
+
+function Set-RustDeskSecurity {
+    # Permanent password only (no temporary one-time codes), no click-to-accept needed for
+    # unattended access, and direct connections (home network / Tailscale) on TCP 21118 only.
+    Invoke-RustDesk @('--option', 'verification-method', 'use-permanent-password') | Out-Null
+    Invoke-RustDesk @('--option', 'approve-mode', 'password') | Out-Null
+    Invoke-RustDesk @('--option', 'direct-server', 'Y') | Out-Null
+    Invoke-RustDesk @('--option', 'allow-remote-config-modification', 'N') | Out-Null
+    Get-NetFirewallRule -DisplayName 'PC Remote - RustDesk direct' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+    New-NetFirewallRule -DisplayName 'PC Remote - RustDesk direct' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 21118 `
+        -RemoteAddress @('LocalSubnet', $TailscaleRange) -Profile Any | Out-Null
+}
+
+function Set-RustDeskPassword([string]$pass) {
+    $r = Invoke-RustDesk @('--password', $pass)
+    Log "RustDesk password set ($r)"
+    $cfg = Read-Config; Set-ConfigValue $cfg 'rdPassSet' $true; Save-Config $cfg
+}
+
+function Install-Steam {
+    if (Find-Steam) { return (Find-Steam) }
+    $dl = Join-Path $Dir 'dl'
+    New-Item -ItemType Directory -Path $dl -Force | Out-Null
+    $file = Join-Path $dl 'SteamSetup.exe'
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri 'https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe' -OutFile $file -UseBasicParsing -TimeoutSec 600
+    Assert-Signed $file 'Valve'
+    Log 'Installing Steam (silent)'
+    $p = Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
+    Remove-Item $file -Force -ErrorAction SilentlyContinue
+    if ($p.ExitCode -ne 0 -or -not (Find-Steam)) { throw "Steam installer failed (code $($p.ExitCode))." }
+    return (Find-Steam)
+}

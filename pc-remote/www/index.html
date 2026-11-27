@@ -184,13 +184,13 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
       <button class="tile" id="tile-desktop">
         <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="3" width="56" height="32" rx="3"/><path d="M24 41h16M32 35v6"/><path d="M30 13l12 7-5.5 1.4L34 27z" fill="currentColor"/></svg></span>
         <span class="tile-title">שליטה מרחוק</span>
-        <span class="tile-sub">שולחן העבודה של המחשב בטלפון, מגע כעכבר.</span>
+        <span class="tile-sub">שולחן העבודה של המחשב בטלפון, דרך RustDesk.</span>
         <span class="chip" id="chip-desktop">…</span>
       </button>
       <button class="tile" id="tile-games">
         <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M18 10h28c7 0 11 6 12 14l1.5 9c.8 5-4.6 8-8.4 4.6L45 32H19l-6.1 5.6C9.1 41 3.7 38 4.5 33L6 24c1-8 5-14 12-14z"/><path d="M18 18v10M13 23h10"/><circle cx="44" cy="20" r="2" fill="currentColor"/><circle cx="49" cy="25" r="2" fill="currentColor"/></svg></span>
         <span class="tile-title">משחקים</span>
-        <span class="tile-sub">סטרימינג של משחקים מהמחשב, גם עם שלט.</span>
+        <span class="tile-sub">משחקים מהמחשב, דרך Steam Link, גם עם שלט.</span>
         <span class="chip" id="chip-games">…</span>
       </button>
     </div>
@@ -213,23 +213,42 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   </div>
 </div>
 
-<!-- streaming setup -->
-<div class="overlay" id="stream-sheet" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ss-title">
-    <h2 id="ss-title">הגדרת סטרימינג</h2>
-    <p>חד-פעמי. אחר כך "שליטה מרחוק" ו"משחקים" פותחים את המחשב ישר.</p>
+<!-- remote control setup (RustDesk) -->
+<div class="overlay" id="rd-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rd-title">
+    <h2 id="rd-title">הגדרת שליטה מרחוק</h2>
+    <p>דרך RustDesk: קוד פתוח, מוצפן מקצה לקצה, עובד בבית וגם מחוץ לבית בלי להגדיר את הראוטר.</p>
     <ol class="steps">
-      <li id="st-server"><div class="step-body"><div class="step-title">שרת הסטרימינג במחשב</div><div class="step-note" id="st-server-note"></div><button class="btn" id="st-server-btn" hidden>ניסיון חוזר</button></div></li>
-      <li id="st-app"><div class="step-body"><div class="step-title">Moonlight בטלפון</div><div class="step-note" id="st-app-note"></div><button class="btn primary" id="st-app-btn">התקנה מ-Google Play</button></div></li>
-      <li id="st-pair"><div class="step-body"><div class="step-title">צימוד</div><div class="step-note" id="st-pair-note"></div>
-        <div id="st-pair-form" class="step-body">
-          <button class="btn" id="st-open-ml">פתיחת Moonlight</button>
-          <div class="field"><label for="f-pin">הקוד ש-Moonlight מציגה</label><input class="text pin" id="f-pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••"></div>
-          <div class="msg" id="pair-msg" role="status"></div>
-          <button class="btn primary" id="st-pair-btn">צימוד</button>
+      <li id="rd-1"><div class="step-body"><div class="step-title">RustDesk במחשב</div><div class="step-note" id="rd-1-note"></div><button class="btn" id="rd-1-btn" hidden>התקנה עכשיו</button></div></li>
+      <li id="rd-2"><div class="step-body"><div class="step-title">סיסמה לשליטה מרחוק</div><div class="step-note" id="rd-2-note"></div>
+        <div id="rd-2-form" class="step-body">
+          <div class="field"><label for="rd-pass">סיסמה חדשה (לפחות 8 תווים, בלי רווחים)</label><input class="text" id="rd-pass" type="password" autocomplete="new-password"></div>
+          <div class="field"><label for="rd-pass2">שוב את הסיסמה</label><input class="text" id="rd-pass2" type="password" autocomplete="new-password"></div>
+          <div class="msg" id="rd-msg" role="status"></div>
+          <button class="btn primary" id="rd-pass-btn">שמירה במחשב</button>
         </div></div></li>
+      <li id="rd-3"><div class="step-body"><div class="step-title">RustDesk בטלפון</div><div class="step-note" id="rd-3-note">חינמי ב-Google Play.</div><button class="btn primary" id="rd-3-btn">התקנה מ-Google Play</button></div></li>
+      <li id="rd-4"><div class="step-body"><div class="step-title">חיבור ראשון</div>
+        <div class="step-note">ב-RustDesk בטלפון מזינים את מזהה המחשב, ואחר כך את הסיסמה, ומסמנים "זכור סיסמה". מהפעם הבאה הכפתור "שליטה מרחוק" פותח את זה ישר.</div>
+        <div class="linkbox" id="rd-id">—</div><button class="btn" id="rd-id-copy">העתקת המזהה</button></div></li>
     </ol>
-    <button class="btn block" id="ss-close">סגירה</button>
+    <button class="btn block" id="rd-close">סגירה</button>
+  </div>
+</div>
+
+<!-- games setup (Steam Link) -->
+<div class="overlay" id="games-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gm-title">
+    <h2 id="gm-title">הגדרת משחקים</h2>
+    <p>דרך Steam Link של Valve: סטרימינג של משחקים מהמחשב, גם עם שלט, בבית וגם מחוץ לבית.</p>
+    <ol class="steps">
+      <li id="gm-1"><div class="step-body"><div class="step-title">Steam במחשב</div><div class="step-note" id="gm-1-note"></div><button class="btn" id="gm-1-btn" hidden>התקנת Steam במחשב</button></div></li>
+      <li id="gm-2"><div class="step-body"><div class="step-title">Steam Link בטלפון</div><div class="step-note" id="gm-2-note">חינמי ב-Google Play.</div><button class="btn primary" id="gm-2-btn">התקנה מ-Google Play</button></div></li>
+      <li id="gm-3"><div class="step-body"><div class="step-title">צימוד, פעם אחת</div>
+        <div class="step-note">פותחים את Steam Link בטלפון ובוחרים במחשב. הוא יציג קוד בן 4 ספרות. מקלידים אותו בחלון שנפתח ב-Steam במחשב.</div>
+        <button class="btn" id="gm-3-btn">פתיחת Steam Link</button></div></li>
+    </ol>
+    <button class="btn block" id="gm-close">סגירה</button>
   </div>
 </div>
 
@@ -250,8 +269,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
           <div class="msg" id="ts-msg" role="status"></div>
           <button class="btn primary" id="rs-3-btn">חיבור המחשב ל-Tailscale</button>
         </div></div></li>
-      <li id="rs-4"><div class="step-body"><div class="step-title">Moonlight מחוץ לבית</div>
-        <div class="step-note">ב-Moonlight: לוחצים על "+" ומזינים את הכתובת הזו. היא מתחברת לאותו מחשב, בלי צימוד נוסף.</div>
+      <li id="rs-4"><div class="step-body"><div class="step-title">שליטה ומשחקים מחוץ לבית</div>
+        <div class="step-note">RustDesk ו-Steam Link עובדים מחוץ לבית גם בלי Tailscale, דרך שרת מוצפן. Tailscale מוסיף את כפתורי החשמל (כיבוי, שינה, הפעלה מחדש) מחוץ לבית, וחיבור ישיר ומהיר יותר. כתובת המחשב ב-Tailscale:</div>
         <div class="linkbox" id="rs-ip">—</div><button class="btn" id="rs-ip-copy">העתקת הכתובת</button></div></li>
       <li id="rs-5"><div class="step-body"><div class="step-title">שהמחשב לא יתנתק אחרי חצי שנה</div>
         <div class="step-note">ברשימת המכשירים של Tailscale: ליד שם המחשב ← ⋯ ← Disable key expiry.</div><button class="btn" id="rs-5-btn">רשימת המכשירים</button></div></li>
@@ -287,22 +306,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     <h2 id="dg-title">יומן מהמחשב</h2>
     <p id="dg-summary"></p>
     <pre id="dg-log" class="linkbox" style="white-space: pre-wrap; max-height: 50vh; overflow: auto; margin: 0"></pre>
-    <div class="btn-row"><button class="btn" id="dg-copy">העתקה</button><button class="btn" id="dg-retry">התקנת Sunshine מחדש</button></div>
+    <div class="btn-row"><button class="btn" id="dg-copy">העתקה</button><button class="btn" id="dg-retry">התקנה מחדש</button></div>
     <button class="btn block" id="dg-close">סגירה</button>
-  </div>
-</div>
-
-<!-- Sunshine login -->
-<div class="overlay" id="creds-sheet" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cr-title">
-    <h2 id="cr-title">שם משתמש וסיסמה ל-Sunshine</h2>
-    <p>אלה הפרטים לכניסה לממשק של Sunshine במחשב (https://localhost:47990). הם נשלחים למחשב מוצפנים, והאפליקציה ממשיכה לעבוד איתם.</p>
-    <div class="field"><label for="cr-user">שם משתמש</label><input class="text" id="cr-user" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="lior"></div>
-    <div class="field"><label for="cr-pass">סיסמה (לפחות 8 תווים, בלי רווחים)</label><input class="text" id="cr-pass" type="password" autocomplete="new-password"></div>
-    <div class="field"><label for="cr-pass2">שוב את הסיסמה</label><input class="text" id="cr-pass2" type="password" autocomplete="new-password"></div>
-    <div class="msg" id="cr-msg" role="status"></div>
-    <button class="btn primary block" id="cr-save">שמירה במחשב</button>
-    <button class="btn block" id="cr-close">סגירה</button>
   </div>
 </div>
 
@@ -313,8 +318,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     <dl class="kv" id="s-info"></dl>
     <button class="btn block" id="s-skin">עיצוב</button>
     <button class="btn block" id="s-remote">גישה מחוץ לבית</button>
-    <button class="btn block" id="s-stream">הגדרת סטרימינג</button>
-    <button class="btn block" id="s-creds">שם משתמש וסיסמה ל-Sunshine</button>
+    <button class="btn block" id="s-stream">הגדרת שליטה מרחוק</button>
+    <button class="btn block" id="s-games">הגדרת משחקים</button>
     <button class="btn block" id="s-diag">יומן מהמחשב</button>
     <button class="btn block" id="s-edit">שינוי פרטי חיבור</button>
     <button class="btn block danger" id="s-forget">ניתוק מהמחשב</button>
@@ -331,10 +336,10 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   'use strict';
   var KEY = 'pcremote.config.v1';          // unchanged since v1, so saved details survive updates
   var SKIN_KEY = 'pcremote.skin';
-  var AGENT_TARGET = 10;                     // PC agent version this app expects (windows/version.txt)
+  var AGENT_TARGET = 11;                     // PC agent version this app expects (windows/version.txt)
   var BUILD = window.PCR_BUILD || {};
   var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
-  var TS_PKG = 'com.tailscale.ipn', ML_PKG = 'com.limelight';
+  var TS_PKG = 'com.tailscale.ipn', RD_PKG = 'com.carriez.flutter_hbb', SL_PKG = 'com.valvesoftware.steamlink';
 
   var cap = window.Capacitor;
   var isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.nativePromise);
@@ -540,25 +545,30 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
 
   // ================= deck state =================
   var power = 'unknown', latency = null, agentV = null, status = null, pending = null, launchAfterWake = null;
-  var moonlight = null, tailscaleApp = null, net = {}, holdOffline = 0, updateAsked = false;
+  var rdApp = null, slApp = null, tailscaleApp = null, net = {}, holdOffline = 0, updateAsked = false;
   var updateState = null;     // null | 'staged' | 'mismatch' | 'failed'
   var pollTimer = null, polling = false, failures = 0, lastStatusAt = 0;
-  var STREAM_STEP = { queued: 'בתור להתקנה', download: 'מוריד את Sunshine', install: 'מתקין את Sunshine', configure: 'מגדיר', start: 'מפעיל' };
+  var REMOTE_STEP = { queued: 'בתור להתקנה', rustdesk: 'מתקין RustDesk', configure: 'מגדיר', steam: 'מתקין Steam' };
 
   function outsideHome() { return net.wifi === false || route === 'ts'; }
-  function streamInfo() {
+
+  // Per-tile readiness. RustDesk and Steam Link reach the PC through their own encrypted relays,
+  // so outside the home the tiles still open even when the power buttons need Tailscale.
+  function tileInfo(kind) {
     if (agentV !== null && agentV < 2) return { ready: false, chip: 'דרוש עדכון במחשב', kind: 'warn', reason: 'upgrade' };
-    var s = status && status.stream;
-    if (!s) {
-      if (cfg.streamReady) return { ready: true, chip: power === 'off' ? 'מדליק ומתחבר' : 'מוכן', kind: 'ok' };
-      return { ready: false, chip: power === 'off' ? 'המחשב כבוי' : 'בודק…', kind: '', reason: 'unknown' };
+    var r = status && status.remote;
+    if (kind === 'desktop') {
+      if (!r) return cfg.rdReady ? { ready: true, chip: 'מוכן', kind: 'ok' } : { ready: false, chip: power === 'off' ? 'המחשב כבוי' : 'בודק…', kind: '', reason: 'unknown' };
+      if (r.state === 'installing') return { ready: false, chip: (REMOTE_STEP[r.step] || 'מתקין') + '…', kind: 'warn', reason: 'installing' };
+      if (!r.rustdesk.installed) return { ready: false, chip: r.state === 'error' ? 'ההתקנה נכשלה' : 'לא מותקן', kind: r.state === 'error' ? 'bad' : 'warn', reason: r.state === 'error' ? 'error' : 'missing' };
+      if (!r.rustdesk.passwordSet) return { ready: false, chip: 'צריך סיסמה', kind: 'warn', reason: 'password' };
+      if (rdApp === false) return { ready: false, chip: 'צריך את RustDesk', kind: 'warn', reason: 'app' };
+      return { ready: true, chip: 'מוכן', kind: 'ok' };
     }
-    if (s.state === 'installing') return { ready: false, chip: (STREAM_STEP[s.step] || 'מתקין') + '…', kind: 'warn', reason: 'installing' };
-    if (s.state === 'error') return { ready: false, chip: 'ההתקנה נכשלה', kind: 'bad', reason: 'error' };
-    if (s.state !== 'ready') return { ready: false, chip: 'לא מותקן', kind: 'warn', reason: 'missing' };
-    if (moonlight === false) return { ready: false, chip: 'צריך את Moonlight', kind: 'warn', reason: 'moonlight' };
-    if (!s.paired) return { ready: false, chip: 'דרוש צימוד', kind: 'warn', reason: 'pair' };
-    return { ready: true, chip: route === 'ts' ? 'מוכן · מרחוק' : 'מוכן', kind: 'ok' };
+    if (!r) return cfg.slReady ? { ready: true, chip: 'מוכן', kind: 'ok' } : { ready: false, chip: power === 'off' ? 'המחשב כבוי' : 'בודק…', kind: '', reason: 'unknown' };
+    if (!r.steam.installed) return { ready: false, chip: 'אין Steam במחשב', kind: 'warn', reason: 'steam' };
+    if (slApp === false) return { ready: false, chip: 'צריך את Steam Link', kind: 'warn', reason: 'app' };
+    return { ready: true, chip: 'מוכן', kind: 'ok' };
   }
 
   function render() {
@@ -584,17 +594,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     $('restart-btn').disabled = $('sleep-btn').disabled = busy || power !== 'on';
     $('wake-again').hidden = !(pending && pending.kind === 'wake' && Date.now() - pending.started > 25000);
 
-    var si = streamInfo();
     ['desktop', 'games'].forEach(function (k) {
-      var chip = $('chip-' + k), waiting = launchAfterWake === k;
-      chip.textContent = waiting ? 'מדליק ומתחבר…' : si.chip; chip.className = 'chip ' + (waiting ? 'warn' : si.kind);
+      var ti = tileInfo(k), chip = $('chip-' + k), waiting = launchAfterWake === k;
+      chip.textContent = waiting ? 'מדליק ומתחבר…' : ti.chip; chip.className = 'chip ' + (waiting ? 'warn' : ti.kind);
     });
-    var n = noticeFor(si);
+    var n = noticeFor(tileInfo('desktop'));
     $('notice').hidden = !n;
     if (n) { $('notice-title').textContent = n.title; $('notice-text').textContent = n.text; var b = $('notice-btn'); b.hidden = !n.btn; if (n.btn) { b.textContent = n.btn; b.onclick = n.act; } }
     var parts = [];
     if (agentV) parts.push('PC v' + agentV);
-    if (status && status.stream && status.stream.version) parts.push('Sunshine ' + status.stream.version);
+    if (status && status.remote && status.remote.rustdesk && status.remote.rustdesk.id) parts.push('RustDesk ' + status.remote.rustdesk.id);
     if (cfg.tsIp) parts.push('Tailscale ' + cfg.tsIp);
     var f = $('foot'); f.textContent = '';
     parts.forEach(function (p) { var s = document.createElement('span'); s.className = 'data'; s.textContent = p; f.appendChild(s); });
@@ -607,11 +616,10 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     if (updateState === 'mismatch') return { title: 'עדכון המחשב נדחה', text: 'החבילה בדף ההורדות חדשה מהאפליקציה. מתקינים את הגרסה האחרונה של האפליקציה, והמחשב יתעדכן ממנה.' };
     if (power !== 'on' && outsideHome() && cfg.tsIp && net.vpn === false) return { title: 'Tailscale כבוי בטלפון', text: 'כדי להתחבר מחוץ לבית צריך להפעיל את Tailscale.', btn: 'הפעלת Tailscale', act: connectTailscale };
     if (power === 'off' && outsideHome()) return { title: 'המחשב כבוי ואתם מחוץ לבית', text: 'הדלקה מרחוק דורשת מכשיר שנשאר דלוק בבית. כשיוצאים, עדיף "שינה" במקום כיבוי.' };
-    if (si.reason === 'installing') return { title: 'מתקין את שרת הסטרימינג במחשב', text: 'Sunshine יורד ומותקן ברקע, בדרך כלל 2–3 דקות.', btn: moonlight === false ? 'התקנת Moonlight' : '', act: function () { native('openStore', { package: ML_PKG }); } };
-    if (si.reason === 'error') return { title: 'ההתקנה של Sunshine נכשלה', text: (status.stream.error || '') + ' אפשר לראות את היומן מהמחשב ולנסות שוב.', btn: 'פרטים וניסיון חוזר', act: openDiag };
-    if (si.reason === 'missing' && power === 'on') return { title: 'Sunshine לא מותקן במחשב', text: 'Sunshine הוא שרת הסטרימינג שמאפשר שליטה מרחוק ומשחקים. ההתקנה נעשית במחשב לבד, 2–3 דקות.', btn: 'התקנה עכשיו', act: retryInstall };
-    if (si.reason === 'moonlight' || si.reason === 'pair') return { title: 'עוד צעד אחד לסטרימינג', text: si.reason === 'moonlight' ? 'מתקינים את Moonlight ומצמדים פעם אחת.' : 'מצמדים את Moonlight למחשב, פעם אחת.', btn: 'להמשך', act: openStreamSheet };
-    if (status && status.stream && status.stream.installed && status.stream.secure === false) return { title: 'Sunshine מתעדכן לגרסה מאובטחת', text: 'הגרסה המותקנת חסרה תיקוני אבטחה. העדכון רץ ברקע.' };
+    if (si.reason === 'installing') return { title: 'מתקין את RustDesk במחשב', text: 'זה קורה לבד במחשב, בדרך כלל דקה-שתיים.' };
+    if (si.reason === 'error') return { title: 'ההתקנה של RustDesk נכשלה', text: ((status.remote && status.remote.error) || '') + ' אפשר לראות את היומן ולנסות שוב.', btn: 'פרטים וניסיון חוזר', act: openDiag };
+    if (si.reason === 'missing' && power === 'on') return { title: 'השליטה מרחוק עוד לא מותקנת במחשב', text: 'RustDesk מותקן במחשב לבד, דקה-שתיים.', btn: 'התקנה עכשיו', act: retryInstall };
+    if (si.reason === 'password' || si.reason === 'app') return { title: 'עוד צעד אחד לשליטה מרחוק', text: si.reason === 'password' ? 'בוחרים סיסמה לשליטה מרחוק.' : 'מתקינים את RustDesk בטלפון.', btn: 'להמשך', act: openRdSheet };
     if (power === 'on' && route === 'lan' && !cfg.tsIp && !cfg.remoteDismissed) return { title: 'רוצים גישה גם מחוץ לבית?', text: 'הגדרה חד-פעמית דרך רשת פרטית ומוצפנת, בלי לפתוח פורטים.', btn: 'להגדרה', act: openRemoteSheet };
     return null;
   }
@@ -628,7 +636,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
         if (up) { failures = 0; power = 'on'; }
         else if (++failures >= 2 || power === 'unknown') { power = 'off'; latency = null; route = null; }
         progressPending(up);
-        if (up && agentV >= 2 && Date.now() - lastStatusAt > (status && status.stream && status.stream.state === 'installing' ? 3000 : 15000)) refreshStatus();
+        if (up && agentV >= 2 && Date.now() - lastStatusAt > (status && status.remote && status.remote.state === 'installing' ? 3000 : 15000)) refreshStatus();
         if (up && agentV < AGENT_TARGET && (!updateAsked || (updateState !== 'mismatch' && Date.now() - updateAsked > 300000))) askAgentUpdate();
         render();
       });
@@ -641,10 +649,11 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
       status = r.body; agentV = r.body.v || agentV;
       if (r.body.mac && !cfg.mac) cfg.mac = normMac(r.body.mac);
       if (r.body.name) cfg.name = r.body.name;
-      var s = r.body.stream || {}; if (s.uuid) cfg.uuid = s.uuid;
-      cfg.streamReady = s.state === 'ready' && s.paired > 0;
+      var rm = r.body.remote || {};
+      if (rm.rustdesk) { if (rm.rustdesk.id) cfg.rdId = rm.rustdesk.id; cfg.rdReady = !!(rm.rustdesk.installed && rm.rustdesk.passwordSet); }
+      if (rm.steam) cfg.slReady = !!rm.steam.installed;
       var t = r.body.tailscale || {}; if (t.online && isTsIp(t.ip)) cfg.tsIp = t.ip;
-      save(); render(); renderStreamSheet(); renderRemoteSheet();
+      save(); render(); renderRdSheet(); renderGamesSheet(); renderRemoteSheet();
     }).catch(function (e) { if (e && e.message === 'bad-sig') toast('תשובה לא מאומתת מהמחשב נחסמה'); });
   }
   function askAgentUpdate() {
@@ -659,7 +668,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     }).catch(function () { updateState = 'failed'; });
   }
   function checkApps() {
-    native('appInstalled', { package: ML_PKG }).then(function (r) { moonlight = !!r.installed; render(); renderStreamSheet(); }).catch(function () {});
+    native('appInstalled', { package: RD_PKG }).then(function (r) { rdApp = !!r.installed; render(); renderRdSheet(); }).catch(function () {});
+    native('appInstalled', { package: SL_PKG }).then(function (r) { slApp = !!r.installed; render(); renderGamesSheet(); }).catch(function () {});
     native('appInstalled', { package: TS_PKG }).then(function (r) { tailscaleApp = !!r.installed; renderRemoteSheet(); }).catch(function () {});
     netInfo().then(function (n) { net = n || {}; render(); });
   }
@@ -668,14 +678,14 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   document.addEventListener('visibilitychange', function () { if (!document.hidden && cfg && !$('deck').hidden) { checkApps(); poll(); } });
 
   function progressPending(up) {
-    if (!pending) { if (launchAfterWake && up && streamReadyToLaunch()) doLaunch(launchAfterWake); return; }
+    if (!pending) { progressLaunch(up); return; }
     var k = pending.kind, reached = false;
     if (k === 'wake') reached = up;
     else if (k === 'shutdown' || k === 'sleep') reached = !up && power === 'off';
     else if (k === 'restart') { if (!up) pending.wentDown = true; reached = pending.wentDown && up; }
     if (reached) {
       if (!launchAfterWake) toast({ wake: 'המחשב דלוק', shutdown: 'המחשב כבוי', restart: 'המחשב עלה מחדש', sleep: 'המחשב במצב שינה' }[k]);
-      pending = null; if (k === 'wake' && launchAfterWake) refreshStatus();
+      pending = null; if (k === 'wake' && launchAfterWake) setTimeout(function () { progressLaunch(true); }, 8000);
     } else if (Date.now() > pending.until) {
       toast(k === 'wake' ? 'המחשב לא עלה.' : 'לא התקבל אישור מהמחשב.'); pending = null; launchAfterWake = null;
     }
@@ -715,60 +725,84 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   $('sleep-btn').onclick = function () { powerAction('sleep'); };
   $('wake-again').onclick = function () { wake().then(function () { toast('נשלח שוב'); }); };
 
-  // ================= streaming =================
-  function streamReadyToLaunch() { var s = status && status.stream; return !!(s && s.state === 'ready' && s.running && s.paired > 0); }
+  // ================= remote control (RustDesk) and games (Steam Link) =================
   function doLaunch(kind) {
     launchAfterWake = null; render();
-    native('openMoonlight', { uuid: cfg.uuid || '', name: cfg.name || '', appName: kind === 'desktop' ? 'Desktop' : '' })
-      .catch(function () { toast('לא הצלחתי לפתוח את Moonlight'); });
+    if (kind === 'desktop') {
+      var id = (status && status.remote && status.remote.rustdesk && status.remote.rustdesk.id) || cfg.rdId || '';
+      if (id && navigator.clipboard) navigator.clipboard.writeText(id).catch(function () {});
+      native('openRustDesk', { id: id }).catch(function () { native('openStore', { package: RD_PKG }); });
+    } else {
+      native('openApp', { package: SL_PKG }).catch(function () { native('openStore', { package: SL_PKG }); });
+    }
   }
   function onTile(kind) {
     if (!isNative) return toast('עובד רק באפליקציה בטלפון');
-    var si = streamInfo();
-    if (si.reason === 'upgrade') return openSheet('upgrade-sheet');
-    if (!si.ready && power === 'on') return openStreamSheet();
-    if (power === 'on' && streamReadyToLaunch()) return doLaunch(kind);
-    if (power === 'on') { launchAfterWake = kind; render(); refreshStatus(); return; }
+    var ti = tileInfo(kind);
+    if (ti.reason === 'upgrade') return openSheet('upgrade-sheet');
+    if (power === 'on') {
+      if (ti.ready) return doLaunch(kind);
+      return kind === 'desktop' ? openRdSheet() : openGamesSheet();
+    }
+    // PC looks off. Outside the home it may be on but unreachable without Tailscale: just open the app.
+    if (outsideHome()) { if (ti.ready || cfg[kind === 'desktop' ? 'rdReady' : 'slReady']) return doLaunch(kind); return toast('ההגדרה הראשונה נעשית בבית'); }
     if (!cfg.mac) return toast('המחשב כבוי ואין כתובת MAC להדלקה');
     launchAfterWake = kind; sendWake(true);
   }
+  function progressLaunch(up) { if (launchAfterWake && up && pending === null) doLaunch(launchAfterWake); }
   $('tile-desktop').onclick = function () { onTile('desktop'); };
   $('tile-games').onclick = function () { onTile('games'); };
-  function retryInstall() { authed('/stream/install', 'POST', null, 6000).then(function () { toast('ההתקנה התחילה מחדש'); refreshStatus(); }).catch(function () { toast('המחשב לא ענה'); }); }
-
-  function openStreamSheet() { renderStreamSheet(); openSheet('stream-sheet'); checkApps(); refreshStatus(); }
-  function renderStreamSheet() {
-    var s = (status && status.stream) || {}, serverOk = s.state === 'ready';
-    $('st-server').classList.toggle('done', serverOk);
-    $('st-server-note').textContent = serverOk ? 'Sunshine ' + (s.version || '') + (s.secure === false ? ' (מתעדכן לגרסה מאובטחת)' : ' מותקן ומוקשח.') :
-      s.state === 'installing' ? (STREAM_STEP[s.step] || 'מתקין') + '… זה קורה לבד במחשב.' :
-      s.state === 'error' ? 'ההתקנה נכשלה: ' + (s.error || '') : power === 'on' ? 'עוד לא מותקן.' : 'המחשב כבוי.';
-    $('st-server-btn').hidden = !(power === 'on' && (s.state === 'error' || s.state === 'missing'));
-    var mlOk = moonlight === true;
-    $('st-app').classList.toggle('done', mlOk); $('st-app-btn').hidden = mlOk;
-    $('st-app-note').textContent = mlOk ? 'מותקנת.' : 'Moonlight מציגה את המסך של המחשב. חינמית.';
-    var paired = serverOk && s.paired > 0;
-    $('st-pair').classList.toggle('done', paired);
-    $('st-pair-form').hidden = paired || !serverOk || !mlOk;
-    $('st-pair-note').textContent = paired ? 'Moonlight מצומדת. אפשר לסגור ולהתחיל.' :
-      'פותחים את Moonlight ובוחרים במחשב ⁨' + (cfg.name || '') + '⁩. היא תציג קוד בן 4 ספרות. חוזרים לכאן ומקלידים אותו.';
+  function retryInstall(steam) {
+    authed('/remote/install', 'POST', steam === true ? { steam: true } : null, 8000).then(function () { toast('ההתקנה התחילה'); refreshStatus(); })
+      .catch(function () { toast('המחשב לא ענה'); });
   }
-  $('st-server-btn').onclick = retryInstall;
-  $('st-app-btn').onclick = function () { native('openStore', { package: ML_PKG }); };
-  $('st-open-ml').onclick = function () { native('openMoonlight', { direct: false }).catch(function () { toast('Moonlight לא מותקנת'); }); };
-  $('f-pin').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 4); });
-  $('st-pair-btn').onclick = function () {
-    var pin = $('f-pin').value, msg = $('pair-msg');
-    if (!/^\d{4}$/.test(pin)) { msg.textContent = 'הקוד הוא 4 ספרות.'; msg.className = 'msg err'; return; }
-    var btn = this; btn.disabled = true; msg.textContent = 'מצמד…'; msg.className = 'msg';
-    holdOffline = Date.now() + 50000;
-    authed('/stream/pair', 'POST', { pin: pin }, 50000).then(function (r) {
-      holdOffline = 0; var b = r.body || {};
-      if (b.ok) { msg.textContent = 'מצומד.'; msg.className = 'msg ok'; $('f-pin').value = ''; toast('הצימוד הצליח'); refreshStatus(); setTimeout(function () { closeSheet('stream-sheet'); }, 900); }
-      else { msg.className = 'msg err'; msg.textContent = b.error === 'no-request' ? 'Moonlight לא מחכה לצימוד. פותחים אותה, בוחרים במחשב, ואז מקלידים את הקוד.' : b.error === 'wrong-pin' ? 'הקוד לא התאים. בוחרים שוב במחשב ב-Moonlight ומקלידים את הקוד החדש.' : 'הצימוד לא הצליח. נסו שוב.'; }
-    }).catch(function () { holdOffline = 0; msg.textContent = 'המחשב לא ענה. נסו שוב.'; msg.className = 'msg err'; }).then(function () { btn.disabled = false; });
+
+  function openRdSheet() { renderRdSheet(); openSheet('rd-sheet'); checkApps(); refreshStatus(); }
+  function renderRdSheet() {
+    var r = (status && status.remote) || {}, rd = r.rustdesk || {};
+    $('rd-1').classList.toggle('done', !!rd.installed);
+    $('rd-1-note').textContent = rd.installed ? 'מותקן ופועל כשירות של Windows, גם לפני כניסה למשתמש.' :
+      r.state === 'installing' ? (REMOTE_STEP[r.step] || 'מתקין') + '…' : r.state === 'error' ? 'נכשל: ' + (r.error || '') : power === 'on' ? 'עוד לא מותקן.' : 'המחשב כבוי.';
+    $('rd-1-btn').hidden = !(power === 'on' && !rd.installed && r.state !== 'installing');
+    $('rd-2').classList.toggle('done', !!rd.passwordSet);
+    $('rd-2-note').textContent = rd.passwordSet ? 'נקבעה סיסמה. אפשר להחליף אותה כאן בכל זמן.' : 'בלי סיסמה אף אחד לא יכול להתחבר, גם לא אתם.';
+    $('rd-2-form').hidden = !rd.installed;
+    $('rd-3').classList.toggle('done', rdApp === true); $('rd-3-btn').hidden = rdApp === true;
+    $('rd-3-note').textContent = rdApp ? 'מותקן.' : 'חינמי ב-Google Play.';
+    $('rd-id').textContent = rd.id || cfg.rdId || '—';
+  }
+  $('rd-1-btn').onclick = function () { retryInstall(); };
+  $('rd-3-btn').onclick = function () { native('openStore', { package: RD_PKG }); };
+  $('rd-id-copy').onclick = function () { var id = $('rd-id').textContent; if (/\d/.test(id)) copyText(id); };
+  $('rd-close').onclick = function () { closeSheet('rd-sheet'); };
+  $('rd-pass-btn').onclick = function () {
+    var pw = $('rd-pass').value, msg = $('rd-msg');
+    function err(t) { msg.textContent = t; msg.className = 'msg err'; }
+    if (pw.length < 8 || /[\s"]/.test(pw)) return err('לפחות 8 תווים, בלי רווחים ובלי מרכאות.');
+    if (pw !== $('rd-pass2').value) return err('הסיסמאות לא זהות.');
+    if (power !== 'on') return err('המחשב צריך להיות דלוק.');
+    if (agentV < 11) return err('התוכנה במחשב מתעדכנת. נסו שוב בעוד דקה.');
+    var btn = this; btn.disabled = true; msg.textContent = 'שומר (מוצפן)…'; msg.className = 'msg';
+    authed('/remote/password', 'POST', { pass: pw }, 30000).then(function (r) {
+      var b = r.body || {};
+      if (b.ok) { msg.textContent = 'נשמר. ב-RustDesk בטלפון מזינים את המזהה ואת הסיסמה הזו.'; msg.className = 'msg ok'; $('rd-pass').value = ''; $('rd-pass2').value = ''; refreshStatus(); }
+      else err(b.error === 'not-installed' ? 'RustDesk עוד לא מותקן במחשב.' : 'השמירה נכשלה. אפשר לראות את היומן מהמחשב.');
+    }).catch(function () { err('המחשב לא ענה.'); }).then(function () { btn.disabled = false; });
   };
-  $('ss-close').onclick = function () { closeSheet('stream-sheet'); };
+
+  function openGamesSheet() { renderGamesSheet(); openSheet('games-sheet'); checkApps(); refreshStatus(); }
+  function renderGamesSheet() {
+    var r = (status && status.remote) || {}, st = r.steam || {};
+    $('gm-1').classList.toggle('done', !!st.installed);
+    $('gm-1-note').textContent = st.installed ? 'מותקן. בפעם הראשונה פותחים את Steam במחשב ונכנסים לחשבון.' : r.step === 'steam' && r.state === 'installing' ? 'מתקין את Steam…' : power === 'on' ? 'Steam לא מותקן במחשב.' : 'המחשב כבוי.';
+    $('gm-1-btn').hidden = !(power === 'on' && !st.installed);
+    $('gm-2').classList.toggle('done', slApp === true); $('gm-2-btn').hidden = slApp === true;
+    $('gm-2-note').textContent = slApp ? 'מותקן.' : 'חינמי ב-Google Play.';
+  }
+  $('gm-1-btn').onclick = function () { retryInstall(true); };
+  $('gm-2-btn').onclick = function () { native('openStore', { package: SL_PKG }); };
+  $('gm-3-btn').onclick = function () { native('openApp', { package: SL_PKG }).catch(function () { toast('Steam Link לא מותקן'); }); };
+  $('gm-close').onclick = function () { closeSheet('games-sheet'); };
   $('up-close').onclick = function () { closeSheet('upgrade-sheet'); };
 
   // ================= remote access (Tailscale) =================
@@ -817,7 +851,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     authed('/diag', 'GET', null, 9000).then(function (r) {
       if (r.status === 404) { $('dg-summary').textContent = 'התוכנה במחשב ישנה מדי ליומן. היא תתעדכן בקרוב.'; return; }
       var b = r.body || {}, sun = b.sunshine || {};
-      $('dg-summary').textContent = 'Sunshine: ' + (sun.version || 'לא מותקן') + ' · שירות: ' + (sun.service || 'אין') + ' · תוכנת מחשב v' + (b.v || '?');
+      $('dg-summary').textContent = 'תוכנת מחשב v' + (b.v || '?');
       diagText = [].concat(b.taskErrors || [], b.msi && b.msi.length ? ['--- msiexec ---'].concat(b.msi) : [], ['--- agent.log ---'], b.log || []).join('\n');
       $('dg-log').textContent = diagText;
     }).catch(function () { $('dg-summary').textContent = 'המחשב לא ענה.'; });
@@ -827,37 +861,18 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   $('dg-close').onclick = function () { closeSheet('diag-sheet'); };
   $('s-diag').onclick = function () { closeSheet('settings'); openDiag(); };
 
-  // ================= Sunshine login =================
-  $('s-creds').onclick = function () { closeSheet('settings'); $('cr-msg').textContent = ''; $('cr-pass').value = ''; $('cr-pass2').value = ''; openSheet('creds-sheet'); };
-  $('cr-close').onclick = function () { closeSheet('creds-sheet'); };
-  $('cr-save').onclick = function () {
-    var u = $('cr-user').value.trim(), pw = $('cr-pass').value, msg = $('cr-msg');
-    function err(t) { msg.textContent = t; msg.className = 'msg err'; }
-    if (!/^[A-Za-z0-9._@-]{1,32}$/.test(u)) return err('שם משתמש: אותיות באנגלית, ספרות ו-. _ - @ בלבד.');
-    if (pw.length < 8 || /[\s"]/.test(pw)) return err('סיסמה: לפחות 8 תווים, בלי רווחים ובלי מרכאות.');
-    if (pw !== $('cr-pass2').value) return err('הסיסמאות לא זהות.');
-    if (power !== 'on') return err('המחשב צריך להיות דלוק.');
-    if (agentV < 5) return err('התוכנה במחשב מתעדכנת. נסו שוב בעוד דקה.');
-    var btn = this; btn.disabled = true; msg.textContent = 'שומר…'; msg.className = 'msg';
-    holdOffline = Date.now() + 45000;
-    authed('/stream/creds', 'POST', { user: u, pass: pw }, 45000).then(function (r) {
-      holdOffline = 0; var b = r.body || {};
-      if (b.ok) { msg.textContent = 'נשמר. במחשב נכנסים עם ' + u + ' והסיסמה החדשה.'; msg.className = 'msg ok'; $('cr-pass').value = ''; $('cr-pass2').value = ''; }
-      else err(b.error === 'bad-user' ? 'שם המשתמש לא תקין.' : b.error === 'bad-pass' ? 'הסיסמה לא תקינה.' : 'השינוי נכשל. אפשר לראות את היומן מהמחשב.');
-    }).catch(function () { holdOffline = 0; err('המחשב לא ענה.'); }).then(function () { btn.disabled = false; });
-  };
-
   // ================= settings =================
   $('gear').onclick = function () {
     var rows = [['מחשב', cfg.name || '—'], ['בבית', cfg.ip + ':' + cfg.port], ['מרחוק', cfg.tsIp || 'לא הוגדר'], ['MAC', cfg.mac || '—'],
-      ['תוכנת מחשב', agentV ? 'v' + agentV : '—'], ['Sunshine', (status && status.stream && status.stream.version) || '—'],
+      ['תוכנת מחשב', agentV ? 'v' + agentV : '—'], ['RustDesk', cfg.rdId || '—'],
       ['אבטחה', agentV >= 3 ? 'חתימה + הצפנה' : 'מתעדכן']];
     var dl = $('s-info'); dl.textContent = '';
     rows.forEach(function (r) { var dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = r[0]; dd.textContent = r[1]; dd.className = 'data'; dl.appendChild(dt); dl.appendChild(dd); });
     openSheet('settings');
   };
   $('s-close').onclick = function () { closeSheet('settings'); };
-  $('s-stream').onclick = function () { closeSheet('settings'); openStreamSheet(); };
+  $('s-stream').onclick = function () { closeSheet('settings'); openRdSheet(); };
+  $('s-games').onclick = function () { closeSheet('settings'); openGamesSheet(); };
   $('s-remote').onclick = function () { closeSheet('settings'); openRemoteSheet(); };
   $('s-edit').onclick = function () { closeSheet('settings'); openSetup(true); };
   $('s-forget').onclick = function () {

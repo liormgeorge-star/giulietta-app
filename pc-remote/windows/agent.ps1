@@ -194,6 +194,35 @@ function Invoke-Pair([string]$pin) {
     }
 }
 
+# ---------- Remote control (RustDesk) and games (Steam) ----------
+
+function Start-RemoteInstall([switch]$Force) {
+    $st = Read-RemoteState
+    if ($st -and $st.state -eq 'installing' -and ((Get-Date) - [datetime]$st.at).TotalMinutes -lt 20) { return }
+    if (-not $Force) {
+        $c = Read-Config
+        if ($c.remoteTriedAt -and ((Get-Date) - [datetime]$c.remoteTriedAt).TotalMinutes -lt 30) { return }
+        Set-ConfigValue $c 'remoteTriedAt' (Get-Date).ToString('o'); Save-Config $c
+    }
+    Write-RemoteState 'installing' 'queued'
+    Start-Task 'InstallRemote'
+    Log 'Started remote-control install task'
+}
+
+function Get-RemoteStatus {
+    $c = Read-Config
+    $st = Read-RemoteState
+    $installed = [bool](Find-RustDesk)
+    $state = if ($st -and $st.state -eq 'installing' -and ((Get-Date) - [datetime]$st.at).TotalMinutes -lt 20) { 'installing' }
+             elseif ($installed) { 'ready' } elseif ($st -and $st.state -eq 'error') { 'error' } else { 'missing' }
+    return [ordered]@{
+        state = $state; step = $(if ($st) { [string]$st.step } else { '' }); error = $(if ($st -and $state -eq 'error') { [string]$st.error } else { '' })
+        rustdesk = [ordered]@{ installed = $installed; id = $(if ($installed) { Get-RustDeskId } else { '' }); passwordSet = [bool]$c.rdPassSet
+                               running = [string](Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue).Status }
+        steam = [ordered]@{ installed = [bool](Find-Steam) }
+    }
+}
+
 # ---------- Tailscale ----------
 
 function Get-TsStatusCached {
@@ -271,7 +300,7 @@ try {
 
 # ---------- Requests ----------
 
-$PostOnly = @('/shutdown', '/restart', '/sleep', '/stream/install', '/stream/pair', '/stream/creds', '/update', '/tailscale/setup')
+$PostOnly = @('/shutdown', '/restart', '/sleep', '/stream/install', '/stream/pair', '/stream/creds', '/remote/install', '/remote/password', '/update', '/tailscale/setup')
 
 function Invoke-Request($ctx) {
     $req = $ctx.Request
@@ -303,7 +332,7 @@ function Invoke-Request($ctx) {
         '/status' {
             Send-Json $ctx 200 ([ordered]@{
                 ok = $true; v = $Version; name = $env:COMPUTERNAME; mac = $cfg.mac; ip = (Get-LocalIPv4)
-                stream = (Get-StreamStatus); tailscale = (Get-TsStatusCached) }) $nonce
+                remote = (Get-RemoteStatus); tailscale = (Get-TsStatusCached) }) $nonce
         }
         '/shutdown' {
             Log "Shutdown requested from $ip"
@@ -322,6 +351,19 @@ function Invoke-Request($ctx) {
         }
         '/stream/install' { Start-SunshineInstall -Force; Send-Json $ctx 200 @{ ok = $true } $nonce }
         '/diag' { Send-Json $ctx 200 (Get-Diag) $nonce }
+        '/remote/install' {
+            if ($data -and $data.steam) { $c = Read-Config; Set-ConfigValue $c 'wantSteam' $true; Save-Config $c }
+            Start-RemoteInstall -Force
+            Send-Json $ctx 200 @{ ok = $true } $nonce
+        }
+        '/remote/password' {
+            $pw = [string]$data.pass
+            if ($pw.Length -lt 8 -or $pw.Length -gt 64 -or $pw -match '[\s"]') { Send-Json $ctx 200 @{ ok = $false; error = 'bad-pass' } $nonce; break }
+            if (-not (Find-RustDesk)) { Send-Json $ctx 200 @{ ok = $false; error = 'not-installed' } $nonce; break }
+            Log "Remote-control password changed from $ip"
+            try { Set-RustDeskPassword $pw; Send-Json $ctx 200 @{ ok = $true; id = (Get-RustDeskId) } $nonce }
+            catch { Log "RustDesk password change failed: $($_.Exception.Message)"; Send-Json $ctx 200 @{ ok = $false; error = 'failed' } $nonce }
+        }
         '/stream/creds' {
             $u = [string]$data.user; $pw = [string]$data.pass
             # No quotes or spaces (they are passed on a command line); sensible lengths.
@@ -356,11 +398,8 @@ Set-AgentFirewallScope
 # Older versions left the pairing code in a text file on the desktop; remove any copy.
 Get-ChildItem -Path (Join-Path $env:SystemDrive 'Users\*\Desktop\PC Remote - pairing.txt') -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction SilentlyContinue
-if (-not (Find-Sunshine) -or -not $cfg.sunUser -or -not (Test-SunshineCurrent)) { Start-SunshineInstall }
-elseif (Set-SunshineConf $SunshineHardening) {
-    Log 'Applied Sunshine hardening settings'
-    Restart-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
-}
+if (-not (Find-RustDesk)) { Start-RemoteInstall }
+elseif (Find-Sunshine) { if (Set-SunshineConf $SunshineHardening) { Restart-Service -Name 'SunshineService' -ErrorAction SilentlyContinue } }
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://+:$Port/")
@@ -373,7 +412,7 @@ try {
         while (-not $ar.AsyncWaitHandle.WaitOne(1000)) {
             $ticks++
             if (($ticks % 300) -eq 0) {
-                try { if (-not (Find-Sunshine) -or -not (Test-SunshineCurrent)) { Start-SunshineInstall } } catch { Log "Retry check failed: $($_.Exception.Message)" }
+                try { if (-not (Find-RustDesk)) { Start-RemoteInstall } } catch { Log "Retry check failed: $($_.Exception.Message)" }
             }
         }
         $ctx = $listener.EndGetContext($ar)

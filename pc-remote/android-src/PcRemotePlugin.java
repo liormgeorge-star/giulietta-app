@@ -304,6 +304,29 @@ public class PcRemotePlugin extends Plugin {
         call.resolve();
     }
 
+    /** Opens RustDesk, straight to the PC's ID when RustDesk accepts its rustdesk:// link; otherwise its home screen. */
+    @PluginMethod
+    public void openRustDesk(PluginCall call) {
+        String pkg = "com.carriez.flutter_hbb";
+        String id = call.getString("id", "");
+        PackageManager pm = getContext().getPackageManager();
+        Intent launch = pm.getLaunchIntentForPackage(pkg);
+        if (launch == null) { call.reject("not-installed"); return; }
+        if (id.matches("^\\d{6,12}$")) {
+            try {
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("rustdesk://" + id));
+                i.setPackage(pkg);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+                call.resolve();
+                return;
+            } catch (ActivityNotFoundException ignored) { }
+        }
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(launch);
+        call.resolve();
+    }
+
     private static byte[] parseMac(String mac) {
         String hex = mac.replaceAll("[^0-9A-Fa-f]", "");
         if (hex.length() != 12) throw new IllegalArgumentException("mac");
