@@ -116,6 +116,58 @@ New-NetFirewallRule -DisplayName $RuleName -Direction Inbound -Action Allow -Pro
     -RemoteAddress @('LocalSubnet', '100.64.0.0/10') -Profile Any | Out-Null
 Ok "TCP $Port allowed from the home network and Tailscale"
 
+# 5b. Sunshine (the streaming server), installed here in front of the user, with a login they choose.
+Step 'Sunshine (streaming server for remote control and games)'
+# Stop a running agent first, so it does not start its own background install at the same time.
+Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | Stop-ScheduledTask -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
+    Where-Object { $_.CommandLine -like '*PcRemote\agent.ps1*' -or $_.CommandLine -like '*PcRemote\launcher.ps1*' -or $_.CommandLine -like '*PcRemote\tasks.ps1*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+. (Join-Path $Dir 'common.ps1')
+try {
+    $sunExe = Find-Sunshine
+    if ($sunExe -and (Test-SunshineCurrent)) {
+        Ok "Sunshine $(Get-SunshineVersion) is already installed"
+    } else {
+        if ($sunExe) { Write-Host "   ..  Sunshine $(Get-SunshineVersion) is out of date, updating" } else { Write-Host '   ..  Downloading Sunshine (about 30 MB)...' }
+        Write-StreamState 'installing' 'download'
+        $sunExe = Install-SunshinePackage -Visible
+        Ok "Sunshine $(Get-SunshineVersion) installed"
+    }
+    Initialize-SunshineService $sunExe
+    if (Set-SunshineConf $SunshineHardening) { Ok 'Security settings applied (web page only on this PC, encryption on, UPnP off)' }
+
+    Write-Host ''
+    Write-Host '   Choose the username and password for the Sunshine web page.' -ForegroundColor Cyan
+    Write-Host '   (English letters/digits, password 8+ characters, no spaces)'
+    while ($true) {
+        $sunUser = (Read-Host '   Username').Trim()
+        if ($sunUser -match '^[A-Za-z0-9._@-]{1,32}$') { break }
+        Warn 'Use English letters, digits and . _ - @ only.'
+    }
+    while ($true) {
+        $p1 = Read-Host '   Password' -AsSecureString
+        $p2 = Read-Host '   Password again' -AsSecureString
+        $b1 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($p1); $b2 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($p2)
+        try { $s1 = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b1); $s2 = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b2) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b1); [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b2) }
+        if ($s1 -ne $s2) { Warn 'The passwords do not match.'; continue }
+        if ($s1.Length -lt 8 -or $s1 -match '[\s"]') { Warn 'At least 8 characters, no spaces or quotes.'; continue }
+        break
+    }
+    Write-Host '   ..  Saving the login in Sunshine and starting it'
+    $verified = Set-SunshineCreds $sunUser $s1
+    $s1 = $null; $s2 = $null
+    Set-Service -Name 'SunshineService' -StartupType Automatic -ErrorAction SilentlyContinue
+    Write-StreamState 'ready'
+    if ($verified) { Ok "Sunshine is running. Web page: https://localhost:47990 (user: $sunUser)" }
+    else { Warn 'Sunshine was installed but did not answer yet. It usually starts within a minute.' }
+} catch {
+    Write-Host "   !!  Sunshine setup failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "       The phone app can retry later. Details: $Dir\agent.log"
+    Write-StreamState 'error' '' $_.Exception.Message
+}
+
 # 6. Start at boot, as SYSTEM, before anyone logs in.
 Step 'Starting the agent at every boot'
 Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | ForEach-Object {

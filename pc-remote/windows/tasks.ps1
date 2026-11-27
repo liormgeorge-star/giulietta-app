@@ -9,52 +9,6 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $env:ProgramData 'PcRemote\common.ps1')
 $ProgressPreference = 'SilentlyContinue'
 
-function Assert-Signed([string]$file, [string]$publisherPattern, [switch]$AllowUnsigned) {
-    $sig = Get-AuthenticodeSignature -FilePath $file
-    $subject = [string]$sig.SignerCertificate.Subject
-    if ($sig.Status -eq 'Valid') {
-        if ($publisherPattern -and $subject -notmatch $publisherPattern) { throw "Unexpected publisher: $subject" }
-        Log "Signature OK: $subject"
-        return
-    }
-    if ($AllowUnsigned -and $sig.Status -eq 'NotSigned') { Log 'Installer is not code-signed (downloaded over HTTPS from the official release)'; return }
-    # A file that is signed but whose signature is broken or was tampered with is always refused.
-    throw "Installer signature check failed ($($sig.Status)) $subject"
-}
-
-function Invoke-Msi([string]$file, [string]$extra, [string]$logName) {
-    # 1618 = another installation is running (often Windows Update): wait and retry.
-    for ($try = 1; $try -le 6; $try++) {
-        $msiArgs = '/i "' + $file + '" /qn /norestart ' + $extra + ' /l*v "' + (Join-Path (Split-Path $file) $logName) + '"'
-        $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList $msiArgs
-        if ($p.ExitCode -eq 0 -or $p.ExitCode -eq 3010) { return }
-        if ($p.ExitCode -ne 1618) { throw "Installer failed (msiexec code $($p.ExitCode)). Details: $logName" }
-        Log "Another installation is running (1618), retry $try/6 in 60 seconds"
-        Start-Sleep -Seconds 60
-    }
-    throw 'Another installation kept running (msiexec 1618). Try again later.'
-}
-
-function Get-SunshineInstaller([string]$dl) {
-    # 1) The stable "latest" link for the MSI. 2) If its name changed: ask the GitHub API for the asset.
-    $msi = Join-Path $dl 'Sunshine.msi'
-    try {
-        Invoke-WebRequest -Uri $SunshineMsiUrl -OutFile $msi -UseBasicParsing -TimeoutSec 900
-        if ((Get-Item $msi).Length -gt 5MB) { return $msi }
-    } catch { Log "Direct Sunshine download failed: $($_.Exception.Message)" }
-    $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/LizardByte/Sunshine/releases/latest' -UseBasicParsing -TimeoutSec 60 `
-        -Headers @{ 'User-Agent' = 'pc-remote-agent'; Accept = 'application/vnd.github+json' }
-    $asset = @($rel.assets) | Where-Object { $_.name -match '(?i)windows' -and $_.name -match '(?i)amd64|x64|x86_64' -and $_.name -match '(?i)\.msi$' } | Select-Object -First 1
-    if (-not $asset) { $asset = @($rel.assets) | Where-Object { $_.name -match '(?i)windows.*installer.*\.exe$' } | Select-Object -First 1 }
-    if (-not $asset) { throw "No Windows installer found in Sunshine release $($rel.tag_name)." }
-    if ($asset.browser_download_url -notmatch '^https://github\.com/') { throw 'Unexpected download address.' }
-    $out = Join-Path $dl $asset.name
-    Log "Downloading Sunshine $($rel.tag_name): $($asset.name)"
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $out -UseBasicParsing -TimeoutSec 900
-    if ((Get-Item $out).Length -lt 5MB) { throw 'The Sunshine download looks incomplete.' }
-    return $out
-}
-
 function Install-Sunshine {
     $exe = Find-Sunshine
     if (-not $exe -or -not (Test-SunshineCurrent)) {
