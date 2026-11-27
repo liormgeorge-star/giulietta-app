@@ -281,6 +281,17 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   </div>
 </div>
 
+<!-- PC log -->
+<div class="overlay" id="diag-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dg-title">
+    <h2 id="dg-title">יומן מהמחשב</h2>
+    <p id="dg-summary"></p>
+    <pre id="dg-log" class="linkbox" style="white-space: pre-wrap; max-height: 50vh; overflow: auto; margin: 0"></pre>
+    <div class="btn-row"><button class="btn" id="dg-copy">העתקה</button><button class="btn" id="dg-retry">התקנת Sunshine מחדש</button></div>
+    <button class="btn block" id="dg-close">סגירה</button>
+  </div>
+</div>
+
 <!-- settings -->
 <div class="overlay" id="settings" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="s-title">
@@ -289,6 +300,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     <button class="btn block" id="s-skin">עיצוב</button>
     <button class="btn block" id="s-remote">גישה מחוץ לבית</button>
     <button class="btn block" id="s-stream">הגדרת סטרימינג</button>
+    <button class="btn block" id="s-diag">יומן מהמחשב</button>
     <button class="btn block" id="s-edit">שינוי פרטי חיבור</button>
     <button class="btn block danger" id="s-forget">ניתוק מהמחשב</button>
     <button class="btn block" id="s-close">סגירה</button>
@@ -304,7 +316,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   'use strict';
   var KEY = 'pcremote.config.v1';          // unchanged since v1, so saved details survive updates
   var SKIN_KEY = 'pcremote.skin';
-  var AGENT_TARGET = 3;                     // PC agent version this app expects (windows/version.txt)
+  var AGENT_TARGET = 4;                     // PC agent version this app expects (windows/version.txt)
   var BUILD = window.PCR_BUILD || {};
   var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
   var TS_PKG = 'com.tailscale.ipn', ML_PKG = 'com.limelight';
@@ -514,6 +526,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   // ================= deck state =================
   var power = 'unknown', latency = null, agentV = null, status = null, pending = null, launchAfterWake = null;
   var moonlight = null, tailscaleApp = null, net = {}, holdOffline = 0, updateAsked = false;
+  var updateState = null;     // null | 'staged' | 'mismatch' | 'failed'
   var pollTimer = null, polling = false, failures = 0, lastStatusAt = 0;
   var STREAM_STEP = { queued: 'בתור להתקנה', download: 'מוריד את Sunshine', install: 'מתקין את Sunshine', configure: 'מגדיר', start: 'מפעיל' };
 
@@ -575,11 +588,13 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   function noticeFor(si) {
     if (!isNative) return { title: 'תצוגה בדפדפן', text: 'הכפתורים עובדים רק באפליקציה שמותקנת בטלפון.' };
     if (si.reason === 'upgrade') return { title: 'עדכון חד-פעמי במחשב', text: 'התוכנה במחשב ישנה מדי לעדכון אוטומטי. מתקינים אותה מחדש פעם אחת.', btn: 'איך מעדכנים', act: function () { openSheet('upgrade-sheet'); } };
-    if (agentV !== null && agentV >= 2 && agentV < AGENT_TARGET) return { title: 'מעדכן את התוכנה במחשב', text: 'העדכון נבדק מול חתימה ונעשה לבד, כחצי דקה.' };
+    if (updateState === 'staged' && agentV < AGENT_TARGET) return { title: 'מעדכן את התוכנה במחשב', text: 'העדכון נבדק מול חתימה ונעשה לבד, כחצי דקה.' };
+    if (updateState === 'mismatch') return { title: 'עדכון המחשב נדחה', text: 'החבילה בדף ההורדות חדשה מהאפליקציה. מתקינים את הגרסה האחרונה של האפליקציה, והמחשב יתעדכן ממנה.' };
     if (power !== 'on' && outsideHome() && cfg.tsIp && net.vpn === false) return { title: 'Tailscale כבוי בטלפון', text: 'כדי להתחבר מחוץ לבית צריך להפעיל את Tailscale.', btn: 'הפעלת Tailscale', act: connectTailscale };
     if (power === 'off' && outsideHome()) return { title: 'המחשב כבוי ואתם מחוץ לבית', text: 'הדלקה מרחוק דורשת מכשיר שנשאר דלוק בבית. כשיוצאים, עדיף "שינה" במקום כיבוי.' };
     if (si.reason === 'installing') return { title: 'מתקין את שרת הסטרימינג במחשב', text: 'Sunshine יורד ומותקן ברקע, בדרך כלל 2–3 דקות.', btn: moonlight === false ? 'התקנת Moonlight' : '', act: function () { native('openStore', { package: ML_PKG }); } };
-    if (si.reason === 'error') return { title: 'ההתקנה של Sunshine נכשלה', text: (status.stream.error || '') + ' אפשר לנסות שוב.', btn: 'ניסיון חוזר', act: retryInstall };
+    if (si.reason === 'error') return { title: 'ההתקנה של Sunshine נכשלה', text: (status.stream.error || '') + ' אפשר לראות את היומן מהמחשב ולנסות שוב.', btn: 'פרטים וניסיון חוזר', act: openDiag };
+    if (si.reason === 'missing' && power === 'on') return { title: 'Sunshine לא מותקן במחשב', text: 'Sunshine הוא שרת הסטרימינג שמאפשר שליטה מרחוק ומשחקים. ההתקנה נעשית במחשב לבד, 2–3 דקות.', btn: 'התקנה עכשיו', act: retryInstall };
     if (si.reason === 'moonlight' || si.reason === 'pair') return { title: 'עוד צעד אחד לסטרימינג', text: si.reason === 'moonlight' ? 'מתקינים את Moonlight ומצמדים פעם אחת.' : 'מצמדים את Moonlight למחשב, פעם אחת.', btn: 'להמשך', act: openStreamSheet };
     if (status && status.stream && status.stream.installed && status.stream.secure === false) return { title: 'Sunshine מתעדכן לגרסה מאובטחת', text: 'הגרסה המותקנת חסרה תיקוני אבטחה. העדכון רץ ברקע.' };
     if (power === 'on' && route === 'lan' && !cfg.tsIp && !cfg.remoteDismissed) return { title: 'רוצים גישה גם מחוץ לבית?', text: 'הגדרה חד-פעמית דרך רשת פרטית ומוצפנת, בלי לפתוח פורטים.', btn: 'להגדרה', act: openRemoteSheet };
@@ -599,7 +614,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
         else if (++failures >= 2 || power === 'unknown') { power = 'off'; latency = null; route = null; }
         progressPending(up);
         if (up && agentV >= 2 && Date.now() - lastStatusAt > (status && status.stream && status.stream.state === 'installing' ? 3000 : 15000)) refreshStatus();
-        if (up && agentV < AGENT_TARGET && !updateAsked) askAgentUpdate();
+        if (up && agentV < AGENT_TARGET && (!updateAsked || (updateState !== 'mismatch' && Date.now() - updateAsked > 300000))) askAgentUpdate();
         render();
       });
   }
@@ -618,13 +633,15 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     }).catch(function (e) { if (e && e.message === 'bad-sig') toast('תשובה לא מאומתת מהמחשב נחסמה'); });
   }
   function askAgentUpdate() {
-    updateAsked = true;
+    updateAsked = Date.now();
     var data = agentV >= 3 ? { sha256: BUILD.agentZipSha256 || '' } : null;
     if (agentV >= 3 && !data.sha256) return;
     authed('/update', 'POST', data, 70000).then(function (r) {
-      if (r.body && /^staged/.test(r.body.result || '')) toast('התוכנה במחשב מתעדכנת');
-      else if (r.body && r.body.error === 'hash-mismatch') toast('עדכון המחשב נדחה: החבילה לא תואמת לאפליקציה');
-    }).catch(function () {});
+      if (r.body && /^staged/.test(r.body.result || '')) { updateState = 'staged'; toast('התוכנה במחשב מתעדכנת'); }
+      else if (r.body && r.body.error === 'hash-mismatch') updateState = 'mismatch';
+      else if (r.body && !r.body.ok) updateState = 'failed';
+      render();
+    }).catch(function () { updateState = 'failed'; });
   }
   function checkApps() {
     native('appInstalled', { package: ML_PKG }).then(function (r) { moonlight = !!r.installed; render(); renderStreamSheet(); }).catch(function () {});
@@ -772,6 +789,23 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     }).catch(function () { msg.textContent = 'המחשב לא ענה.'; msg.className = 'msg err'; }).then(function () { btn.disabled = false; });
   };
   $('rs-close').onclick = function () { closeSheet('remote-sheet'); };
+
+  // ================= PC log =================
+  var diagText = '';
+  function openDiag() {
+    $('dg-summary').textContent = 'טוען…'; $('dg-log').textContent = ''; openSheet('diag-sheet');
+    authed('/diag', 'GET', null, 9000).then(function (r) {
+      if (r.status === 404) { $('dg-summary').textContent = 'התוכנה במחשב ישנה מדי ליומן. היא תתעדכן בקרוב.'; return; }
+      var b = r.body || {}, sun = b.sunshine || {};
+      $('dg-summary').textContent = 'Sunshine: ' + (sun.version || 'לא מותקן') + ' · שירות: ' + (sun.service || 'אין') + ' · תוכנת מחשב v' + (b.v || '?');
+      diagText = [].concat(b.taskErrors || [], b.msi && b.msi.length ? ['--- msiexec ---'].concat(b.msi) : [], ['--- agent.log ---'], b.log || []).join('\n');
+      $('dg-log').textContent = diagText;
+    }).catch(function () { $('dg-summary').textContent = 'המחשב לא ענה.'; });
+  }
+  $('dg-copy').onclick = function () { copyText(diagText); };
+  $('dg-retry').onclick = function () { retryInstall(); closeSheet('diag-sheet'); };
+  $('dg-close').onclick = function () { closeSheet('diag-sheet'); };
+  $('s-diag').onclick = function () { closeSheet('settings'); openDiag(); };
 
   // ================= settings =================
   $('gear').onclick = function () {

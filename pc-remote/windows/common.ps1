@@ -81,8 +81,25 @@ function Find-Sunshine {
             Where-Object { $_.DisplayName -like 'Sunshine*' -and $_.InstallLocation } |
             ForEach-Object { $candidates += (Join-Path $_.InstallLocation 'sunshine.exe') }
     }
+    # The service knows where Sunshine really lives (<root>\tools\sunshinesvc.exe).
+    try {
+        $svc = Get-CimInstance Win32_Service -Filter "Name='SunshineService'" -ErrorAction Stop
+        if ($svc -and $svc.PathName) {
+            if ($svc.PathName -match '^\s*"([^"]+)"') { $bin = $Matches[1] }
+            elseif ($svc.PathName -match '^\s*(.+?\.exe)') { $bin = $Matches[1] }
+            else { $bin = $svc.PathName.Trim() }
+            $candidates += (Join-Path (Split-Path (Split-Path $bin)) 'sunshine.exe')
+        }
+    } catch { }
+    foreach ($root in $env:ProgramFiles, ${env:ProgramFiles(x86)}) {
+        if ($root) { Get-ChildItem -Path (Join-Path $root '*\Sunshine\sunshine.exe') -ErrorAction SilentlyContinue | ForEach-Object { $candidates += $_.FullName } }
+    }
     foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return $c } }
     return $null
+}
+
+function Get-LogTail([int]$lines = 60) {
+    try { return @(Get-Content $LogFile -Tail $lines -Encoding UTF8) } catch { return @() }
 }
 
 function Get-SunshineVersion {

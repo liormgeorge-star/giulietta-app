@@ -98,8 +98,24 @@ function Start-Hidden([string]$command) {
 }
 
 function Start-Task([string]$name) {
-    Start-Process -WindowStyle Hidden -FilePath 'powershell.exe' -ArgumentList (
+    # Anything the task prints to stderr (even a failure to start) ends up in a file the app can show.
+    $err = Join-Path $Dir "task-$name.err"
+    Start-Process -FilePath 'powershell.exe' -RedirectStandardError $err -RedirectStandardOutput (Join-Path $Dir "task-$name.out") -ArgumentList (
         '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + (Join-Path $Dir 'tasks.ps1') + '" -Task ' + $name)
+}
+
+function Get-Diag {
+    $out = [ordered]@{ ok = $true; v = $Version; log = @(Get-LogTail 80); taskErrors = @() }
+    foreach ($f in Get-ChildItem -Path (Join-Path $Dir 'task-*.err') -ErrorAction SilentlyContinue) {
+        $t = (Get-Content $f.FullName -Raw -ErrorAction SilentlyContinue)
+        if ($t -and $t.Trim()) { $out.taskErrors += ($f.Name + ': ' + $t.Trim().Substring(0, [math]::Min(1500, $t.Trim().Length))) }
+    }
+    $msiLog = Join-Path $Dir 'dl\sunshine-install.log'
+    if (Test-Path $msiLog) {
+        $out.msi = @(Get-Content $msiLog -ErrorAction SilentlyContinue | Where-Object { $_ -match 'Return value 3|Error \d+|error code|failed' } | Select-Object -Last 15)
+    }
+    $out.sunshine = [ordered]@{ exe = [string](Find-Sunshine); version = (Get-SunshineVersion); service = [string](Get-Service SunshineService -ErrorAction SilentlyContinue).Status }
+    return $out
 }
 
 function Get-LocalIPv4 {
@@ -118,7 +134,7 @@ function Start-SunshineInstall([switch]$Force) {
     if ($s -and $s.state -eq 'installing' -and ((Get-Date) - [datetime]$s.at).TotalMinutes -lt 20) { return }
     if (-not $Force) {
         $c = Read-Config
-        if ($c.sunTriedAt -and ((Get-Date) - [datetime]$c.sunTriedAt).TotalHours -lt 12) { return }
+        if ($c.sunTriedAt -and ((Get-Date) - [datetime]$c.sunTriedAt).TotalMinutes -lt 30) { return }
         Set-ConfigValue $c 'sunTriedAt' (Get-Date).ToString('o'); Save-Config $c
     }
     Write-StreamState 'installing' 'queued'
@@ -283,6 +299,7 @@ function Invoke-Request($ctx) {
             Start-Hidden "Start-Sleep -Seconds 3; Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend', `$false, `$false)"
         }
         '/stream/install' { Start-SunshineInstall -Force; Send-Json $ctx 200 @{ ok = $true } $nonce }
+        '/diag' { Send-Json $ctx 200 (Get-Diag) $nonce }
         '/stream/pair' {
             Log "Pairing requested from $ip"
             Send-Json $ctx 200 (Invoke-Pair ([string]$data.pin)) $nonce
@@ -321,7 +338,13 @@ Log 'Listening'
 try {
     while ($null -eq $script:ExitCode) {
         $ar = $listener.BeginGetContext($null, $null)
-        while (-not $ar.AsyncWaitHandle.WaitOne(1000)) { }
+        $ticks = 0
+        while (-not $ar.AsyncWaitHandle.WaitOne(1000)) {
+            $ticks++
+            if (($ticks % 300) -eq 0) {
+                try { if (-not (Find-Sunshine) -or -not (Test-SunshineCurrent)) { Start-SunshineInstall } } catch { Log "Retry check failed: $($_.Exception.Message)" }
+            }
+        }
         $ctx = $listener.EndGetContext($ar)
         try { Invoke-Request $ctx } catch { Log "Request error: $($_.Exception.Message)"; try { $ctx.Response.Abort() } catch { } }
     }
