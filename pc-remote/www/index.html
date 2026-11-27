@@ -227,7 +227,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
           <div class="msg" id="rd-msg" role="status"></div>
           <button class="btn primary" id="rd-pass-btn">שמירה במחשב</button>
         </div></div></li>
-      <li id="rd-3"><div class="step-body"><div class="step-title">RustDesk בטלפון</div><div class="step-note" id="rd-3-note">חינמי ב-Google Play.</div><button class="btn primary" id="rd-3-btn">התקנה מ-Google Play</button></div></li>
+      <li id="rd-3"><div class="step-body"><div class="step-title">RustDesk בטלפון</div><div class="step-note" id="rd-3-note"></div><button class="btn primary" id="rd-3-btn">הורדה מהאתר הרשמי</button></div></li>
       <li id="rd-4"><div class="step-body"><div class="step-title">חיבור ראשון</div>
         <div class="step-note">ב-RustDesk בטלפון מזינים את מזהה המחשב, ואחר כך את הסיסמה, ומסמנים "זכור סיסמה". מהפעם הבאה הכפתור "שליטה מרחוק" פותח את זה ישר.</div>
         <div class="linkbox" id="rd-id">—</div><button class="btn" id="rd-id-copy">העתקת המזהה</button></div></li>
@@ -731,7 +731,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     if (kind === 'desktop') {
       var id = (status && status.remote && status.remote.rustdesk && status.remote.rustdesk.id) || cfg.rdId || '';
       if (id && navigator.clipboard) navigator.clipboard.writeText(id).catch(function () {});
-      native('openRustDesk', { id: id }).catch(function () { native('openStore', { package: RD_PKG }); });
+      native('openRustDesk', { id: id }).catch(function () { openUrl('https://github.com/rustdesk/rustdesk/releases/latest'); });
     } else {
       native('openApp', { package: SL_PKG }).catch(function () { native('openStore', { package: SL_PKG }); });
     }
@@ -768,11 +768,12 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     $('rd-2-note').textContent = rd.passwordSet ? 'נקבעה סיסמה. אפשר להחליף אותה כאן בכל זמן.' : 'בלי סיסמה אף אחד לא יכול להתחבר, גם לא אתם.';
     $('rd-2-form').hidden = !rd.installed;
     $('rd-3').classList.toggle('done', rdApp === true); $('rd-3-btn').hidden = rdApp === true;
-    $('rd-3-note').textContent = rdApp ? 'מותקן.' : 'חינמי ב-Google Play.';
+    $('rd-3-note').textContent = rdApp ? 'מותקן.' : 'RustDesk לא נמצא ב-Google Play (המפתחים הוציאו אותו משם נגד הונאות). מורידים מהדף הרשמי שלהם ב-GitHub את הקובץ שמסתיים ב-universal.apk (או aarch64.apk), ומאשרים התקנה.';
     $('rd-id').textContent = rd.id || cfg.rdId || '—';
   }
   $('rd-1-btn').onclick = function () { retryInstall(); };
-  $('rd-3-btn').onclick = function () { native('openStore', { package: RD_PKG }); };
+  var RD_DOWNLOAD = 'https://github.com/rustdesk/rustdesk/releases/latest';
+  $('rd-3-btn').onclick = function () { openUrl(RD_DOWNLOAD); };
   $('rd-id-copy').onclick = function () { var id = $('rd-id').textContent; if (/\d/.test(id)) copyText(id); };
   $('rd-close').onclick = function () { closeSheet('rd-sheet'); };
   $('rd-pass-btn').onclick = function () {
