@@ -522,21 +522,45 @@ function Get-RustDeskInstaller([string]$dl) {
 }
 
 function Install-RustDesk {
-    # Installs RustDesk with its own installer (no Windows Installer/MSI involved).
-    if (Find-RustDesk) { return (Find-RustDesk) }
-    $dl = Join-Path $Dir 'dl'
-    New-Item -ItemType Directory -Path $dl -Force | Out-Null
-    $file = Get-RustDeskInstaller $dl
-    Assert-Signed $file '' -AllowUnsigned
-    Log 'Installing RustDesk (silent)'
-    Start-Process -FilePath $file -ArgumentList '--silent-install' -WindowStyle Hidden | Out-Null
-    for ($i = 0; $i -lt 90 -and -not ((Find-RustDesk) -and (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue)); $i++) { Start-Sleep -Seconds 2 }
-    Remove-Item $file -Force -ErrorAction SilentlyContinue
+    # Installs RustDesk with its own installer (no Windows Installer/MSI involved), then makes sure
+    # its Windows service exists and runs.
+    if (-not (Find-RustDesk)) {
+        $dl = Join-Path $Dir 'dl'
+        New-Item -ItemType Directory -Path $dl -Force | Out-Null
+        $file = Get-RustDeskInstaller $dl
+        Assert-Signed $file '' -AllowUnsigned
+        Log 'Installing RustDesk (silent)'
+        Start-Process -FilePath $file -ArgumentList '--silent-install' -WindowStyle Hidden | Out-Null
+        for ($i = 0; $i -lt 90 -and -not (Find-RustDesk); $i++) { Start-Sleep -Seconds 2 }
+        for ($i = 0; $i -lt 30 -and -not (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Seconds 2 }
+        Remove-Item $file -Force -ErrorAction SilentlyContinue
+    }
     $exe = Find-RustDesk
     if (-not $exe) { throw 'RustDesk did not finish installing.' }
-    Set-Service -Name 'RustDesk' -StartupType Automatic -ErrorAction SilentlyContinue
-    Start-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
+    Initialize-RustDeskService $exe
     return $exe
+}
+
+function Initialize-RustDeskService([string]$exe) {
+    # 1) RustDesk's own "--install-service". 2) If that did not create it: the same service by hand
+    #    (RustDesk runs as  "<path>\rustdesk.exe" --service  under LocalSystem).
+    if (-not (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue)) {
+        Log 'RustDesk service missing: running rustdesk.exe --install-service'
+        try { Start-Process -FilePath $exe -ArgumentList '--install-service' -WindowStyle Hidden -Wait:$false | Out-Null } catch { }
+        for ($i = 0; $i -lt 15 -and -not (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Seconds 2 }
+    }
+    if (-not (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue)) {
+        Log 'Creating the RustDesk service directly'
+        New-Service -Name 'RustDesk' -BinaryPathName ('"' + $exe + '" --service') -DisplayName 'RustDesk Service' `
+            -Description 'RustDesk remote control (installed by PC Remote).' -StartupType Automatic | Out-Null
+    }
+    try { Set-Service -Name 'RustDesk' -StartupType Automatic -ErrorAction Stop } catch { Log "Could not set RustDesk service to automatic: $($_.Exception.Message)" }
+    try { Start-Service -Name 'RustDesk' -ErrorAction Stop } catch { Log "Could not start the RustDesk service: $($_.Exception.Message)" }
+    for ($i = 0; $i -lt 10; $i++) {
+        if ((Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue).Status -eq 'Running') { return }
+        Start-Sleep -Seconds 1
+    }
+    throw 'The RustDesk service did not start. Details are in the PC log.'
 }
 
 function Set-RustDeskSecurity {

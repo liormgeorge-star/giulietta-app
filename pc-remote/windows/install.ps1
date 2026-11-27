@@ -125,13 +125,11 @@ Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 . (Join-Path $Dir 'common.ps1')
 try {
-    if (Find-RustDesk) { Ok 'RustDesk is already installed' }
-    else {
-        Write-Host '   ..  Downloading and installing RustDesk (about 25 MB)...'
-        Write-RemoteState 'installing' 'rustdesk'
-        Install-RustDesk | Out-Null
-        Ok 'RustDesk installed (runs as a Windows service, also before you log in)'
-    }
+    if (Find-RustDesk) { Write-Host '   ..  RustDesk is installed, checking its service' }
+    else { Write-Host '   ..  Downloading and installing RustDesk (about 25 MB)...' }
+    Write-RemoteState 'installing' 'rustdesk'
+    Install-RustDesk | Out-Null
+    Ok 'RustDesk installed and running as a Windows service (also before you log in)'
     Set-RustDeskSecurity
     Ok 'RustDesk security: permanent password only, direct connections only from home network/Tailscale'
 

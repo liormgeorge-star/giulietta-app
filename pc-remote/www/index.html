@@ -336,7 +336,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
   'use strict';
   var KEY = 'pcremote.config.v1';          // unchanged since v1, so saved details survive updates
   var SKIN_KEY = 'pcremote.skin';
-  var AGENT_TARGET = 11;                     // PC agent version this app expects (windows/version.txt)
+  var AGENT_TARGET = 12;                     // PC agent version this app expects (windows/version.txt)
   var BUILD = window.PCR_BUILD || {};
   var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
   var TS_PKG = 'com.tailscale.ipn', RD_PKG = 'com.carriez.flutter_hbb', SL_PKG = 'com.valvesoftware.steamlink';
@@ -781,7 +781,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding
     if (pw.length < 8 || /[\s"]/.test(pw)) return err('לפחות 8 תווים, בלי רווחים ובלי מרכאות.');
     if (pw !== $('rd-pass2').value) return err('הסיסמאות לא זהות.');
     if (power !== 'on') return err('המחשב צריך להיות דלוק.');
-    if (agentV < 11) return err('התוכנה במחשב מתעדכנת. נסו שוב בעוד דקה.');
+    if (agentV < 12) return err('התוכנה במחשב מתעדכנת. נסו שוב בעוד דקה.');
     var btn = this; btn.disabled = true; msg.textContent = 'שומר (מוצפן)…'; msg.className = 'msg';
     authed('/remote/password', 'POST', { pass: pw }, 30000).then(function (r) {
       var b = r.body || {};
