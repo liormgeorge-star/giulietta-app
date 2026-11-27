@@ -376,14 +376,43 @@ function Install-SunshinePackage([switch]$Visible) {
 }
 
 function Initialize-SunshineService([string]$exe) {
-    # Makes sure the Sunshine service exists (runs Sunshine's own scripts if the installer did not).
-    if (Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue) { return }
+    # Creates the Sunshine Windows service directly (the same thing Sunshine's install-service.bat does:
+    # sc create SunshineService binPath= "<root>\tools\sunshinesvc.exe" start= auto), so we do not depend
+    # on the installer's setup step, which can fail on some PCs.
     $root = Split-Path $exe
-    foreach ($script in 'install-service.bat', 'add-firewall-rule.bat') {
-        $bat = Join-Path $root "scripts\$script"
-        if (Test-Path $bat) { Log "Running Sunshine's $script"; Start-Process cmd.exe -ArgumentList "/c `"$bat`"" -Wait -WindowStyle Hidden }
+    $svcBin = Join-Path $root 'tools\sunshinesvc.exe'
+    $svc = Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
+    if (-not $svc) {
+        if (-not (Test-Path $svcBin)) { throw "Sunshine's service program is missing: $svcBin" }
+        Log "Creating the Sunshine service ($svcBin)"
+        New-Service -Name 'SunshineService' -BinaryPathName ('"' + $svcBin + '"') -DisplayName 'Sunshine Service' `
+            -Description 'Sunshine is a self-hosted game stream host for Moonlight.' -StartupType Automatic | Out-Null
+        $svc = Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
+        if (-not $svc) { throw 'Could not create the Sunshine service.' }
+    } else {
+        # Make sure an existing service points at this Sunshine and starts with Windows.
+        $cim = Get-CimInstance Win32_Service -Filter "Name='SunshineService'" -ErrorAction SilentlyContinue
+        if ($cim -and (Test-Path $svcBin) -and $cim.PathName -notlike "*$svcBin*") {
+            Log "Pointing the Sunshine service at $svcBin"
+            & sc.exe config SunshineService binPath= ('"' + $svcBin + '"') | Out-Null
+        }
+        Set-Service -Name 'SunshineService' -StartupType Automatic -ErrorAction SilentlyContinue
     }
-    if (-not (Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue)) { throw 'The Sunshine service was not created by the installer.' }
+    Set-SunshineFirewall $exe
+}
+
+function Set-SunshineFirewall([string]$exe) {
+    # Streaming ports, open only to the home network and the private Tailscale network.
+    $scope = @('LocalSubnet', $TailscaleRange)
+    $rules = @(
+        @{ Name = 'PC Remote - Sunshine TCP'; Protocol = 'TCP'; Ports = @('47984', '47989', '47990', '48010') },
+        @{ Name = 'PC Remote - Sunshine UDP'; Protocol = 'UDP'; Ports = @('47998-48000', '48002', '48010') }
+    )
+    foreach ($r in $rules) {
+        Get-NetFirewallRule -DisplayName $r.Name -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+        New-NetFirewallRule -DisplayName $r.Name -Direction Inbound -Action Allow -Protocol $r.Protocol `
+            -LocalPort $r.Ports -RemoteAddress $scope -Profile Any | Out-Null
+    }
 }
 
 function Stop-SunshineForUpdate {

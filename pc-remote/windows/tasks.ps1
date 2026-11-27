@@ -32,17 +32,7 @@ function Install-Sunshine {
         Set-ConfigValue $cfg 'sunPass' (New-Secret 32)
         Save-Config $cfg
     }
-    $svc = Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
-    if (-not $svc) {
-        # The installer normally creates it; if its setup step did not run, run Sunshine's own scripts.
-        $root = Split-Path $exe
-        foreach ($script in 'install-service.bat', 'add-firewall-rule.bat') {
-            $bat = Join-Path $root "scripts\$script"
-            if (Test-Path $bat) { Log "Running Sunshine's $script"; Start-Process cmd.exe -ArgumentList "/c `"$bat`"" -Wait -WindowStyle Hidden }
-        }
-        $svc = Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
-        if (-not $svc) { throw 'The Sunshine service was not created by the installer.' }
-    }
+    Initialize-SunshineService $exe
     Stop-Service -Name 'SunshineService' -Force -ErrorAction SilentlyContinue
     $p = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -Wait -PassThru -WindowStyle Hidden `
         -ArgumentList @('--creds', $cfg.sunUser, $cfg.sunPass)
