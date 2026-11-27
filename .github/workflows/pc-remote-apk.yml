@@ -35,6 +35,18 @@ jobs:
           echo "app expects agent v$WANT, windows/version.txt is v$HAVE"
           test "$WANT" = "$HAVE"
 
+      - name: Package the PC agent and pin its hash into the app
+        run: |
+          python3 tools/gen_themes.py
+          git diff --exit-code www/themes.css www/themes.js || { echo "themes.css/themes.js are stale: run tools/gen_themes.py"; exit 1; }
+          rm -f pc-remote-windows.zip
+          # Fixed timestamps so the same sources always give the same package.
+          find windows -type f -exec touch -d '2020-01-01 00:00:00' {} +
+          (cd windows && zip -X -j ../pc-remote-windows.zip *)
+          SHA=$(sha256sum pc-remote-windows.zip | cut -d' ' -f1)
+          echo "PC package SHA-256: $SHA"
+          printf "window.PCR_BUILD = { agentZipSha256: '%s' };\n" "$SHA" > www/build-info.js
+
       - name: Install dependencies
         run: npm install
 
@@ -48,8 +60,11 @@ jobs:
           # The agent on the PC speaks plain HTTP on the home network.
           sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$M"
           # Android 11+ hides other apps unless declared: needed to check for and open Moonlight.
-          sed -i 's#<application#<queries>\n        <package android:name="com.limelight" />\n    </queries>\n\n    <application#' "$M"
-          grep -n "usesCleartextTraffic\|INTERNET\|com.limelight" "$M"
+          sed -i 's#<application#<queries>\n        <package android:name="com.limelight" />\n        <package android:name="com.tailscale.ipn" />\n    </queries>\n\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n\n    <application#' "$M"
+          # Keep the pairing code out of cloud/adb backups. (App updates still keep the data.)
+          sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$M"
+          grep -q 'allowBackup="false"' "$M" || sed -i 's#<application#<application android:allowBackup="false"#' "$M"
+          grep -n "usesCleartextTraffic\|INTERNET\|com.limelight\|tailscale\|allowBackup\|NETWORK_STATE" "$M"
           sed -i 's#<color name="ic_launcher_background">.*</color>#<color name="ic_launcher_background">\#11141C</color>#' \
             android/app/src/main/res/values/ic_launcher_background.xml || true
           pip install --quiet --break-system-packages pillow 2>/dev/null || pip install --quiet pillow
@@ -76,7 +91,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk pc-remote.apk
-          zip -j pc-remote-windows.zip windows/*
           gh release delete pc-remote-latest --yes --cleanup-tag || true
           gh release create pc-remote-latest pc-remote.apk pc-remote-windows.zip \
             --title "PC Remote (latest)" \

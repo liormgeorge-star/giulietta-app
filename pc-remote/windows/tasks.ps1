@@ -1,53 +1,65 @@
 # Long-running jobs started by the agent in a separate process, so the agent keeps answering.
-#   tasks.ps1 -Task InstallSunshine   downloads and installs Sunshine (the streaming server),
-#                                      gives it a private login, and starts its service.
+#   tasks.ps1 -Task InstallSunshine   install or update Sunshine (streaming server), give it a private
+#                                      login, apply the hardening settings and start its service.
+#   tasks.ps1 -Task SetupTailscale    install Tailscale (signature checked) and join the user's tailnet
+#                                      with the one-time auth key the app sent (read from a protected file).
 param([Parameter(Mandatory = $true)][string]$Task)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $env:ProgramData 'PcRemote\common.ps1')
+$ProgressPreference = 'SilentlyContinue'
+
+function Assert-Signed([string]$file, [string]$publisherPattern, [switch]$AllowUnsigned) {
+    $sig = Get-AuthenticodeSignature -FilePath $file
+    if ($sig.Status -eq 'Valid') {
+        $subject = [string]$sig.SignerCertificate.Subject
+        if ($publisherPattern -and $subject -notmatch $publisherPattern) { throw "Unexpected publisher: $subject" }
+        Log "Signature OK: $subject"
+        return
+    }
+    if ($sig.Status -eq 'NotSigned' -and $AllowUnsigned) { Log "Installer is not code-signed (downloaded over HTTPS from the official release)"; return }
+    throw "Installer signature check failed ($($sig.Status))."
+}
 
 function Install-Sunshine {
     $exe = Find-Sunshine
-    if (-not $exe) {
+    if (-not $exe -or -not (Test-SunshineCurrent)) {
         Write-StreamState 'installing' 'download'
         $dl = Join-Path $Dir 'dl'
         New-Item -ItemType Directory -Path $dl -Force | Out-Null
         $msi = Join-Path $dl 'Sunshine.msi'
-        Log "Downloading Sunshine from $SunshineMsiUrl"
-        $ProgressPreference = 'SilentlyContinue'
+        Log "Downloading Sunshine (installed: '$(Get-SunshineVersion)', minimum $SunshineMinVersion)"
         Invoke-WebRequest -Uri $SunshineMsiUrl -OutFile $msi -UseBasicParsing -TimeoutSec 600
         if ((Get-Item $msi).Length -lt 5MB) { throw 'The Sunshine download looks incomplete.' }
+        Assert-Signed $msi 'LizardByte|Sunshine' -AllowUnsigned
 
         Write-StreamState 'installing' 'install'
-        Log 'Installing Sunshine (silent)'
         $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList (
             '/i "' + $msi + '" /qn /norestart /l*v "' + (Join-Path $dl 'sunshine-install.log') + '"')
         if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw "Sunshine installer failed (code $($p.ExitCode))." }
         Remove-Item $msi -Force -ErrorAction SilentlyContinue
         $exe = Find-Sunshine
         if (-not $exe) { throw 'Sunshine was installed but sunshine.exe was not found.' }
+        if (-not (Test-SunshineCurrent)) { Log "Warning: Sunshine $(Get-SunshineVersion) is still below $SunshineMinVersion" }
     }
 
     Write-StreamState 'installing' 'configure'
     $cfg = Read-Config
     if (-not $cfg.sunUser) {
         Set-ConfigValue $cfg 'sunUser' 'pcremote'
-        Set-ConfigValue $cfg 'sunPass' (New-Secret 24)
+        Set-ConfigValue $cfg 'sunPass' (New-Secret 32)
         Save-Config $cfg
     }
     $svc = Get-Service -Name 'SunshineService' -ErrorAction SilentlyContinue
-    if ($svc) { Stop-Service -Name 'SunshineService' -Force -ErrorAction SilentlyContinue }
-    Log 'Setting the Sunshine login used by PC Remote'
+    if (-not $svc) { throw 'The Sunshine service is missing. Reinstall Sunshine.' }
+    Stop-Service -Name 'SunshineService' -Force -ErrorAction SilentlyContinue
     $p = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -Wait -PassThru -WindowStyle Hidden `
         -ArgumentList @('--creds', $cfg.sunUser, $cfg.sunPass)
     if ($p.ExitCode -ne 0) { Log "sunshine --creds exited with $($p.ExitCode)" }
-
-    if ($svc) {
-        Set-Service -Name 'SunshineService' -StartupType Automatic -ErrorAction SilentlyContinue
-        Start-Service -Name 'SunshineService'
-    } else {
-        throw 'The Sunshine service is missing. Reinstall Sunshine.'
-    }
+    Set-SunshineConf $SunshineHardening | Out-Null
+    Log 'Sunshine login set and hardening applied'
+    Set-Service -Name 'SunshineService' -StartupType Automatic -ErrorAction SilentlyContinue
+    Start-Service -Name 'SunshineService'
 
     Write-StreamState 'installing' 'start'
     for ($i = 0; $i -lt 45; $i++) {
@@ -57,13 +69,63 @@ function Install-Sunshine {
     throw 'Sunshine did not start answering.'
 }
 
+function Write-TsState([string]$state, [string]$err = '') {
+    @{ state = $state; error = $err; at = (Get-Date).ToString('o') } | ConvertTo-Json | Set-Content -Path $TsStatePath -Encoding UTF8
+}
+
+function Setup-Tailscale {
+    if (-not (Test-Path $TsKeyPath)) { throw 'No auth key was provided.' }
+    $key = (Get-Content $TsKeyPath -Raw).Trim()
+    Remove-Item $TsKeyPath -Force -ErrorAction SilentlyContinue
+    if ($key -notmatch '^tskey-[A-Za-z0-9-]+$') { throw 'The auth key does not look like a Tailscale key (tskey-...).' }
+
+    $exe = Find-Tailscale
+    if (-not $exe) {
+        Write-TsState 'installing'
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+        $url = "https://pkgs.tailscale.com/stable/tailscale-setup-latest-$arch.msi"
+        $dl = Join-Path $Dir 'dl'
+        New-Item -ItemType Directory -Path $dl -Force | Out-Null
+        $msi = Join-Path $dl 'tailscale.msi'
+        Log "Downloading Tailscale from $url"
+        Invoke-WebRequest -Uri $url -OutFile $msi -UseBasicParsing -TimeoutSec 600
+        Assert-Signed $msi 'Tailscale'
+        $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList (
+            '/i "' + $msi + '" /qn /norestart TS_UNATTENDEDMODE=always /l*v "' + (Join-Path $dl 'tailscale-install.log') + '"')
+        if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw "Tailscale installer failed (code $($p.ExitCode))." }
+        Remove-Item $msi -Force -ErrorAction SilentlyContinue
+        for ($i = 0; $i -lt 30 -and -not (Find-Tailscale); $i++) { Start-Sleep -Seconds 1 }
+        $exe = Find-Tailscale
+        if (-not $exe) { throw 'Tailscale was installed but tailscale.exe was not found.' }
+    }
+    Start-Service -Name 'Tailscale' -ErrorAction SilentlyContinue
+
+    Write-TsState 'joining'
+    $name = ($env:COMPUTERNAME.ToLowerInvariant() -replace '[^a-z0-9-]', '-')
+    Log 'Joining the tailnet (unattended)'
+    # --unattended keeps the connection up before anyone logs in to Windows.
+    # The key itself is never written to the log.
+    $p = Start-Process -FilePath $exe -Wait -PassThru -WindowStyle Hidden -ArgumentList @(
+        'up', '--unattended', "--authkey=$key", "--hostname=$name", '--accept-dns=false', '--timeout=60s')
+    $key = $null
+    if ($p.ExitCode -ne 0) { throw "tailscale up failed (code $($p.ExitCode)). The key may be used up or expired." }
+    for ($i = 0; $i -lt 20; $i++) {
+        $s = Get-TailscaleStatus
+        if ($s.online -and $s.ip) { Write-TsState 'ready'; Log "Tailscale up: $($s.ip)"; Set-AgentFirewallScope; return }
+        Start-Sleep -Seconds 1
+    }
+    throw 'Tailscale did not come online.'
+}
+
 try {
     switch ($Task) {
         'InstallSunshine' { Install-Sunshine }
+        'SetupTailscale' { Setup-Tailscale }
         default { throw "Unknown task $Task" }
     }
 } catch {
     Log "Task $Task failed: $($_.Exception.Message)"
-    Write-StreamState 'error' '' $_.Exception.Message
+    if ($Task -eq 'SetupTailscale') { Write-TsState 'error' $_.Exception.Message; Remove-Item $TsKeyPath -Force -ErrorAction SilentlyContinue }
+    else { Write-StreamState 'error' '' $_.Exception.Message }
     exit 1
 }

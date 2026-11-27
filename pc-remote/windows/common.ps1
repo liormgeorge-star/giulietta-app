@@ -6,6 +6,13 @@ $StreamStatePath = Join-Path $Dir 'stream-state.json'
 $LogFile = Join-Path $Dir 'agent.log'
 $ReleaseZipUrl = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip'
 $SunshineMsiUrl = 'https://github.com/LizardByte/Sunshine/releases/latest/download/Sunshine-Windows-AMD64-installer.msi'
+# Sunshine releases older than this have published security fixes missing
+# (CVE-2026-32253 auth bypass, May 2026; September 2026 pairing/DoS fixes).
+$SunshineMinVersion = [version]'2026.906.222525'
+$TsStatePath = Join-Path $Dir 'tailscale-state.json'
+$TsKeyPath = Join-Path $Dir 'tailscale-key.tmp'
+$FirewallRuleName = 'PC Remote Agent (TCP 8765)'
+$TailscaleRange = '100.64.0.0/10'
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
@@ -117,4 +124,134 @@ function Read-StreamState {
 function Write-StreamState([string]$state, [string]$step = '', [string]$err = '') {
     @{ state = $state; step = $step; error = $err; at = (Get-Date).ToString('o') } |
         ConvertTo-Json | Set-Content -Path $StreamStatePath -Encoding UTF8
+}
+
+function Get-SunshineInstallDir {
+    $exe = Find-Sunshine
+    if ($exe) { return (Split-Path $exe) }
+    return $null
+}
+
+function Test-SunshineCurrent {
+    # True when the installed Sunshine has the 2026 security fixes.
+    $v = Get-SunshineVersion
+    if (-not $v) { return $false }
+    try { return ([version]($v -replace '[^0-9.].*$', '')) -ge $SunshineMinVersion } catch { return $false }
+}
+
+function Set-SunshineConf {
+    # Sets "key = value" lines in sunshine.conf. Returns $true when the file changed.
+    param([hashtable]$Settings)
+    $dir = Get-SunshineInstallDir
+    if (-not $dir) { return $false }
+    $conf = Join-Path $dir 'config\sunshine.conf'
+    $lines = @()
+    if (Test-Path $conf) { $lines = @(Get-Content $conf -Encoding UTF8) }
+    $changed = $false
+    foreach ($k in $Settings.Keys) {
+        $want = "$k = $($Settings[$k])"
+        $idx = -1
+        for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match "^\s*$([regex]::Escape($k))\s*=") { $idx = $i; break } }
+        if ($idx -ge 0) {
+            if ($lines[$idx].Trim() -ne $want) { $lines[$idx] = $want; $changed = $true }
+        } else { $lines += $want; $changed = $true }
+    }
+    if ($changed) {
+        New-Item -ItemType Directory -Path (Split-Path $conf) -Force | Out-Null
+        Set-Content -Path $conf -Value $lines -Encoding UTF8
+    }
+    return $changed
+}
+
+# Hardening applied to every Sunshine we manage:
+#  - Web UI/API only from this PC (the agent talks to it on localhost).
+#  - Stream encryption: when the client supports it on the LAN/VPN, always over the internet.
+#  - UPnP off: never open router ports.
+$SunshineHardening = @{
+    origin_web_ui_allowed = 'pc'
+    lan_encryption_mode   = '1'
+    wan_encryption_mode   = '2'
+    upnp                  = 'disabled'
+}
+
+# ---------- Tailscale ----------
+
+function Find-Tailscale {
+    foreach ($p in (Join-Path $env:ProgramFiles 'Tailscale\tailscale.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Tailscale\tailscale.exe')) {
+        if ($p -and (Test-Path $p)) { return $p }
+    }
+    return $null
+}
+
+function Get-TailscaleStatus {
+    $exe = Find-Tailscale
+    $out = [ordered]@{ installed = [bool]$exe; online = $false; ip = ''; name = ''; state = '' }
+    if (-not $exe) { return $out }
+    $ErrorActionPreference = 'Continue'   # tailscale.exe may write to stderr; that must not throw here
+    try {
+        $json = & $exe status --json 2>$null | Out-String
+        $s = $json | ConvertFrom-Json
+        $out.state = [string]$s.BackendState
+        $out.online = ($s.BackendState -eq 'Running')
+        if ($s.Self) {
+            $out.ip = [string](@($s.Self.TailscaleIPs) | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' } | Select-Object -First 1)
+            $out.name = [string]$s.Self.DNSName
+        }
+    } catch { }
+    return $out
+}
+
+function Set-AgentFirewallScope {
+    # The agent answers the home network and the Tailscale network (100.64.0.0/10) only.
+    try {
+        $rule = Get-NetFirewallRule -DisplayName $FirewallRuleName -ErrorAction Stop
+        $rule | Get-NetFirewallAddressFilter | Set-NetFirewallAddressFilter -RemoteAddress @('LocalSubnet', $TailscaleRange) -ErrorAction Stop
+    } catch { Log "Firewall scope update failed: $($_.Exception.Message)" }
+}
+
+# ---------- Request signing (protocol v3) ----------
+# key    = PBKDF2-HMAC-SHA256(pairing code, "pcremote-v3:" + salt, 100000 iterations, 32 bytes)
+# macKey = HMAC-SHA256(key, "mac"), encKey = HMAC-SHA256(key, "enc")
+# request signature  = HMAC(macKey, METHOD \n path \n ts \n nonce \n body)
+# response signature = HMAC(macKey, "resp" \n nonce \n status \n body)
+# POST bodies carry {"iv","ct"}: AES-256-CBC(encKey) of the JSON payload.
+
+function ConvertTo-Hex([byte[]]$b) { -join ($b | ForEach-Object { $_.ToString('x2') }) }
+
+function Get-HmacSha256([byte[]]$key, [byte[]]$data) {
+    $h = New-Object Security.Cryptography.HMACSHA256 -ArgumentList (, $key)
+    try { return $h.ComputeHash($data) } finally { $h.Dispose() }
+}
+
+function New-AuthKeys([string]$token, [string]$saltHex) {
+    $pw = [Text.Encoding]::UTF8.GetBytes($token)
+    $salt = [Text.Encoding]::UTF8.GetBytes("pcremote-v3:$saltHex")
+    $kdf = New-Object Security.Cryptography.Rfc2898DeriveBytes -ArgumentList $pw, $salt, 100000, ([Security.Cryptography.HashAlgorithmName]::SHA256)
+    try { $k = $kdf.GetBytes(32) } finally { $kdf.Dispose() }
+    return @{
+        mac = Get-HmacSha256 $k ([Text.Encoding]::UTF8.GetBytes('mac'))
+        enc = Get-HmacSha256 $k ([Text.Encoding]::UTF8.GetBytes('enc'))
+    }
+}
+
+function Test-ConstantTimeEqual([string]$a, [string]$b) {
+    if ($null -eq $a -or $null -eq $b -or $a.Length -ne $b.Length) { return $false }
+    $d = 0
+    for ($i = 0; $i -lt $a.Length; $i++) { $d = $d -bor ([int][char]$a[$i] -bxor [int][char]$b[$i]) }
+    return ($d -eq 0)
+}
+
+function Unprotect-Body([byte[]]$encKey, [string]$bodyText) {
+    $o = $bodyText | ConvertFrom-Json
+    $aes = [Security.Cryptography.Aes]::Create()
+    try {
+        $aes.Mode = [Security.Cryptography.CipherMode]::CBC
+        $aes.Padding = [Security.Cryptography.PaddingMode]::PKCS7
+        $aes.Key = $encKey
+        $aes.IV = [Convert]::FromBase64String([string]$o.iv)
+        $ct = [Convert]::FromBase64String([string]$o.ct)
+        $dec = $aes.CreateDecryptor()
+        $plain = $dec.TransformFinalBlock($ct, 0, $ct.Length)
+        return ([Text.Encoding]::UTF8.GetString($plain) | ConvertFrom-Json)
+    } finally { $aes.Dispose() }
 }

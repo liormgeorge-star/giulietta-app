@@ -1,56 +1,24 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" data-skin="studio">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
 <title>שלט מחשב</title>
+<script>
+  // Apply the saved design before first paint.
+  try { var s = localStorage.getItem('pcremote.skin'); if (s && /^[a-z0-9]+$/.test(s)) document.documentElement.setAttribute('data-skin', s); } catch (e) {}
+</script>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="themes.css">
 <style>
-/* Layout: one "control deck" screen. Identity strip (machine + live link) on top,
-   the power unit below it, then the two stream modes as tiles, then setup steps if any. */
-:root {
-  --bg: #eef0f5;        /* cool paper */
-  --surface: #ffffff;
-  --sunken: #e4e7ee;
-  --line: #d5d9e3;
-  --ink: #141722;
-  --muted: #5c6376;
-  --accent: #2f55e4;    /* cobalt, the one action color */
-  --accent-ink: #ffffff;
-  --on: #13865a;        /* semantic: running */
-  --busy: #b0730f;      /* semantic: working / standby amber */
-  --off: #8b92a5;       /* semantic: off */
-  --danger: #c3343c;
-  --shadow: 0 1px 2px rgba(20, 23, 34, .06), 0 8px 24px rgba(20, 23, 34, .06);
-
-  --font-display: 'Rubik', 'Heebo', system-ui, sans-serif;
-  --font-body: 'Heebo', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  --font-data: ui-monospace, 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
-
-  --r-lg: 20px; --r-md: 14px; --r-sm: 10px;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0c0e14; --surface: #151924; --sunken: #0f121a; --line: #252a38;
-    --ink: #eceef5; --muted: #949bb0; --accent: #7d97ff; --accent-ink: #0c0e14;
-    --on: #41d08f; --busy: #f2b54d; --off: #697086; --danger: #f2686f;
-    --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(0, 0, 0, .35);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0c0e14; --surface: #151924; --sunken: #0f121a; --line: #252a38;
-  --ink: #eceef5; --muted: #949bb0; --accent: #7d97ff; --accent-ink: #0c0e14;
-  --on: #41d08f; --busy: #f2b54d; --off: #697086; --danger: #f2686f;
-  --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(0, 0, 0, .35);
-  color-scheme: dark;
-}
-
+/* Layout: one control deck. Machine strip, power unit, two stream tiles, notices.
+   Every color, font and radius comes from the active design in themes.css. */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; min-height: 100%; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  background-color: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
   padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -58,159 +26,108 @@ body {
 }
 .wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 [hidden] { display: none !important; }
-button { font: inherit; color: inherit; }
+button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .data { font-family: var(--font-data); direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
 
-/* ---------- top bar ---------- */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.brand { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -.01em; margin: 0; }
-.icon-btn {
-  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
-  display: grid; place-items: center; color: var(--muted); cursor: pointer;
-}
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 21px; margin: 0; }
+.icon-btn { width: 42px; height: 42px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); color: var(--muted); display: grid; place-items: center; }
 .icon-btn svg { width: 20px; height: 20px; }
 
-/* ---------- machine strip ---------- */
-.machine { display: flex; align-items: center; gap: 12px; padding: 4px 2px; }
-.led { width: 12px; height: 12px; border-radius: 50%; background: var(--off); flex: none; position: relative; }
-.led.on { background: var(--on); box-shadow: 0 0 0 4px color-mix(in srgb, var(--on) 18%, transparent); }
+.machine { display: flex; align-items: center; gap: 12px; padding: 2px; }
+.led { width: 12px; height: 12px; border-radius: 50%; background: var(--off); flex: none; }
+.led.on { background: var(--on); box-shadow: 0 0 0 4px color-mix(in srgb, var(--on) 20%, transparent); }
 .led.busy { background: var(--busy); animation: blink 1s ease-in-out infinite alternate; }
-.led.off { background: var(--off); }
 @keyframes blink { from { opacity: .35; } to { opacity: 1; } }
 .machine-text { min-width: 0; flex: 1; }
 .machine-name { font-family: var(--font-display); font-weight: 600; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .machine-sub { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.route { font-weight: 600; }
 
-/* ---------- power unit ---------- */
-.power {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow);
-  padding: 18px; display: grid; gap: 14px;
-}
-.power-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.state-word { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: -.01em; }
-.state-word.on { color: var(--on); } .state-word.busy { color: var(--busy); } .state-word.off { color: var(--ink); }
+.power { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 18px; display: grid; gap: 14px; }
+.power-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.state-word { font-family: var(--font-display); font-weight: 700; font-size: 32px; line-height: 1.1; }
+.state-word.on { color: var(--on); } .state-word.busy { color: var(--busy); }
 .state-note { color: var(--muted); font-size: 13px; text-align: left; }
-.btn {
-  border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md);
-  padding: 13px 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 48px;
-}
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--r-md); padding: 12px 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; }
 .btn svg { width: 20px; height: 20px; flex: none; }
 .btn:active { transform: translateY(1px); }
-.btn:disabled { opacity: .45; cursor: default; transform: none; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.danger { color: var(--danger); }
-.btn.solid-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+.btn.solid-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn.block { width: 100%; }
 .btn.big { min-height: 56px; font-size: 17px; font-family: var(--font-display); }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-/* ---------- stream tiles ---------- */
-.section-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--muted); margin: 6px 2px -4px; }
+.section-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--muted); margin: 4px 2px -4px; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.tile {
-  text-align: right; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow);
-  padding: 16px 14px 14px; display: grid; gap: 10px; align-content: start; cursor: pointer; min-width: 0;
-}
+.tile { text-align: right; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; display: grid; gap: 9px; align-content: start; min-width: 0; color: var(--ink); }
 .tile:active { transform: translateY(1px); }
-.tile[aria-disabled="true"] { cursor: default; }
-.tile-art {
-  width: 100%; aspect-ratio: 16 / 10; max-width: 100%; border-radius: var(--r-sm); background: var(--sunken);
-  display: grid; place-items: center; color: var(--accent);
-}
-.tile-art svg { width: 46%; height: auto; }
+.tile-art { height: 86px; border-radius: var(--r-sm); background: var(--sunken); display: grid; place-items: center; color: var(--accent); }
+.tile-art svg { width: 64px; height: auto; }
 .tile-title { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.2; }
 .tile-sub { color: var(--muted); font-size: 13px; line-height: 1.35; }
-.chip {
-  justify-self: start; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
-  background: var(--sunken); color: var(--muted); border: 1px solid var(--line);
-}
-.chip.ok { color: var(--on); border-color: color-mix(in srgb, var(--on) 35%, var(--line)); background: color-mix(in srgb, var(--on) 10%, var(--surface)); }
-.chip.warn { color: var(--busy); border-color: color-mix(in srgb, var(--busy) 35%, var(--line)); background: color-mix(in srgb, var(--busy) 10%, var(--surface)); }
-.chip.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
+.chip { justify-self: start; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
+.chip.ok { color: var(--on); border-color: color-mix(in srgb, var(--on) 40%, var(--line)); }
+.chip.warn { color: var(--busy); border-color: color-mix(in srgb, var(--busy) 40%, var(--line)); }
+.chip.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 
-/* ---------- notice cards ---------- */
-.notice {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; display: grid; gap: 10px;
-}
-.notice h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; text-wrap: balance; }
+.notice { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; display: grid; gap: 10px; color: var(--ink); }
+.notice h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; }
 .notice p { margin: 0; color: var(--muted); }
-.notice.warn { border-color: color-mix(in srgb, var(--busy) 45%, var(--line)); }
+.notice.warn { border-color: color-mix(in srgb, var(--busy) 50%, var(--line)); }
 
-/* steps (used in sheets and setup) */
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: s; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: s; }
 .steps li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
-.steps li::before {
-  counter-increment: s; content: counter(s); width: 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 14px;
-  background: var(--sunken); color: var(--muted); border: 1px solid var(--line);
-}
+.steps li::before { counter-increment: s; content: counter(s); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
 .steps li.done::before { content: "✓"; background: var(--on); color: var(--surface); border-color: var(--on); }
-.steps li .step-body { display: grid; gap: 8px; min-width: 0; }
-.steps li .step-title { font-weight: 600; }
-.steps li .step-note { color: var(--muted); font-size: 14px; }
+.step-body { display: grid; gap: 8px; min-width: 0; }
+.step-title { font-weight: 700; }
+.step-note { color: var(--muted); font-size: 14px; }
 
-/* ---------- forms ---------- */
 .field { display: grid; gap: 6px; }
-.field label { font-size: 14px; font-weight: 500; }
-.field .hint { font-size: 13px; color: var(--muted); }
-input.text {
-  width: 100%; padding: 13px 12px; font-size: 17px; border-radius: var(--r-md); border: 1px solid var(--line);
-  background: var(--sunken); color: var(--ink); font-family: var(--font-data); direction: ltr; text-align: left;
-}
+.field label { font-size: 14px; font-weight: 600; }
+.hint { font-size: 13px; color: var(--muted); }
+input.text { width: 100%; padding: 13px 12px; font-size: 17px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--sunken); color: var(--ink); font-family: var(--font-data); direction: ltr; text-align: left; }
 input.text:focus { outline: none; border-color: var(--accent); }
-input.pin { font-size: 28px; letter-spacing: .5em; text-align: center; padding: 10px 0 10px .5em; }
-.msg { font-size: 14px; min-height: 1.5em; }
+input.pin { font-size: 28px; letter-spacing: .5em; text-align: center; }
+.msg { font-size: 14px; min-height: 1.4em; }
 .msg.err { color: var(--danger); } .msg.ok { color: var(--on); }
 details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 4px 0; }
-details[open] summary { margin-bottom: 8px; }
-.linkbox {
-  background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px;
-  font-family: var(--font-data); font-size: 12.5px; direction: ltr; text-align: left; overflow-wrap: anywhere; user-select: all;
-}
-
-/* ---------- footer ---------- */
+.linkbox { background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; font-family: var(--font-data); font-size: 13px; direction: ltr; text-align: left; overflow-wrap: anywhere; user-select: all; }
 .foot { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; padding-top: 4px; }
 
-/* ---------- sheet + toast ---------- */
-.overlay {
-  position: fixed; inset: 0; z-index: 30; background: rgba(8, 10, 16, .55);
-  display: flex; align-items: flex-end; justify-content: center;
-  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-}
-.sheet {
-  width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto;
-  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 22px; padding: 20px;
-  display: grid; gap: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
-}
-.sheet h2 { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 600; text-wrap: balance; }
+.overlay { position: fixed; inset: 0; z-index: 30; background: rgba(8,10,16,.6); display: flex; align-items: flex-end; justify-content: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet { width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 22px; padding: 20px; display: grid; gap: 14px; }
+.sheet h2 { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; }
 .sheet p { margin: 0; color: var(--muted); }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; margin: 0; }
 .kv dt { color: var(--muted); } .kv dd { margin: 0; }
-#toast {
-  position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
-  max-width: calc(100% - 32px); background: var(--ink); color: var(--bg);
-  padding: 10px 16px; border-radius: 12px; font-size: 14px; text-align: center;
-  opacity: 0; transition: opacity .2s; pointer-events: none;
-}
+.skin-group { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .05em; margin-top: 4px; }
+.skins { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.skin { border: 2px solid var(--line); border-radius: 12px; background: var(--sunken); padding: 6px; display: grid; gap: 6px; text-align: right; color: var(--ink); min-height: 74px; }
+.skin[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.skin-sw { display: grid; grid-template-columns: 2fr 1fr 1fr; height: 30px; border-radius: 7px; overflow: hidden; }
+.skin-name { font-size: 12px; font-weight: 600; line-height: 1.2; }
+#toast { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 12px); max-width: calc(100% - 32px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; text-align: center; opacity: 0; transition: opacity .2s; pointer-events: none; }
 #toast.show { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .led.busy { animation: none; } #toast { transition: none; } }
-@media (max-width: 360px) { .tiles { grid-template-columns: 1fr; } }
+@media (max-width: 360px) { .tiles, .skins { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-
   <div class="top">
     <h1 class="brand">שלט מחשב</h1>
     <button class="icon-btn" id="gear" aria-label="הגדרות" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
     </button>
   </div>
 
-  <!-- ================= first-time connection ================= -->
+  <!-- ===== first-time connection ===== -->
   <section id="setup" class="notice" hidden>
     <h2>חיבור למחשב</h2>
     <ol class="steps">
@@ -221,26 +138,12 @@ details[open] summary { margin-bottom: 8px; }
         <div class="btn-row"><button class="btn" id="setup-share">שליחת הקישור</button><button class="btn" id="setup-copy">העתקה</button></div>
       </div></li>
       <li><div class="step-body">
-        <div class="step-title">מזינים את מה שהמחשב הציג</div>
-        <div class="field">
-          <label for="f-ip">כתובת IP של המחשב</label>
-          <input class="text" id="f-ip" inputmode="decimal" placeholder="192.168.1.20" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-token">קוד צימוד</label>
-          <input class="text" id="f-token" placeholder="K7M2X9QP" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        </div>
-        <details id="adv">
-          <summary>הגדרות מתקדמות</summary>
-          <div class="field">
-            <label for="f-port">פורט</label>
-            <input class="text" id="f-port" inputmode="numeric" value="8765">
-          </div>
-          <div class="field">
-            <label for="f-mac">כתובת MAC</label>
-            <input class="text" id="f-mac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off" autocapitalize="characters" spellcheck="false">
-            <span class="hint">מתמלאת לבד בחיבור הראשון.</span>
-          </div>
+        <div class="step-title">מזינים את מה שהמחשב הציג (בבית, על ה-Wi-Fi)</div>
+        <div class="field"><label for="f-ip">כתובת IP של המחשב</label><input class="text" id="f-ip" inputmode="decimal" placeholder="192.168.1.20" autocomplete="off"></div>
+        <div class="field"><label for="f-token">קוד צימוד</label><input class="text" id="f-token" placeholder="ABCD-EFGH-JKLM-NPQR" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+        <details id="adv"><summary>הגדרות מתקדמות</summary>
+          <div class="field"><label for="f-port">פורט</label><input class="text" id="f-port" inputmode="numeric" value="8765"></div>
+          <div class="field"><label for="f-mac">כתובת MAC</label><input class="text" id="f-mac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off" spellcheck="false"><span class="hint">מתמלאת לבד בחיבור הראשון.</span></div>
         </details>
         <div class="msg" id="setup-msg" role="status"></div>
         <button class="btn primary big block" id="connect">התחברות</button>
@@ -250,75 +153,62 @@ details[open] summary { margin-bottom: 8px; }
     </ol>
   </section>
 
-  <!-- ================= control deck ================= -->
-  <section id="deck" hidden>
-    <div class="wrap">
-      <div class="machine">
-        <span class="led" id="led" aria-hidden="true"></span>
-        <div class="machine-text">
-          <div class="machine-name" id="m-name"></div>
-          <div class="machine-sub"><span class="data" id="m-ip"></span><span class="data" id="m-latency"></span></div>
-        </div>
+  <!-- ===== control deck ===== -->
+  <section id="deck" class="wrap" hidden>
+    <div class="machine">
+      <span class="led" id="led" aria-hidden="true"></span>
+      <div class="machine-text">
+        <div class="machine-name" id="m-name"></div>
+        <div class="machine-sub"><span class="route" id="m-route"></span><span class="data" id="m-latency"></span></div>
       </div>
-
-      <div class="power" aria-live="polite">
-        <div class="power-head">
-          <div class="state-word" id="state-word">בודק…</div>
-          <div class="state-note" id="state-note"></div>
-        </div>
-        <button class="btn big block" id="power-btn" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.2 6.8a8 8 0 1 0 11.6 0"/></svg>
-          <span id="power-label">…</span>
-        </button>
-        <div class="btn-row">
-          <button class="btn" id="restart-btn" disabled>הפעלה מחדש</button>
-          <button class="btn" id="sleep-btn" disabled>שינה</button>
-        </div>
-        <button class="btn block" id="wake-again" hidden>שליחת אות הדלקה שוב</button>
-      </div>
-
-      <div class="section-label">מהטלפון למחשב</div>
-      <div class="tiles">
-        <button class="tile" id="tile-desktop">
-          <div class="tile-art" aria-hidden="true">
-            <svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
-              <rect x="4" y="3" width="56" height="32" rx="3"/><path d="M24 41h16M32 35v6"/>
-              <path d="M30 13l12 7-5.5 1.4L34 27z" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="tile-title">שליטה מרחוק</div>
-          <div class="tile-sub">שולחן העבודה של המחשב על המסך, עם מגע כעכבר.</div>
-          <span class="chip" id="chip-desktop">…</span>
-        </button>
-        <button class="tile" id="tile-games">
-          <div class="tile-art" aria-hidden="true">
-            <svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
-              <path d="M18 10h28c7 0 11 6 12 14l1.5 9c.8 5-4.6 8-8.4 4.6L45 32H19l-6.1 5.6C9.1 41 3.7 38 4.5 33L6 24c1-8 5-14 12-14z"/>
-              <path d="M18 18v10M13 23h10"/><circle cx="44" cy="20" r="2" fill="currentColor"/><circle cx="49" cy="25" r="2" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="tile-title">משחקים</div>
-          <div class="tile-sub">סטרימינג של משחקים מהמחשב, גם עם שלט.</div>
-          <span class="chip" id="chip-games">…</span>
-        </button>
-      </div>
-
-      <section class="notice warn" id="notice" hidden>
-        <h2 id="notice-title"></h2>
-        <p id="notice-text"></p>
-        <button class="btn primary block" id="notice-btn" hidden></button>
-      </section>
-
-      <div class="foot" id="foot"></div>
     </div>
+
+    <div class="power" aria-live="polite">
+      <div class="power-head">
+        <div class="state-word" id="state-word">בודק…</div>
+        <div class="state-note" id="state-note"></div>
+      </div>
+      <button class="btn big block" id="power-btn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.2 6.8a8 8 0 1 0 11.6 0"/></svg>
+        <span id="power-label">…</span>
+      </button>
+      <div class="btn-row">
+        <button class="btn" id="restart-btn" disabled>הפעלה מחדש</button>
+        <button class="btn" id="sleep-btn" disabled>שינה</button>
+      </div>
+      <button class="btn block" id="wake-again" hidden>שליחת אות הדלקה שוב</button>
+    </div>
+
+    <div class="section-label">מהטלפון למחשב</div>
+    <div class="tiles">
+      <button class="tile" id="tile-desktop">
+        <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="3" width="56" height="32" rx="3"/><path d="M24 41h16M32 35v6"/><path d="M30 13l12 7-5.5 1.4L34 27z" fill="currentColor"/></svg></span>
+        <span class="tile-title">שליטה מרחוק</span>
+        <span class="tile-sub">שולחן העבודה של המחשב בטלפון, מגע כעכבר.</span>
+        <span class="chip" id="chip-desktop">…</span>
+      </button>
+      <button class="tile" id="tile-games">
+        <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M18 10h28c7 0 11 6 12 14l1.5 9c.8 5-4.6 8-8.4 4.6L45 32H19l-6.1 5.6C9.1 41 3.7 38 4.5 33L6 24c1-8 5-14 12-14z"/><path d="M18 18v10M13 23h10"/><circle cx="44" cy="20" r="2" fill="currentColor"/><circle cx="49" cy="25" r="2" fill="currentColor"/></svg></span>
+        <span class="tile-title">משחקים</span>
+        <span class="tile-sub">סטרימינג של משחקים מהמחשב, גם עם שלט.</span>
+        <span class="chip" id="chip-games">…</span>
+      </button>
+    </div>
+
+    <section class="notice warn" id="notice" hidden>
+      <h2 id="notice-title"></h2>
+      <p id="notice-text"></p>
+      <button class="btn primary block" id="notice-btn" hidden></button>
+    </section>
+
+    <div class="foot" id="foot"></div>
   </section>
 </div>
 
-<!-- generic confirm -->
+<!-- confirm -->
 <div class="overlay" id="confirm" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="c-title">
-    <h2 id="c-title"></h2>
-    <p id="c-text"></p>
+    <h2 id="c-title"></h2><p id="c-text"></p>
     <div class="btn-row"><button class="btn" id="c-no">ביטול</button><button class="btn" id="c-yes"></button></div>
   </div>
 </div>
@@ -327,53 +217,67 @@ details[open] summary { margin-bottom: 8px; }
 <div class="overlay" id="stream-sheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ss-title">
     <h2 id="ss-title">הגדרת סטרימינג</h2>
-    <p>חד-פעמי. אחרי זה, לחיצה על "שליטה מרחוק" או "משחקים" פותחת את המחשב ישר.</p>
+    <p>חד-פעמי. אחר כך "שליטה מרחוק" ו"משחקים" פותחים את המחשב ישר.</p>
     <ol class="steps">
-      <li id="st-server"><div class="step-body">
-        <div class="step-title">שרת הסטרימינג במחשב</div>
-        <div class="step-note" id="st-server-note"></div>
-        <button class="btn" id="st-server-btn" hidden>ניסיון חוזר</button>
-      </div></li>
-      <li id="st-app"><div class="step-body">
-        <div class="step-title">אפליקציית Moonlight בטלפון</div>
-        <div class="step-note" id="st-app-note">Moonlight מציגה את המסך של המחשב. חינמית, ב-Google Play.</div>
-        <button class="btn primary" id="st-app-btn">התקנה מ-Google Play</button>
-      </div></li>
-      <li id="st-pair"><div class="step-body">
-        <div class="step-title">צימוד</div>
-        <div class="step-note" id="st-pair-note"></div>
+      <li id="st-server"><div class="step-body"><div class="step-title">שרת הסטרימינג במחשב</div><div class="step-note" id="st-server-note"></div><button class="btn" id="st-server-btn" hidden>ניסיון חוזר</button></div></li>
+      <li id="st-app"><div class="step-body"><div class="step-title">Moonlight בטלפון</div><div class="step-note" id="st-app-note"></div><button class="btn primary" id="st-app-btn">התקנה מ-Google Play</button></div></li>
+      <li id="st-pair"><div class="step-body"><div class="step-title">צימוד</div><div class="step-note" id="st-pair-note"></div>
         <div id="st-pair-form" class="step-body">
           <button class="btn" id="st-open-ml">פתיחת Moonlight</button>
-          <div class="field">
-            <label for="f-pin">הקוד ש-Moonlight מציגה</label>
-            <input class="text pin" id="f-pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••">
-          </div>
+          <div class="field"><label for="f-pin">הקוד ש-Moonlight מציגה</label><input class="text pin" id="f-pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••"></div>
           <div class="msg" id="pair-msg" role="status"></div>
           <button class="btn primary" id="st-pair-btn">צימוד</button>
-        </div>
-      </div></li>
+        </div></div></li>
     </ol>
     <button class="btn block" id="ss-close">סגירה</button>
   </div>
 </div>
 
-<!-- one-time agent upgrade (only for PCs that still run version 1) -->
+<!-- remote access (Tailscale) -->
+<div class="overlay" id="remote-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+    <h2 id="rs-title">גישה מחוץ לבית</h2>
+    <p>דרך Tailscale: רשת פרטית ומוצפנת בין הטלפון למחשב. לא פותחים שום פורט בראוטר, והמחשב לא נחשף לאינטרנט. חינמי לשימוש אישי. את השלבים עושים פעם אחת, בבית.</p>
+    <ol class="steps">
+      <li id="rs-1"><div class="step-body"><div class="step-title">פותחים חשבון Tailscale</div><div class="step-note">אפשר עם חשבון Google. זה החשבון שיחבר בין הטלפון למחשב.</div><button class="btn" id="rs-1-btn">פתיחת חשבון</button></div></li>
+      <li id="rs-2"><div class="step-body"><div class="step-title">Tailscale בטלפון</div><div class="step-note" id="rs-2-note">מתקינים ונכנסים עם אותו חשבון.</div><button class="btn primary" id="rs-2-btn">התקנה מ-Google Play</button></div></li>
+      <li id="rs-3"><div class="step-body"><div class="step-title">חיבור המחשב</div>
+        <div class="step-note" id="rs-3-note"></div>
+        <div id="rs-3-form" class="step-body">
+          <button class="btn" id="rs-key-link">יצירת מפתח הצטרפות</button>
+          <div class="hint">בעמוד שנפתח: Generate auth key, בלי Reusable ובלי Ephemeral. מעתיקים את המפתח (מתחיל ב-tskey-).</div>
+          <div class="field"><label for="f-tskey">מפתח ההצטרפות</label><input class="text" id="f-tskey" placeholder="tskey-auth-…" autocomplete="off" spellcheck="false"></div>
+          <div class="msg" id="ts-msg" role="status"></div>
+          <button class="btn primary" id="rs-3-btn">חיבור המחשב ל-Tailscale</button>
+        </div></div></li>
+      <li id="rs-4"><div class="step-body"><div class="step-title">Moonlight מחוץ לבית</div>
+        <div class="step-note">ב-Moonlight: לוחצים על "+" ומזינים את הכתובת הזו. היא מתחברת לאותו מחשב, בלי צימוד נוסף.</div>
+        <div class="linkbox" id="rs-ip">—</div><button class="btn" id="rs-ip-copy">העתקת הכתובת</button></div></li>
+      <li id="rs-5"><div class="step-body"><div class="step-title">שהמחשב לא יתנתק אחרי חצי שנה</div>
+        <div class="step-note">ברשימת המכשירים של Tailscale: ליד שם המחשב ← ⋯ ← Disable key expiry.</div><button class="btn" id="rs-5-btn">רשימת המכשירים</button></div></li>
+    </ol>
+    <div class="notice"><p>הדלקה מחוץ לבית צריכה מכשיר שנשאר דלוק בבית (למשל Raspberry Pi). כשיוצאים מהבית עדיף להכניס את המחשב ל"שינה" ולא לכבות אותו. פרטים בדו"ח המחקר.</p></div>
+    <button class="btn block" id="rs-close">סגירה</button>
+  </div>
+</div>
+
+<!-- one-time agent upgrade for very old PC software -->
 <div class="overlay" id="upgrade-sheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="up-title">
     <h2 id="up-title">עדכון אחרון ידני במחשב</h2>
-    <p>התוכנה במחשב היא מהגרסה הראשונה, שעוד לא יודעת להתעדכן לבד. צריך להתקין אותה מחדש פעם אחת. מכאן והלאה היא תתעדכן לבד, וקוד הצימוד נשאר אותו קוד.</p>
-    <ol class="steps">
-      <li><div class="step-body">
-        <div class="step-title">פותחים במחשב את הקישור ומורידים</div>
-        <div class="linkbox" id="up-link"></div>
-        <div class="btn-row"><button class="btn" id="up-share">שליחת הקישור</button><button class="btn" id="up-copy">העתקה</button></div>
-      </div></li>
-      <li><div class="step-body">
-        <div class="step-title">מחלצים ולוחצים פעמיים על install.cmd</div>
-        <div class="step-note">ההתקנה לוקחת פחות מדקה. שרת הסטרימינג יותקן אחריה ברקע.</div>
-      </div></li>
-    </ol>
+    <p>התוכנה במחשב היא מהגרסה הראשונה, שלא יודעת להתעדכן לבד. מתקינים אותה מחדש פעם אחת. קוד הצימוד נשאר.</p>
+    <div class="linkbox" id="up-link"></div>
+    <div class="btn-row"><button class="btn" id="up-share">שליחת הקישור</button><button class="btn" id="up-copy">העתקה</button></div>
     <button class="btn block" id="up-close">סגירה</button>
+  </div>
+</div>
+
+<!-- designs -->
+<div class="overlay" id="skin-sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sk-title">
+    <h2 id="sk-title">עיצוב</h2>
+    <div id="skin-list"></div>
+    <button class="btn block" id="sk-close">סגירה</button>
   </div>
 </div>
 
@@ -382,6 +286,8 @@ details[open] summary { margin-bottom: 8px; }
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="s-title">
     <h2 id="s-title">הגדרות</h2>
     <dl class="kv" id="s-info"></dl>
+    <button class="btn block" id="s-skin">עיצוב</button>
+    <button class="btn block" id="s-remote">גישה מחוץ לבית</button>
     <button class="btn block" id="s-stream">הגדרת סטרימינג</button>
     <button class="btn block" id="s-edit">שינוי פרטי חיבור</button>
     <button class="btn block danger" id="s-forget">ניתוק מהמחשב</button>
@@ -391,46 +297,120 @@ details[open] summary { margin-bottom: 8px; }
 
 <div id="toast" role="status"></div>
 
+<script src="build-info.js"></script>
+<script src="themes.js"></script>
 <script>
 (function () {
   'use strict';
-  var KEY = 'pcremote.config.v1';                 // unchanged since v1, so saved details survive updates
-  var AGENT_TARGET = 2;                            // the PC agent version this app expects (windows/version.txt)
+  var KEY = 'pcremote.config.v1';          // unchanged since v1, so saved details survive updates
+  var SKIN_KEY = 'pcremote.skin';
+  var AGENT_TARGET = 3;                     // PC agent version this app expects (windows/version.txt)
+  var BUILD = window.PCR_BUILD || {};
   var ZIP_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/pc-remote-latest/pc-remote-windows.zip';
+  var TS_PKG = 'com.tailscale.ipn', ML_PKG = 'com.limelight';
 
   var cap = window.Capacitor;
   var isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.nativePromise);
   var $ = function (id) { return document.getElementById(id); };
 
-  // ---------- storage ----------
+  // ================= storage =================
   function load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} }
   var cfg = load();
+  if (cfg && cfg.token) cfg.token = normToken(cfg.token);
 
-  // ---------- native ----------
   function native(method, opts) {
     if (!isNative) return Promise.reject(new Error('web'));
     return cap.nativePromise('PcRemote', method, opts || {});
   }
-  function api(path, method, timeout, c, body) {
-    c = c || cfg;
-    return native('request', { url: 'http://' + c.ip + ':' + c.port + path, method: method || 'GET', token: c.token, timeout: timeout || 4000 })
-      .then(function (r) { var b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) {} return { status: r.status, body: b }; });
+
+  // ================= crypto (protocol v3) =================
+  // key = PBKDF2-SHA256(code, "pcremote-v3:"+salt, 100000); macKey = HMAC(key,"mac"); encKey = HMAC(key,"enc")
+  var te = new TextEncoder(), td = new TextDecoder();
+  var keyCache = { id: null };
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function b64(buf) { var s = ''; new Uint8Array(buf).forEach(function (b) { s += String.fromCharCode(b); }); return btoa(s); }
+  function rand(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+  function normToken(t) { return String(t || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function deriveKeys(token, salt) {
+    var id = token + '|' + salt;
+    if (keyCache.id === id) return Promise.resolve(keyCache);
+    var S = crypto.subtle;
+    return S.importKey('raw', te.encode(token), 'PBKDF2', false, ['deriveBits'])
+      .then(function (base) { return S.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: te.encode('pcremote-v3:' + salt), iterations: 100000 }, base, 256); })
+      .then(function (bits) { return S.importKey('raw', bits, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); })
+      .then(function (k) { return Promise.all([S.sign('HMAC', k, te.encode('mac')), S.sign('HMAC', k, te.encode('enc'))]); })
+      .then(function (ks) { return Promise.all([
+        S.importKey('raw', ks[0], { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+        S.importKey('raw', ks[1], { name: 'AES-CBC' }, false, ['encrypt'])]); })
+      .then(function (k) { keyCache = { id: id, mac: k[0], enc: k[1] }; return keyCache; });
   }
-  // POST with a JSON body (used to send the Moonlight pairing code).
-  function apiJson(path, data, timeout) {
-    return native('request', {
-      url: 'http://' + cfg.ip + ':' + cfg.port + path, method: 'POST', token: cfg.token,
-      timeout: timeout || 8000, body: JSON.stringify(data)
-    }).then(function (r) { var b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) {} return { status: r.status, body: b }; });
+  function hmacHex(key, text) { return crypto.subtle.sign('HMAC', key, te.encode(text)).then(hex); }
+  function encryptJson(key, obj) {
+    var iv = rand(16);
+    return crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, key, te.encode(JSON.stringify(obj)))
+      .then(function (ct) { return JSON.stringify({ iv: b64(iv), ct: b64(ct) }); });
   }
 
-  // ---------- small ui helpers ----------
-  var toastTimer;
-  function toast(t) {
-    var el = $('toast'); el.textContent = t; el.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove('show'); }, 3400);
+  // ================= transport =================
+  var route = null;          // 'lan' | 'ts' | null : which address answered last
+  var clockOffset = 0;       // PC clock minus phone clock (ms), from /ping
+  function hostFor(r, c) { c = c || cfg; return r === 'ts' ? c.tsIp : c.ip; }
+  function raw(host, port, path, o) {
+    return native('request', { url: 'http://' + host + ':' + port + path, method: o.method || 'GET', headers: o.headers || {}, body: o.body || '', timeout: o.timeout || 4000 })
+      .then(function (r) { var b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) {} return { status: r.status, text: r.body || '', body: b, sig: r.sig || '' }; });
   }
+  function pingHost(host, c) {
+    var t0 = Date.now();
+    return raw(host, c.port, '/ping', { timeout: 1800 }).then(function (r) {
+      if (r.status !== 200 || !r.body.ok) throw new Error('down');
+      return { ms: Date.now() - t0, v: r.body.v || 1, t: r.body.t, s: r.body.s, at: Date.now() };
+    });
+  }
+  // Ask both the home address and the Tailscale address; prefer home when both answer.
+  function probe(c) {
+    c = c || cfg;
+    var lan = pingHost(c.ip, c).then(function (p) { p.route = 'lan'; return p; });
+    var ts = c.tsIp ? pingHost(c.tsIp, c).then(function (p) { p.route = 'ts'; return p; }) : Promise.reject(new Error('no-ts'));
+    ts.catch(function () {});   // handled below when needed; avoid unhandled-rejection noise
+    return lan.catch(function () { return ts; }).then(function (p) {
+      if (p.t) clockOffset = p.t - (p.at - Math.round(p.ms / 2));
+      if (p.s) c.salt = p.s;
+      return p;
+    });
+  }
+  // Authenticated call. v3+: signed + encrypted. Older PCs: legacy token header (only used to update them).
+  function authed(path, method, data, timeout, c, viaRoute) {
+    c = c || cfg; method = method || 'GET';
+    var r = viaRoute || route || 'lan';
+    var host = hostFor(r, c);
+    if (!host) return Promise.reject(new Error('offline'));
+    var v = (c === cfg ? agentV : c._v) || 0;
+    if (v && v < 3) {
+      return raw(host, c.port, path, { method: method, headers: { 'X-Token': c.token }, body: data ? JSON.stringify(data) : '', timeout: timeout });
+    }
+    return deriveKeys(c.token, c.salt || '').then(function (k) {
+      var ts = String(Date.now() + clockOffset), nonce = hex(rand(16));
+      return (data ? encryptJson(k.enc, data) : Promise.resolve('')).then(function (body) {
+        return hmacHex(k.mac, method + '\n' + path + '\n' + ts + '\n' + nonce + '\n' + body).then(function (sig) {
+          return raw(host, c.port, path, { method: method, body: body, timeout: timeout, headers: { 'X-Ts': ts, 'X-Nonce': nonce, 'X-Sig': sig } });
+        });
+      }).then(function (res) {
+        if (res.status === 401 || res.status === 429 || res.status === 413) return res;
+        if (!res.sig) throw new Error('bad-sig');
+        return hmacHex(k.mac, 'resp\n' + nonce + '\n' + res.status + '\n' + res.text).then(function (expect) {
+          if (expect !== res.sig) throw new Error('bad-sig');
+          return res;
+        });
+      });
+    });
+  }
+  function wake() { return native('wake', { mac: cfg.mac, ip: cfg.ip }); }
+  function netInfo() { return native('netInfo').catch(function () { return {}; }); }
+
+  // ================= ui helpers =================
+  var toastTimer;
+  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove('show'); }, 3400); }
   function openSheet(id) { $(id).hidden = false; }
   function closeSheet(id) { $(id).hidden = true; }
   function confirmBox(title, text, yes, danger) {
@@ -443,78 +423,102 @@ details[open] summary { margin-bottom: 8px; }
     });
   }
   function copyText(t) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(t).then(function () { toast('הועתק'); }, function () { toast('לא הצלחתי להעתיק. אפשר לסמן את הקישור ידנית.'); });
-    } else toast('אפשר לסמן את הקישור ולהעתיק ידנית.');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast('הועתק'); }, function () { toast('אפשר לסמן ולהעתיק ידנית'); });
+    else toast('אפשר לסמן ולהעתיק ידנית');
   }
-  function shareLink() {
-    native('share', { text: ZIP_URL, title: 'שליחת הקישור למחשב' }).catch(function () { copyText(ZIP_URL); });
-  }
+  function shareLink() { native('share', { text: ZIP_URL, title: 'שליחת הקישור למחשב' }).catch(function () { copyText(ZIP_URL); }); }
+  function openUrl(u) { native('openUrl', { url: u }).catch(function () { copyText(u); }); }
   function normMac(m) { var h = String(m || '').replace(/[^0-9a-f]/gi, '').toUpperCase(); return h.length === 12 ? h.match(/../g).join(':') : ''; }
   function validIp(ip) { return /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(ip) && ip.split('.').every(function (n) { return +n <= 255; }); }
-
+  function isTsIp(ip) { var p = String(ip || '').split('.'); return p.length === 4 && +p[0] === 100 && +p[1] >= 64 && +p[1] <= 127; }
   ['setup-link', 'up-link'].forEach(function (id) { $(id).textContent = ZIP_URL; });
   $('setup-share').onclick = $('up-share').onclick = shareLink;
   $('setup-copy').onclick = $('up-copy').onclick = function () { copyText(ZIP_URL); };
 
+  // ================= designs =================
+  var THEMES = window.PCR_THEMES || [];
+  function currentSkin() { return document.documentElement.getAttribute('data-skin') || 'studio'; }
+  function setSkin(id) {
+    document.documentElement.setAttribute('data-skin', id);
+    try { localStorage.setItem(SKIN_KEY, id); } catch (e) {}
+    Array.prototype.forEach.call(document.querySelectorAll('.skin'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === id)); });
+  }
+  function buildSkins() {
+    var list = $('skin-list'); list.textContent = '';
+    var groups = {};
+    THEMES.forEach(function (t, i) { (groups[t.group] = groups[t.group] || []).push({ t: t, n: i + 1 }); });
+    Object.keys(groups).forEach(function (g) {
+      var h = document.createElement('div'); h.className = 'skin-group'; h.textContent = g; list.appendChild(h);
+      var grid = document.createElement('div'); grid.className = 'skins'; list.appendChild(grid);
+      groups[g].forEach(function (x) {
+        var b = document.createElement('button'); b.className = 'skin'; b.dataset.id = x.t.id;
+        b.setAttribute('aria-pressed', String(x.t.id === currentSkin()));
+        var sw = document.createElement('span'); sw.className = 'skin-sw';
+        [0, 2, 3].forEach(function (k) { var s = document.createElement('span'); s.style.background = x.t.swatch[k]; sw.appendChild(s); });
+        var nm = document.createElement('span'); nm.className = 'skin-name'; nm.textContent = x.n + ' · ' + x.t.name;
+        b.appendChild(sw); b.appendChild(nm);
+        b.onclick = function () { setSkin(x.t.id); };
+        grid.appendChild(b);
+      });
+    });
+  }
+  $('s-skin').onclick = function () { closeSheet('settings'); buildSkins(); openSheet('skin-sheet'); };
+  $('sk-close').onclick = function () { closeSheet('skin-sheet'); };
+
   // ================= first-time connection =================
   function openSetup(editing) {
     var c = cfg || {};
-    $('f-ip').value = c.ip || ''; $('f-token').value = c.token || '';
-    $('f-port').value = c.port || 8765; $('f-mac').value = c.mac || '';
+    $('f-ip').value = c.ip || ''; $('f-token').value = c.token || ''; $('f-port').value = c.port || 8765; $('f-mac').value = c.mac || '';
     setupMsg(''); $('save-anyway').hidden = true; $('cancel-setup').hidden = !editing;
     stopPolling(); $('deck').hidden = true; $('gear').hidden = true; $('setup').hidden = false;
   }
   function setupMsg(t, kind) { var m = $('setup-msg'); m.textContent = t; m.className = 'msg ' + (kind || ''); }
   function readForm() {
-    var base = cfg || {};
-    var c = JSON.parse(JSON.stringify(base));
-    c.ip = $('f-ip').value.trim(); c.token = $('f-token').value.trim().toUpperCase();
+    var base = cfg || {}, c = JSON.parse(JSON.stringify(base));
+    c.ip = $('f-ip').value.trim(); c.token = normToken($('f-token').value);
     c.port = parseInt($('f-port').value, 10) || 8765; c.mac = normMac($('f-mac').value) || base.mac || '';
+    if (c.ip !== base.ip) { delete c.salt; }
     return c;
   }
   $('connect').onclick = function () {
     var c = readForm();
     if (!validIp(c.ip)) return setupMsg('כתובת ה-IP לא תקינה. היא נראית כך: 192.168.1.20', 'err');
-    if (!c.token) return setupMsg('צריך להזין את קוד הצימוד שהמחשב הציג.', 'err');
+    if (c.token.length < 8) return setupMsg('צריך להזין את קוד הצימוד שהמחשב הציג.', 'err');
     if (!isNative) return setupMsg('האפליקציה עובדת רק כשהיא מותקנת בטלפון.', 'err');
     var btn = $('connect'); btn.disabled = true; setupMsg('מתחבר…');
-    api('/info', 'GET', 5000, c).then(function (r) {
+    var tmpRoute = isTsIp(c.ip) ? 'ts' : 'lan';
+    if (tmpRoute === 'ts') { c.tsIp = c.ip; }
+    pingHost(c.ip, c).then(function (p) {
+      c._v = p.v; if (p.s) c.salt = p.s; if (p.t) clockOffset = p.t - Date.now();
+      return authed('/info', 'GET', null, 6000, c, tmpRoute);
+    }).then(function (r) {
       if (r.status === 401) throw { code: 'token' };
+      if (r.status === 429) throw { code: 'locked' };
       if (r.status !== 200 || !r.body.ok) throw { code: 'other' };
-      c.mac = normMac(r.body.mac) || c.mac; c.name = r.body.name || c.name || '';
+      c.mac = normMac(r.body.mac) || c.mac; c.name = r.body.name || c.name || ''; delete c._v;
       cfg = c; save(); toast('מחובר ל-' + (c.name || 'מחשב')); startDeck();
     }).catch(function (e) {
-      if (e && e.code === 'token') setupMsg('קוד הצימוד לא נכון. בודקים את הקובץ "PC Remote - pairing" בשולחן העבודה של המחשב.', 'err');
-      else {
-        setupMsg('המחשב לא עונה. בודקים שהוא דלוק, שההתקנה הסתיימה ושהטלפון מחובר ל-Wi-Fi של הבית.', 'err');
-        if (c.mac) $('save-anyway').hidden = false; else $('adv').open = true;
-      }
+      var code = e && (e.code || e.message);
+      if (code === 'token' || code === 'bad-sig') setupMsg('קוד הצימוד לא נכון. מריצים שוב את install.cmd במחשב כדי לראות אותו.', 'err');
+      else if (code === 'locked') setupMsg('יותר מדי ניסיונות שגויים. המחשב חוסם את הטלפון ל-15 דקות.', 'err');
+      else { setupMsg('המחשב לא עונה. בודקים שהוא דלוק, שההתקנה הסתיימה ושהטלפון על ה-Wi-Fi של הבית.', 'err'); if (c.mac) $('save-anyway').hidden = false; else $('adv').open = true; }
     }).then(function () { btn.disabled = false; });
   };
   $('save-anyway').onclick = function () {
     var c = readForm();
-    if (!validIp(c.ip) || !c.token || !c.mac) return setupMsg('צריך כתובת IP, קוד צימוד וכתובת MAC.', 'err');
+    if (!validIp(c.ip) || c.token.length < 8 || !c.mac) return setupMsg('צריך כתובת IP, קוד צימוד וכתובת MAC.', 'err');
     cfg = c; save(); startDeck();
   };
   $('cancel-setup').onclick = function () { startDeck(); };
 
-  // ================= control deck state =================
-  var power = 'unknown';      // on | off | unknown
-  var latency = null;
-  var agentV = null;          // version the PC reports on /ping (1 when it doesn't say)
-  var status = null;          // last /status body
-  var pending = null;         // { kind, started, until, wentDown }
-  var launchAfterWake = null; // 'desktop' | 'games'
-  var moonlight = null;       // true / false / null (unknown)
-  var holdOffline = 0;        // timestamp until which failed pings are ignored (agent busy pairing)
-  var updateAsked = false;
+  // ================= deck state =================
+  var power = 'unknown', latency = null, agentV = null, status = null, pending = null, launchAfterWake = null;
+  var moonlight = null, tailscaleApp = null, net = {}, holdOffline = 0, updateAsked = false;
   var pollTimer = null, polling = false, failures = 0, lastStatusAt = 0;
-
   var STREAM_STEP = { queued: 'בתור להתקנה', download: 'מוריד את Sunshine', install: 'מתקין את Sunshine', configure: 'מגדיר', start: 'מפעיל' };
 
+  function outsideHome() { return net.wifi === false || route === 'ts'; }
   function streamInfo() {
-    // Returns { ready, chipText, chipKind, reason }
     if (agentV !== null && agentV < 2) return { ready: false, chip: 'דרוש עדכון במחשב', kind: 'warn', reason: 'upgrade' };
     var s = status && status.stream;
     if (!s) {
@@ -526,159 +530,144 @@ details[open] summary { margin-bottom: 8px; }
     if (s.state !== 'ready') return { ready: false, chip: 'לא מותקן', kind: 'warn', reason: 'missing' };
     if (moonlight === false) return { ready: false, chip: 'צריך את Moonlight', kind: 'warn', reason: 'moonlight' };
     if (!s.paired) return { ready: false, chip: 'דרוש צימוד', kind: 'warn', reason: 'pair' };
-    return { ready: true, chip: 'מוכן', kind: 'ok' };
+    return { ready: true, chip: route === 'ts' ? 'מוכן · מרחוק' : 'מוכן', kind: 'ok' };
   }
 
   function render() {
     var led = $('led'), word = $('state-word'), note = $('state-note'), pbtn = $('power-btn'), plabel = $('power-label');
     $('m-name').textContent = cfg.name || 'המחשב';
-    $('m-ip').textContent = cfg.ip + (cfg.port && +cfg.port !== 8765 ? ':' + cfg.port : '');
+    $('m-route').textContent = route === 'ts' ? 'מרחוק · Tailscale' : route === 'lan' ? 'רשת הבית' : (outsideHome() ? 'מחוץ לבית' : '');
     $('m-latency').textContent = power === 'on' && latency !== null ? latency + ' ms' : '';
-
     led.className = 'led'; word.className = 'state-word'; pbtn.className = 'btn big block';
     var busy = !!pending;
     if (busy) {
       led.classList.add('busy'); word.classList.add('busy');
       word.textContent = { wake: 'מדליק…', shutdown: 'מכבה…', restart: 'מפעיל מחדש…', sleep: 'נכנס לשינה…' }[pending.kind];
-      var secs = Math.round((Date.now() - pending.started) / 1000);
-      note.textContent = pending.kind === 'wake' ? secs + ' שנ׳ · בדרך כלל עד דקה' : secs + ' שנ׳';
+      note.textContent = Math.round((Date.now() - pending.started) / 1000) + ' שנ׳';
       plabel.textContent = 'רגע…'; pbtn.disabled = true;
     } else if (power === 'on') {
-      led.classList.add('on'); word.classList.add('on'); word.textContent = 'דלוק';
-      note.textContent = '';
+      led.classList.add('on'); word.classList.add('on'); word.textContent = 'דלוק'; note.textContent = '';
       plabel.textContent = 'כיבוי'; pbtn.classList.add('danger'); pbtn.disabled = false;
     } else if (power === 'off') {
-      led.classList.add('off'); word.classList.add('off'); word.textContent = 'כבוי';
-      note.textContent = cfg.mac ? 'Wake-on-LAN' : 'חסרה כתובת MAC';
+      led.classList.add('off'); word.textContent = 'כבוי';
+      note.textContent = outsideHome() ? 'מחוץ לבית' : (cfg.mac ? 'Wake-on-LAN' : 'חסרה כתובת MAC');
       plabel.textContent = 'הדלקה'; pbtn.classList.add('primary'); pbtn.disabled = !cfg.mac;
-    } else {
-      word.textContent = 'בודק…'; note.textContent = ''; plabel.textContent = '…'; pbtn.disabled = true;
-    }
+    } else { word.textContent = 'בודק…'; note.textContent = ''; plabel.textContent = '…'; pbtn.disabled = true; }
     $('restart-btn').disabled = $('sleep-btn').disabled = busy || power !== 'on';
     $('wake-again').hidden = !(pending && pending.kind === 'wake' && Date.now() - pending.started > 25000);
 
-    // tiles
     var si = streamInfo();
     ['desktop', 'games'].forEach(function (k) {
-      var chip = $('chip-' + k);
-      var waiting = launchAfterWake === k;
-      chip.textContent = waiting ? 'מדליק ומתחבר…' : si.chip;
-      chip.className = 'chip ' + (waiting ? 'warn' : si.kind);
+      var chip = $('chip-' + k), waiting = launchAfterWake === k;
+      chip.textContent = waiting ? 'מדליק ומתחבר…' : si.chip; chip.className = 'chip ' + (waiting ? 'warn' : si.kind);
     });
-
-    // notice card
     var n = noticeFor(si);
     $('notice').hidden = !n;
-    if (n) {
-      $('notice-title').textContent = n.title; $('notice-text').textContent = n.text;
-      var b = $('notice-btn'); b.hidden = !n.btn; if (n.btn) { b.textContent = n.btn; b.onclick = n.act; }
-    }
-
-    // footer: real versions, only what we know
+    if (n) { $('notice-title').textContent = n.title; $('notice-text').textContent = n.text; var b = $('notice-btn'); b.hidden = !n.btn; if (n.btn) { b.textContent = n.btn; b.onclick = n.act; } }
     var parts = [];
-    if (agentV) parts.push('תוכנת מחשב v' + agentV);
+    if (agentV) parts.push('PC v' + agentV);
     if (status && status.stream && status.stream.version) parts.push('Sunshine ' + status.stream.version);
-    if (cfg.mac) parts.push('MAC ' + cfg.mac);
-    $('foot').innerHTML = '';
-    parts.forEach(function (p) { var s = document.createElement('span'); s.className = 'data'; s.textContent = p; $('foot').appendChild(s); });
+    if (cfg.tsIp) parts.push('Tailscale ' + cfg.tsIp);
+    var f = $('foot'); f.textContent = '';
+    parts.forEach(function (p) { var s = document.createElement('span'); s.className = 'data'; s.textContent = p; f.appendChild(s); });
   }
 
   function noticeFor(si) {
     if (!isNative) return { title: 'תצוגה בדפדפן', text: 'הכפתורים עובדים רק באפליקציה שמותקנת בטלפון.' };
-    if (si.reason === 'upgrade') return { title: 'עדכון חד-פעמי במחשב', text: 'כדי להוסיף שליטה מרחוק ומשחקים, צריך להתקין פעם אחת את הגרסה החדשה במחשב. אחרי זה היא מתעדכנת לבד.', btn: 'איך מעדכנים', act: function () { openSheet('upgrade-sheet'); } };
-    if (agentV !== null && agentV >= 2 && agentV < AGENT_TARGET) return { title: 'מעדכן את התוכנה במחשב', text: 'זה קורה לבד ולוקח כחצי דקה.' };
-    if (si.reason === 'installing') return { title: 'מתקין את שרת הסטרימינג במחשב', text: 'Sunshine יורד ומותקן ברקע, בדרך כלל תוך 2–3 דקות. אפשר בינתיים להתקין את Moonlight בטלפון.', btn: moonlight === false ? 'התקנת Moonlight' : '', act: function () { native('openStore', { package: 'com.limelight' }); } };
+    if (si.reason === 'upgrade') return { title: 'עדכון חד-פעמי במחשב', text: 'התוכנה במחשב ישנה מדי לעדכון אוטומטי. מתקינים אותה מחדש פעם אחת.', btn: 'איך מעדכנים', act: function () { openSheet('upgrade-sheet'); } };
+    if (agentV !== null && agentV >= 2 && agentV < AGENT_TARGET) return { title: 'מעדכן את התוכנה במחשב', text: 'העדכון נבדק מול חתימה ונעשה לבד, כחצי דקה.' };
+    if (power !== 'on' && outsideHome() && cfg.tsIp && net.vpn === false) return { title: 'Tailscale כבוי בטלפון', text: 'כדי להתחבר מחוץ לבית צריך להפעיל את Tailscale.', btn: 'הפעלת Tailscale', act: connectTailscale };
+    if (power === 'off' && outsideHome()) return { title: 'המחשב כבוי ואתם מחוץ לבית', text: 'הדלקה מרחוק דורשת מכשיר שנשאר דלוק בבית. כשיוצאים, עדיף "שינה" במקום כיבוי.' };
+    if (si.reason === 'installing') return { title: 'מתקין את שרת הסטרימינג במחשב', text: 'Sunshine יורד ומותקן ברקע, בדרך כלל 2–3 דקות.', btn: moonlight === false ? 'התקנת Moonlight' : '', act: function () { native('openStore', { package: ML_PKG }); } };
     if (si.reason === 'error') return { title: 'ההתקנה של Sunshine נכשלה', text: (status.stream.error || '') + ' אפשר לנסות שוב.', btn: 'ניסיון חוזר', act: retryInstall };
-    if (si.reason === 'moonlight' || si.reason === 'pair') return { title: 'עוד צעד אחד לסטרימינג', text: si.reason === 'moonlight' ? 'צריך להתקין את Moonlight בטלפון ולצמד אותה פעם אחת.' : 'צריך לצמד את Moonlight למחשב, פעם אחת.', btn: 'להמשך', act: openStreamSheet };
-    if (power === 'off' && pending && pending.kind === 'wake' && Date.now() - pending.started > 60000) return { title: 'המחשב עוד לא עלה', text: 'בודקים שכבל הרשת מחובר ושב-BIOS מופעל Wake on LAN. פרטים בקובץ ההוראות.' };
+    if (si.reason === 'moonlight' || si.reason === 'pair') return { title: 'עוד צעד אחד לסטרימינג', text: si.reason === 'moonlight' ? 'מתקינים את Moonlight ומצמדים פעם אחת.' : 'מצמדים את Moonlight למחשב, פעם אחת.', btn: 'להמשך', act: openStreamSheet };
+    if (status && status.stream && status.stream.installed && status.stream.secure === false) return { title: 'Sunshine מתעדכן לגרסה מאובטחת', text: 'הגרסה המותקנת חסרה תיקוני אבטחה. העדכון רץ ברקע.' };
+    if (power === 'on' && route === 'lan' && !cfg.tsIp && !cfg.remoteDismissed) return { title: 'רוצים גישה גם מחוץ לבית?', text: 'הגדרה חד-פעמית דרך רשת פרטית ומוצפנת, בלי לפתוח פורטים.', btn: 'להגדרה', act: openRemoteSheet };
     return null;
   }
 
-  // ---------- polling ----------
+  // ================= polling =================
   function poll() {
     if (polling || document.hidden || !cfg) return;
     polling = true;
-    var t0 = Date.now();
-    api('/ping', 'GET', 1800).then(function (r) {
-      if (r.status === 200 && r.body.ok) { latency = Date.now() - t0; agentV = r.body.v || 1; return true; }
-      return false;
-    }).catch(function () { return false; }).then(function (up) {
-      polling = false;
-      if (!up && Date.now() < holdOffline) return;
-      if (up) { failures = 0; power = 'on'; }
-      else if (++failures >= 2 || power === 'unknown') { power = 'off'; latency = null; }
-      progressPending(up);
-      if (up && agentV >= 2 && (Date.now() - lastStatusAt > (status && status.stream && status.stream.state === 'installing' ? 3000 : 15000))) refreshStatus();
-      if (up && agentV >= 2 && agentV < AGENT_TARGET && !updateAsked) askAgentUpdate();
-      render();
-    });
+    probe().then(function (p) { route = p.route; latency = p.ms; agentV = p.v; return true; })
+      .catch(function () { return false; })
+      .then(function (up) {
+        polling = false;
+        if (!up && Date.now() < holdOffline) return;
+        if (up) { failures = 0; power = 'on'; }
+        else if (++failures >= 2 || power === 'unknown') { power = 'off'; latency = null; route = null; }
+        progressPending(up);
+        if (up && agentV >= 2 && Date.now() - lastStatusAt > (status && status.stream && status.stream.state === 'installing' ? 3000 : 15000)) refreshStatus();
+        if (up && agentV < AGENT_TARGET && !updateAsked) askAgentUpdate();
+        render();
+      });
   }
   function refreshStatus() {
     lastStatusAt = Date.now();
-    return api('/status', 'GET', 9000).then(function (r) {
-      if (r.status === 401) { toast('קוד הצימוד השתנה. מזינים אותו מחדש.'); openSetup(true); return; }
+    return authed('/status', 'GET', null, 9000).then(function (r) {
+      if (r.status === 401 || r.status === 429) { toast('המחשב לא מזהה את קוד הצימוד. מזינים אותו מחדש.'); openSetup(true); return; }
       if (r.status !== 200 || !r.body.ok) return;
       status = r.body; agentV = r.body.v || agentV;
       if (r.body.mac && !cfg.mac) cfg.mac = normMac(r.body.mac);
       if (r.body.name) cfg.name = r.body.name;
-      var s = r.body.stream || {};
-      if (s.uuid) cfg.uuid = s.uuid;
+      var s = r.body.stream || {}; if (s.uuid) cfg.uuid = s.uuid;
       cfg.streamReady = s.state === 'ready' && s.paired > 0;
-      save(); render(); renderStreamSheet();
-    }).catch(function () {});
+      var t = r.body.tailscale || {}; if (t.online && isTsIp(t.ip)) cfg.tsIp = t.ip;
+      save(); render(); renderStreamSheet(); renderRemoteSheet();
+    }).catch(function (e) { if (e && e.message === 'bad-sig') toast('תשובה לא מאומתת מהמחשב נחסמה'); });
   }
   function askAgentUpdate() {
     updateAsked = true;
-    api('/update', 'POST', 70000).then(function (r) {
+    var data = agentV >= 3 ? { sha256: BUILD.agentZipSha256 || '' } : null;
+    if (agentV >= 3 && !data.sha256) return;
+    authed('/update', 'POST', data, 70000).then(function (r) {
       if (r.body && /^staged/.test(r.body.result || '')) toast('התוכנה במחשב מתעדכנת');
+      else if (r.body && r.body.error === 'hash-mismatch') toast('עדכון המחשב נדחה: החבילה לא תואמת לאפליקציה');
     }).catch(function () {});
   }
-  function checkMoonlight() {
-    return native('appInstalled', { package: 'com.limelight' }).then(function (r) { moonlight = !!r.installed; render(); renderStreamSheet(); }).catch(function () {});
+  function checkApps() {
+    native('appInstalled', { package: ML_PKG }).then(function (r) { moonlight = !!r.installed; render(); renderStreamSheet(); }).catch(function () {});
+    native('appInstalled', { package: TS_PKG }).then(function (r) { tailscaleApp = !!r.installed; renderRemoteSheet(); }).catch(function () {});
+    netInfo().then(function (n) { net = n || {}; render(); });
   }
   function startPolling() { stopPolling(); failures = 0; poll(); pollTimer = setInterval(poll, 3000); }
   function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && cfg && !$('deck').hidden) { checkMoonlight(); poll(); }
-  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && cfg && !$('deck').hidden) { checkApps(); poll(); } });
 
   function progressPending(up) {
-    if (!pending) {
-      if (launchAfterWake && up && streamReadyToLaunch()) doLaunch(launchAfterWake);
-      return;
-    }
+    if (!pending) { if (launchAfterWake && up && streamReadyToLaunch()) doLaunch(launchAfterWake); return; }
     var k = pending.kind, reached = false;
     if (k === 'wake') reached = up;
     else if (k === 'shutdown' || k === 'sleep') reached = !up && power === 'off';
     else if (k === 'restart') { if (!up) pending.wentDown = true; reached = pending.wentDown && up; }
     if (reached) {
       if (!launchAfterWake) toast({ wake: 'המחשב דלוק', shutdown: 'המחשב כבוי', restart: 'המחשב עלה מחדש', sleep: 'המחשב במצב שינה' }[k]);
-      pending = null;
-      if (k === 'wake' && launchAfterWake) refreshStatus();
+      pending = null; if (k === 'wake' && launchAfterWake) refreshStatus();
     } else if (Date.now() > pending.until) {
-      toast(k === 'wake' ? 'המחשב לא עלה.' : 'לא התקבל אישור מהמחשב.');
-      pending = null; launchAfterWake = null;
+      toast(k === 'wake' ? 'המחשב לא עלה.' : 'לא התקבל אישור מהמחשב.'); pending = null; launchAfterWake = null;
     }
   }
 
-  // ---------- power ----------
+  // ================= power =================
   function sendWake(quiet) {
-    return native('wake', { mac: cfg.mac, ip: cfg.ip }).then(function () {
+    if (outsideHome()) { launchAfterWake = null; toast('מחוץ לבית אי אפשר להדליק בלי מכשיר שנשאר דלוק בבית'); render(); return Promise.resolve(); }
+    return wake().then(function () {
       pending = { kind: 'wake', started: Date.now(), until: Date.now() + 150000 };
-      if (!quiet) toast('נשלח אות הדלקה');
-      render();
+      if (!quiet) toast('נשלח אות הדלקה'); render();
     }).catch(function (e) { launchAfterWake = null; toast('שליחה נכשלה: ' + ((e && e.message) || '')); render(); });
   }
   function powerAction(kind) {
+    var away = route === 'ts' && kind === 'shutdown';
     var t = {
-      shutdown: ['לכבות את המחשב?', 'תוכנות פתוחות ייסגרו, ועבודה שלא נשמרה תאבד.', 'כיבוי', 150000],
+      shutdown: ['לכבות את המחשב?', away ? 'אתם מחוץ לבית: אחרי כיבוי לא תוכלו להדליק אותו מכאן. "שינה" משאירה אפשרות לחזור.' : 'תוכנות פתוחות ייסגרו, ועבודה שלא נשמרה תאבד.', 'כיבוי', 150000],
       restart: ['להפעיל מחדש?', 'תוכנות פתוחות ייסגרו, ועבודה שלא נשמרה תאבד.', 'הפעלה מחדש', 240000],
-      sleep: ['להכניס את המחשב לשינה?', 'אפשר להעיר אותו מכאן עם "הדלקה".', 'שינה', 60000]
+      sleep: ['להכניס את המחשב לשינה?', 'אפשר להעיר אותו מכאן כשאתם בבית.', 'שינה', 60000]
     }[kind];
     confirmBox(t[0], t[1], t[2], kind !== 'sleep').then(function (yes) {
       if (!yes) return;
-      api('/' + kind, 'POST', 5000).then(function (r) {
-        if (r.status === 401) { toast('קוד הצימוד השתנה. מזינים אותו מחדש.'); return openSetup(true); }
+      authed('/' + kind, 'POST', null, 5000).then(function (r) {
+        if (r.status === 401) { toast('המחשב לא מזהה את קוד הצימוד.'); return openSetup(true); }
         if (r.status !== 200) throw new Error();
         pending = { kind: kind, started: Date.now(), until: Date.now() + t[3] }; render();
       }).catch(function () { toast('המחשב לא ענה. נסו שוב.'); });
@@ -687,13 +676,10 @@ details[open] summary { margin-bottom: 8px; }
   $('power-btn').onclick = function () { if (power === 'on') powerAction('shutdown'); else if (power === 'off') sendWake(); };
   $('restart-btn').onclick = function () { powerAction('restart'); };
   $('sleep-btn').onclick = function () { powerAction('sleep'); };
-  $('wake-again').onclick = function () { native('wake', { mac: cfg.mac, ip: cfg.ip }).then(function () { toast('נשלח שוב'); }); };
+  $('wake-again').onclick = function () { wake().then(function () { toast('נשלח שוב'); }); };
 
-  // ---------- streaming ----------
-  function streamReadyToLaunch() {
-    var s = status && status.stream;
-    return !!(s && s.state === 'ready' && s.running && s.paired > 0);
-  }
+  // ================= streaming =================
+  function streamReadyToLaunch() { var s = status && status.stream; return !!(s && s.state === 'ready' && s.running && s.paired > 0); }
   function doLaunch(kind) {
     launchAfterWake = null; render();
     native('openMoonlight', { uuid: cfg.uuid || '', name: cfg.name || '', appName: kind === 'desktop' ? 'Desktop' : '' })
@@ -704,46 +690,34 @@ details[open] summary { margin-bottom: 8px; }
     var si = streamInfo();
     if (si.reason === 'upgrade') return openSheet('upgrade-sheet');
     if (!si.ready && power === 'on') return openStreamSheet();
-    if (!si.ready && power !== 'on') {
-      if (!cfg.mac) return toast('המחשב כבוי ואין כתובת MAC להדלקה');
-      toast('מדליק את המחשב קודם'); launchAfterWake = kind; return sendWake(true);
-    }
     if (power === 'on' && streamReadyToLaunch()) return doLaunch(kind);
     if (power === 'on') { launchAfterWake = kind; render(); refreshStatus(); return; }
-    // off: wake, then launch when the PC and Sunshine answer
     if (!cfg.mac) return toast('המחשב כבוי ואין כתובת MAC להדלקה');
     launchAfterWake = kind; sendWake(true);
   }
   $('tile-desktop').onclick = function () { onTile('desktop'); };
   $('tile-games').onclick = function () { onTile('games'); };
+  function retryInstall() { authed('/stream/install', 'POST', null, 6000).then(function () { toast('ההתקנה התחילה מחדש'); refreshStatus(); }).catch(function () { toast('המחשב לא ענה'); }); }
 
-  function retryInstall() {
-    api('/stream/install', 'POST', 6000).then(function () { toast('ההתקנה התחילה מחדש'); refreshStatus(); }).catch(function () { toast('המחשב לא ענה'); });
-  }
-
-  function openStreamSheet() { renderStreamSheet(); openSheet('stream-sheet'); checkMoonlight(); refreshStatus(); }
+  function openStreamSheet() { renderStreamSheet(); openSheet('stream-sheet'); checkApps(); refreshStatus(); }
   function renderStreamSheet() {
-    var s = (status && status.stream) || {};
-    var serverOk = s.state === 'ready';
+    var s = (status && status.stream) || {}, serverOk = s.state === 'ready';
     $('st-server').classList.toggle('done', serverOk);
-    $('st-server-note').textContent =
-      serverOk ? 'Sunshine ' + (s.version || '') + ' מותקן ופועל.' :
+    $('st-server-note').textContent = serverOk ? 'Sunshine ' + (s.version || '') + (s.secure === false ? ' (מתעדכן לגרסה מאובטחת)' : ' מותקן ומוקשח.') :
       s.state === 'installing' ? (STREAM_STEP[s.step] || 'מתקין') + '… זה קורה לבד במחשב.' :
-      s.state === 'error' ? 'ההתקנה נכשלה: ' + (s.error || '') :
-      power === 'on' ? 'עוד לא מותקן.' : 'המחשב כבוי. מדליקים אותו כדי להמשיך.';
+      s.state === 'error' ? 'ההתקנה נכשלה: ' + (s.error || '') : power === 'on' ? 'עוד לא מותקן.' : 'המחשב כבוי.';
     $('st-server-btn').hidden = !(power === 'on' && (s.state === 'error' || s.state === 'missing'));
     var mlOk = moonlight === true;
-    $('st-app').classList.toggle('done', mlOk);
-    $('st-app-btn').hidden = mlOk;
-    $('st-app-note').textContent = mlOk ? 'מותקנת.' : 'Moonlight מציגה את המסך של המחשב. חינמית, ב-Google Play.';
+    $('st-app').classList.toggle('done', mlOk); $('st-app-btn').hidden = mlOk;
+    $('st-app-note').textContent = mlOk ? 'מותקנת.' : 'Moonlight מציגה את המסך של המחשב. חינמית.';
     var paired = serverOk && s.paired > 0;
     $('st-pair').classList.toggle('done', paired);
     $('st-pair-form').hidden = paired || !serverOk || !mlOk;
-    $('st-pair-note').textContent = paired ? 'Moonlight מצומדת למחשב. אפשר לסגור ולהתחיל.' :
-      'פותחים את Moonlight ובוחרים במחשב \u2068' + (cfg.name || '') + '\u2069. היא תציג קוד בן 4 ספרות. חוזרים לכאן ומקלידים אותו.';
+    $('st-pair-note').textContent = paired ? 'Moonlight מצומדת. אפשר לסגור ולהתחיל.' :
+      'פותחים את Moonlight ובוחרים במחשב ⁨' + (cfg.name || '') + '⁩. היא תציג קוד בן 4 ספרות. חוזרים לכאן ומקלידים אותו.';
   }
   $('st-server-btn').onclick = retryInstall;
-  $('st-app-btn').onclick = function () { native('openStore', { package: 'com.limelight' }); };
+  $('st-app-btn').onclick = function () { native('openStore', { package: ML_PKG }); };
   $('st-open-ml').onclick = function () { native('openMoonlight', { direct: false }).catch(function () { toast('Moonlight לא מותקנת'); }); };
   $('f-pin').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 4); });
   $('st-pair-btn').onclick = function () {
@@ -751,51 +725,81 @@ details[open] summary { margin-bottom: 8px; }
     if (!/^\d{4}$/.test(pin)) { msg.textContent = 'הקוד הוא 4 ספרות.'; msg.className = 'msg err'; return; }
     var btn = this; btn.disabled = true; msg.textContent = 'מצמד…'; msg.className = 'msg';
     holdOffline = Date.now() + 50000;
-    apiJson('/stream/pair', { pin: pin }, 50000).then(function (r) {
-      holdOffline = 0;
-      var b = r.body || {};
-      if (b.ok) {
-        msg.textContent = 'מצומד.'; msg.className = 'msg ok'; $('f-pin').value = '';
-        toast('הצימוד הצליח. אפשר להתחיל.'); refreshStatus();
-        setTimeout(function () { closeSheet('stream-sheet'); }, 900);
-      } else {
-        msg.className = 'msg err';
-        msg.textContent = b.error === 'no-request' ? 'Moonlight לא מחכה לצימוד. פותחים אותה, בוחרים במחשב, ואז מקלידים את הקוד שמופיע.' :
-          b.error === 'wrong-pin' ? 'הקוד לא התאים. בוחרים שוב במחשב ב-Moonlight ומקלידים את הקוד החדש.' :
-          'הצימוד לא הצליח. נסו שוב.';
-      }
-    }).catch(function () { holdOffline = 0; msg.textContent = 'המחשב לא ענה. נסו שוב.'; msg.className = 'msg err'; })
-      .then(function () { btn.disabled = false; });
+    authed('/stream/pair', 'POST', { pin: pin }, 50000).then(function (r) {
+      holdOffline = 0; var b = r.body || {};
+      if (b.ok) { msg.textContent = 'מצומד.'; msg.className = 'msg ok'; $('f-pin').value = ''; toast('הצימוד הצליח'); refreshStatus(); setTimeout(function () { closeSheet('stream-sheet'); }, 900); }
+      else { msg.className = 'msg err'; msg.textContent = b.error === 'no-request' ? 'Moonlight לא מחכה לצימוד. פותחים אותה, בוחרים במחשב, ואז מקלידים את הקוד.' : b.error === 'wrong-pin' ? 'הקוד לא התאים. בוחרים שוב במחשב ב-Moonlight ומקלידים את הקוד החדש.' : 'הצימוד לא הצליח. נסו שוב.'; }
+    }).catch(function () { holdOffline = 0; msg.textContent = 'המחשב לא ענה. נסו שוב.'; msg.className = 'msg err'; }).then(function () { btn.disabled = false; });
   };
   $('ss-close').onclick = function () { closeSheet('stream-sheet'); };
   $('up-close').onclick = function () { closeSheet('upgrade-sheet'); };
 
-  // ---------- settings ----------
+  // ================= remote access (Tailscale) =================
+  function connectTailscale() {
+    native('tailscaleConnect').then(function () { toast('מפעיל את Tailscale…'); setTimeout(poll, 2500); })
+      .catch(function () { native('openApp', { package: TS_PKG }).catch(function () { native('openStore', { package: TS_PKG }); }); });
+  }
+  function openRemoteSheet() { cfg.remoteDismissed = true; save(); renderRemoteSheet(); openSheet('remote-sheet'); checkApps(); refreshStatus(); }
+  function renderRemoteSheet() {
+    var t = (status && status.tailscale) || {};
+    var pcOk = !!(t.online && t.ip) || !!cfg.tsIp;
+    $('rs-1').classList.toggle('done', pcOk || tailscaleApp === true);
+    $('rs-2').classList.toggle('done', tailscaleApp === true);
+    $('rs-2-btn').hidden = tailscaleApp === true;
+    $('rs-2-note').textContent = tailscaleApp ? 'מותקן. מוודאים שנכנסתם עם אותו חשבון.' : 'מתקינים ונכנסים עם אותו חשבון.';
+    $('rs-3').classList.toggle('done', pcOk);
+    $('rs-3-form').hidden = pcOk;
+    $('rs-3-note').textContent = pcOk ? 'המחשב מחובר ל-Tailscale ומוגדר לעבוד גם לפני כניסה ל-Windows.' :
+      t.setup === 'installing' ? 'מתקין את Tailscale במחשב… (החתימה הדיגיטלית נבדקת)' : t.setup === 'joining' ? 'מצרף את המחשב…' :
+      t.setup === 'error' ? 'נכשל: ' + (t.error || '') + '. אפשר ליצור מפתח חדש ולנסות שוב.' :
+      route === 'lan' ? 'יוצרים מפתח הצטרפות חד-פעמי, מדביקים כאן, והמחשב מתקין ומתחבר לבד.' : 'את השלב הזה עושים בבית, על ה-Wi-Fi.';
+    $('rs-ip').textContent = cfg.tsIp || '—';
+    $('rs-4').classList.toggle('done', false);
+  }
+  $('rs-1-btn').onclick = function () { openUrl('https://login.tailscale.com/start'); };
+  $('rs-2-btn').onclick = function () { native('openStore', { package: TS_PKG }); };
+  $('rs-key-link').onclick = function () { openUrl('https://login.tailscale.com/admin/settings/keys'); };
+  $('rs-5-btn').onclick = function () { openUrl('https://login.tailscale.com/admin/machines'); };
+  $('rs-ip-copy').onclick = function () { if (cfg.tsIp) copyText(cfg.tsIp); };
+  $('rs-3-btn').onclick = function () {
+    var key = $('f-tskey').value.trim(), msg = $('ts-msg');
+    if (!/^tskey-[A-Za-z0-9-]{10,200}$/.test(key)) { msg.textContent = 'זה לא נראה כמו מפתח של Tailscale (מתחיל ב-tskey-).'; msg.className = 'msg err'; return; }
+    if (route !== 'lan') { msg.textContent = 'עושים את זה בבית, על ה-Wi-Fi.'; msg.className = 'msg err'; return; }
+    var btn = this; btn.disabled = true; msg.textContent = 'שולח (מוצפן)…'; msg.className = 'msg';
+    authed('/tailscale/setup', 'POST', { authKey: key }, 10000).then(function (r) {
+      if (r.body && r.body.ok) { $('f-tskey').value = ''; msg.textContent = 'המחשב מתקין ומתחבר. זה לוקח עד 2 דקות.'; msg.className = 'msg ok'; setTimeout(refreshStatus, 4000); }
+      else { msg.textContent = 'המחשב דחה את המפתח.'; msg.className = 'msg err'; }
+    }).catch(function () { msg.textContent = 'המחשב לא ענה.'; msg.className = 'msg err'; }).then(function () { btn.disabled = false; });
+  };
+  $('rs-close').onclick = function () { closeSheet('remote-sheet'); };
+
+  // ================= settings =================
   $('gear').onclick = function () {
-    var rows = [['מחשב', cfg.name || '—'], ['IP', cfg.ip + ':' + cfg.port], ['MAC', cfg.mac || '—'],
-      ['תוכנת מחשב', agentV ? 'v' + agentV : '—'], ['Sunshine', (status && status.stream && status.stream.version) || '—']];
-    var dl = $('s-info'); dl.innerHTML = '';
+    var rows = [['מחשב', cfg.name || '—'], ['בבית', cfg.ip + ':' + cfg.port], ['מרחוק', cfg.tsIp || 'לא הוגדר'], ['MAC', cfg.mac || '—'],
+      ['תוכנת מחשב', agentV ? 'v' + agentV : '—'], ['Sunshine', (status && status.stream && status.stream.version) || '—'],
+      ['אבטחה', agentV >= 3 ? 'חתימה + הצפנה' : 'מתעדכן']];
+    var dl = $('s-info'); dl.textContent = '';
     rows.forEach(function (r) { var dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = r[0]; dd.textContent = r[1]; dd.className = 'data'; dl.appendChild(dt); dl.appendChild(dd); });
     openSheet('settings');
   };
   $('s-close').onclick = function () { closeSheet('settings'); };
   $('s-stream').onclick = function () { closeSheet('settings'); openStreamSheet(); };
+  $('s-remote').onclick = function () { closeSheet('settings'); openRemoteSheet(); };
   $('s-edit').onclick = function () { closeSheet('settings'); openSetup(true); };
   $('s-forget').onclick = function () {
     closeSheet('settings');
     confirmBox('להתנתק מהמחשב?', 'פרטי החיבור יימחקו מהטלפון. התוכנה במחשב נשארת.', 'ניתוק', true).then(function (yes) {
       if (!yes) return;
       try { localStorage.removeItem(KEY); } catch (e) {}
-      cfg = null; status = null; agentV = null; power = 'unknown'; pending = null; openSetup(false);
+      cfg = null; status = null; agentV = null; power = 'unknown'; pending = null; route = null; keyCache = { id: null }; openSetup(false);
     });
   };
 
   function startDeck() {
-    power = 'unknown'; pending = null; status = null; agentV = null; updateAsked = false;
+    power = 'unknown'; pending = null; status = null; agentV = null; updateAsked = false; route = null;
     $('setup').hidden = true; $('deck').hidden = false; $('gear').hidden = false;
-    render(); checkMoonlight(); startPolling();
+    render(); checkApps(); startPolling();
   }
-
   if (cfg && cfg.ip && cfg.token) startDeck(); else openSetup(false);
 })();
 </script>

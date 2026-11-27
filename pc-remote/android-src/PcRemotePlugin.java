@@ -4,6 +4,9 @@ import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 
 import com.getcapacitor.JSObject;
@@ -25,6 +28,7 @@ import java.net.NetworkInterface;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -93,15 +97,29 @@ public class PcRemotePlugin extends Plugin {
         final String token = call.getString("token", "");
         final int timeout = call.getInt("timeout", 4000);
         final String reqBody = call.getString("body", "");
+        final JSObject headers = call.getObject("headers", new JSObject());
         new Thread(() -> {
             HttpURLConnection conn = null;
             try {
-                conn = (HttpURLConnection) new URL(url).openConnection();
+                URL u = new URL(url);
+                // Only plain HTTP to private addresses (home network, Tailscale): this bridge can never be
+                // used to reach the internet, even if the page were tricked into calling it.
+                if (!"http".equals(u.getProtocol()) || !isPrivateHost(u.getHost())) { call.reject("blocked-url"); return; }
+                if (!"GET".equals(method) && !"POST".equals(method)) { call.reject("blocked-method"); return; }
+                conn = (HttpURLConnection) u.openConnection();
+                conn.setInstanceFollowRedirects(false);
                 conn.setRequestMethod(method);
                 conn.setConnectTimeout(timeout);
                 conn.setReadTimeout(timeout);
                 conn.setUseCaches(false);
                 if (token != null && !token.isEmpty()) conn.setRequestProperty("X-Token", token);
+                if (headers != null) {
+                    Iterator<String> keys = headers.keys();
+                    while (keys.hasNext()) {
+                        String k = keys.next();
+                        if (k.matches("^X-[A-Za-z-]{1,30}$")) conn.setRequestProperty(k, headers.getString(k));
+                    }
+                }
                 if ("POST".equals(method)) {
                     byte[] out = reqBody == null ? new byte[0] : reqBody.getBytes(StandardCharsets.UTF_8);
                     conn.setDoOutput(true);
@@ -117,13 +135,18 @@ public class PcRemotePlugin extends Plugin {
                         ByteArrayOutputStream buf = new ByteArrayOutputStream();
                         byte[] b = new byte[4096];
                         int n;
-                        while ((n = s.read(b)) > 0) buf.write(b, 0, n);
+                        while ((n = s.read(b)) > 0) {
+                            buf.write(b, 0, n);
+                            if (buf.size() > 256 * 1024) throw new java.io.IOException("response-too-large");
+                        }
                         body = new String(buf.toByteArray(), StandardCharsets.UTF_8);
                     }
                 }
                 JSObject ret = new JSObject();
                 ret.put("status", status);
                 ret.put("body", body);
+                String sig = conn.getHeaderField("X-Sig");
+                ret.put("sig", sig == null ? "" : sig);
                 call.resolve(ret);
             } catch (Exception e) {
                 call.reject(String.valueOf(e.getMessage()));
@@ -205,7 +228,9 @@ public class PcRemotePlugin extends Plugin {
     @PluginMethod
     public void openUrl(PluginCall call) {
         try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(call.getString("url", "")));
+            String target = call.getString("url", "");
+            if (!target.startsWith("https://")) { call.reject("blocked-url"); return; }
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);
             call.resolve();
@@ -222,6 +247,60 @@ public class PcRemotePlugin extends Plugin {
         Intent chooser = Intent.createChooser(send, call.getString("title", ""));
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(chooser);
+        call.resolve();
+    }
+
+    private static boolean isPrivateHost(String host) {
+        String[] p = host.split("\\.");
+        if (p.length != 4) return false;
+        int[] o = new int[4];
+        try { for (int i = 0; i < 4; i++) { o[i] = Integer.parseInt(p[i]); if (o[i] < 0 || o[i] > 255) return false; } }
+        catch (NumberFormatException e) { return false; }
+        return o[0] == 10
+            || (o[0] == 172 && o[1] >= 16 && o[1] <= 31)
+            || (o[0] == 192 && o[1] == 168)
+            || (o[0] == 100 && o[1] >= 64 && o[1] <= 127)
+            || o[0] == 127;
+    }
+
+    /** Which networks the phone has right now: Wi-Fi, mobile data, VPN (e.g. Tailscale). */
+    @PluginMethod
+    public void netInfo(PluginCall call) {
+        boolean wifi = false, cell = false, vpn = false;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            for (Network n : cm.getAllNetworks()) {
+                NetworkCapabilities c = cm.getNetworkCapabilities(n);
+                if (c == null) continue;
+                if (c.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) vpn = true;
+                else if (c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || c.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) wifi = true;
+                else if (c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) cell = true;
+            }
+        } catch (Exception ignored) { }
+        JSObject ret = new JSObject();
+        ret.put("wifi", wifi);
+        ret.put("cellular", cell);
+        ret.put("vpn", vpn);
+        call.resolve(ret);
+    }
+
+    /** Asks the Tailscale app to connect (its documented-in-source broadcast). Rejects if Tailscale is missing. */
+    @PluginMethod
+    public void tailscaleConnect(PluginCall call) {
+        try { getContext().getPackageManager().getPackageInfo("com.tailscale.ipn", 0); }
+        catch (PackageManager.NameNotFoundException e) { call.reject("not-installed"); return; }
+        Intent i = new Intent("com.tailscale.ipn.CONNECT_VPN");
+        i.setClassName("com.tailscale.ipn", "com.tailscale.ipn.IPNReceiver");
+        getContext().sendBroadcast(i);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void openApp(PluginCall call) {
+        Intent launch = getContext().getPackageManager().getLaunchIntentForPackage(call.getString("package", ""));
+        if (launch == null) { call.reject("not-installed"); return; }
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(launch);
         call.resolve();
     }
 
