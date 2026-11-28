@@ -38,6 +38,14 @@ for dens, px in SIZES.items():
     tile(px).save(os.path.join(folder, "ic_launcher.png"))
     tile(px, True).save(os.path.join(folder, "ic_launcher_round.png"))
     foreground(FG[dens]).save(os.path.join(folder, "ic_launcher_foreground.png"))
+# status-bar notification icon: white shield with the check cut out
+NOTIFY = {"mdpi": 24, "hdpi": 36, "xhdpi": 48, "xxhdpi": 72, "xxxhdpi": 96}
+for dens, px in NOTIFY.items():
+    k = 4; n = px * k
+    im = Image.new("RGBA", (n, n), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    shield(d, n / 2, n / 2, n * 1.15, (255, 255, 255, 255), (0, 0, 0, 0))
+    folder = os.path.join(res, f"drawable-{dens}"); os.makedirs(folder, exist_ok=True)
+    im.resize((px, px), Image.LANCZOS).save(os.path.join(folder, "ic_stat_notify.png"))
 vals = os.path.join(res, "values"); os.makedirs(vals, exist_ok=True)
 with open(os.path.join(vals, "ic_launcher_background.xml"), "w") as f:
     f.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0F6B4F</color>\n</resources>\n')

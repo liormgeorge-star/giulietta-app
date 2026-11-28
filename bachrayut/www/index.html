@@ -356,6 +356,25 @@ body.booted .m-enter{animation:none}
 :root[data-skin="neon"] .item:hover,:root[data-skin="neon"] .cat-tile:hover{border-color:rgba(61,255,168,.45)}
 :root[data-skin="neon"] .ring circle+circle{filter:drop-shadow(0 0 4px currentColor)}
 
+
+/* switches, update screen */
+.sw-row{cursor:pointer}
+.sw-row>div{flex:1;min-width:0}
+.sw{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:30px;background:var(--line-2);position:relative;cursor:pointer;transition:background .2s;margin:0}
+.sw::after{content:"";position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.sw:checked{background:var(--accent)}
+.sw:checked::after{transform:translateX(-20px)}
+.nopts{padding:4px 16px 12px;border-top:1px solid var(--line)}
+.nopts .seg{margin-bottom:12px}
+.update{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:calc(var(--safe-t) + 20px) 20px calc(var(--safe-b) + 20px);animation:fade .25s;overflow-y:auto}
+.update-in{width:100%;max-width:420px;text-align:center}
+.update-mark{width:84px;height:84px;border-radius:26px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin:0 auto 18px;box-shadow:var(--shadow-lg)}
+.update h2{font-family:var(--display);font-weight:var(--dw);font-size:30px;margin:0 0 8px}
+.update .lead{color:var(--muted);margin:0 0 18px}
+.update-notes{text-align:right;padding:14px 16px;margin-bottom:16px}
+.update-notes b{font-size:14px}
+.update-notes ul{margin:6px 0 0;padding:0 18px 0 0;font-size:14.5px;color:var(--ink-2)}
+.update-how{font-size:13px;color:var(--muted);margin:10px 0 14px}
 /* skin picker */
 .skins{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .skin{border:1.5px solid var(--line);border-radius:18px;padding:8px;background:var(--surface);text-align:right;transition:transform .18s,border-color .2s,box-shadow .2s;position:relative}
@@ -842,11 +861,12 @@ async function saveItem(d,isNew){
   const newFiles=!!(d._img||d._card);
   delete d._img;delete d._card;
   const now=Date.now();
-  const it={...d,updatedAt:now,createdAt:d.createdAt||now,addedBy:d.addedBy||S.settings.userName||''};
+  const it={...d,updatedAt:now,createdAt:d.createdAt||now,addedBy:d.addedBy||S.settings.userName||(Cloud.user&&Cloud.me().name)||'',addedByUid:d.addedByUid||(Cloud.user&&Cloud.user.uid)||''};
   delete it.auto;
   await DB.put('items',it);
   const i=S.items.findIndex(x=>x.id===it.id);if(i>=0)S.items[i]=it;else S.items.push(it);
   Cloud.pushItem(it,newFiles);
+  Notif.soon();if(isNew&&live().length===1)Notif.perm(true).then(ok=>ok&&Notif.soon());
 }
 
 /* ---------- detail ---------- */
@@ -904,7 +924,7 @@ async function openDetail(id){
     if(q('#cCopy'))q('#cCopy').onclick=async()=>{await copy(claimMessage(it));toast('הפנייה הועתקה')};
     if(q('#cMail'))q('#cMail').onclick=()=>sendClaimMail(it,inv);
     if(q('#cShareClaim'))q('#cShareClaim').onclick=()=>inv?sendInvoice(it,inv.data,'claim'):shareText(claimMessage(it),'פנייה למימוש אחריות');
-    if(q('#dDel'))q('#dDel').onclick=()=>confirmSheet('למחוק את המוצר?','המוצר והחשבונית יימחקו מהמכשיר הזה.','מחיקה',async()=>{it.deleted=true;it.updatedAt=Date.now();await DB.put('items',it);Cloud.pushItem(it);if(it.invoiceId)await DB.del('files',it.invoiceId);closePage();render();toast('המוצר נמחק')});
+    if(q('#dDel'))q('#dDel').onclick=()=>confirmSheet('למחוק את המוצר?','המוצר והחשבונית יימחקו מהמכשיר הזה.','מחיקה',async()=>{it.deleted=true;it.updatedAt=Date.now();await DB.put('items',it);Cloud.pushItem(it);Notif.soon();if(it.invoiceId)await DB.del('files',it.invoiceId);closePage();render();toast('המוצר נמחק')});
   });
 }
 
@@ -1035,6 +1055,7 @@ const Cloud = {
           if(!l||(r.updatedAt||0)>(l.updatedAt||0)){
             const it={...r};delete it.readOnly;
             await DB.put('items',it);if(l)Object.assign(l,it);else S.items.push(it);changed=true;
+            if(!first&&!l&&ch.type==='added'&&!it.deleted&&it.addedByUid&&it.addedByUid!==this.user.uid){Notif.partner(it);toast(`${it.addedBy||'מישהו'} הוסיף/ה: ${it.name}`)}
             for(const k of ['invoiceId','cardId']) if(it[k]&&!(await DB.get('files',it[k]))) this.pullFile(it[k]);
           }
         }
@@ -1043,7 +1064,7 @@ const Cloud = {
           if(this.canEdit()) for(const l of S.items){ if(snap.docs.every(d=>d.id!==l.id) || (l.updatedAt||0)>((snap.docs.find(d=>d.id===l.id)||{data:()=>({})}).data().updatedAt||0)) this.pushItem(l,true) }
           resolve();
         }
-        if(changed)refresh();
+        if(changed){refresh();Notif.soon()}
       },e=>{this.fail(e);resolve()}));
     });
   },
@@ -1229,8 +1250,97 @@ function renderShareLocal(){
   document.getElementById('getUp').onclick=()=>pick('importInput');
 }
 
+/* ---------- notifications (on-device, @capacitor/local-notifications) ---------- */
+const NOTIF_DEF={expiry:true,leads:[30,7],hour:10,partner:true};
+const Notif={
+  P(){const c=Cap();return c&&c.Plugins&&c.Plugins.LocalNotifications},
+  st(){return S.settings.notif=Object.assign({},NOTIF_DEF,S.settings.notif||{})},
+  async init(){
+    const P=this.P();if(!P)return;
+    try{await P.createChannel({id:'warranty',name:'סיום אחריות',description:'תזכורות לפני שהאחריות על מוצר מסתיימת',importance:4,visibility:1});
+        await P.createChannel({id:'household',name:'עדכונים ממשק הבית',description:'כשמישהו במשק הבית מוסיף מוצר',importance:3,visibility:1})}catch(e){}
+    P.addListener('localNotificationActionPerformed',a=>{const x=a&&a.notification&&a.notification.extra;if(x&&x.itemId)setTimeout(()=>openDetail(x.itemId),350)});
+    this.reschedule();
+  },
+  async perm(ask){const P=this.P();if(!P)return false;try{let s=await P.checkPermissions();if(s.display!=='granted'&&ask)s=await P.requestPermissions();return s.display==='granted'}catch(e){return false}},
+  id(s){let h=7;for(const ch of s)h=(h*31+ch.charCodeAt(0))|0;return (Math.abs(h)%2000000000)+1},
+  _t:null,
+  soon(){clearTimeout(this._t);this._t=setTimeout(()=>this.reschedule(),1500)},
+  async reschedule(){
+    const P=this.P();if(!P)return;const st=this.st();
+    try{
+      const pend=await P.getPending();const ours=(pend.notifications||[]).filter(n=>n.extra&&n.extra.kind==='expiry');
+      if(ours.length)await P.cancel({notifications:ours.map(n=>({id:n.id}))});
+      if(!st.expiry||!(await this.perm(false)))return;
+      const now=Date.now(),list=[];
+      for(const it of live()){const e=expiryOf(it);if(!e)continue;
+        for(const d of st.leads){const at=new Date(e+'T00:00:00');at.setDate(at.getDate()-d);at.setHours(st.hour,0,0,0);if(at.getTime()<=now+60000)continue;
+          list.push({id:this.id(it.id+':'+d),channelId:'warranty',smallIcon:'ic_stat_notify',
+            title:d===0?`האחריות על ${it.name} מסתיימת היום`:`האחריות על ${it.name} מסתיימת ${d===1?'מחר':`בעוד ${d} ימים`}`,
+            body:`נקנה ב${it.store||'—'} · בתוקף עד ${fmtDate(e)}. יש תקלה? זה הזמן לפנות ל${it.providerName||'נותן האחריות'}.`,
+            schedule:{at,allowWhileIdle:true},extra:{kind:'expiry',itemId:it.id}})}}
+      list.sort((a,b)=>a.schedule.at-b.schedule.at);
+      const top=list.slice(0,60);if(top.length)await P.schedule({notifications:top});
+    }catch(e){console.error('notif',e)}
+  },
+  async partner(it){
+    const P=this.P();if(!P||!this.st().partner||!(await this.perm(false)))return;
+    try{await P.schedule({notifications:[{id:this.id('add:'+it.id),channelId:'household',smallIcon:'ic_stat_notify',title:`${it.addedBy||'מישהו'} הוסיף/ה מוצר`,body:`${it.name}${it.amount?' · '+money(it.amount):''}${it.store?' · '+it.store:''}`,extra:{kind:'partner',itemId:it.id}}]})}catch(e){console.error(e)}
+  },
+  async test(){
+    const P=this.P();if(!P){toast('התראות עובדות באפליקציה שמותקנת בטלפון');return}
+    if(!(await this.perm(true))){toast('צריך לאשר התראות בהגדרות הטלפון');return}
+    await P.schedule({notifications:[{id:this.id('test'+Date.now()),channelId:'warranty',smallIcon:'ic_stat_notify',title:'באחריות: התראת בדיקה',body:'ככה ייראו התזכורות לפני שאחריות מסתיימת.',schedule:{at:new Date(Date.now()+3000)}}]});
+    toast('ההתראה תגיע בעוד כמה שניות');
+  },
+};
+
+/* ---------- app updates (checks the GitHub release; the APK installs over the old one and keeps the data) ---------- */
+const APP_BUILD = Number('__BUILD__')||0;
+const RELEASE_API = 'https://api.github.com/repos/liormgeorge-star/giulietta-app/releases/tags/bachrayut-latest';
+const APK_URL = 'https://github.com/liormgeorge-star/giulietta-app/releases/download/bachrayut-latest/bachrayut.apk';
+const Updater={
+  checking:false,
+  async latest(){
+    let rel=null;
+    try{const r=await fetch(RELEASE_API,{cache:'no-store',headers:{Accept:'application/vnd.github+json'}});if(r.ok)rel=await r.json()}catch(e){}
+    if(!rel){try{const c=Cap();const r=await c.Plugins.CapacitorHttp.get({url:RELEASE_API,headers:{Accept:'application/vnd.github+json'}});rel=typeof r.data==='string'?JSON.parse(r.data):r.data}catch(e){}}
+    if(!rel)return null;
+    const body=rel.body||'';const m=body.match(/build[:\s#]+(\d+)/i);
+    const notes=body.split('\n').filter(l=>l.trim()&&!/build[:\s#]+\d+/i.test(l)&&!/^Auto-built/i.test(l)).map(l=>l.replace(/^[-*•]\s*/,'').trim()).slice(0,6);
+    return m?{build:+m[1],notes}:null;
+  },
+  async check(manual){
+    if(this.checking)return;if(!APP_BUILD){if(manual)toast('בדיקת עדכונים פועלת באפליקציה שמותקנת בטלפון');return}
+    this.checking=true;
+    try{
+      const l=await this.latest();
+      if(!l){if(manual)toast('לא ניתן לבדוק עדכונים כרגע');return}
+      if(l.build<=APP_BUILD){if(manual)toast('יש לך את הגרסה האחרונה');return}
+      if(!manual){const snooze=await DB.meta('updateSnooze',null);if(snooze&&snooze.build===l.build&&snooze.until>Date.now())return}
+      this.show(l);
+    }finally{this.checking=false}
+  },
+  show(l){
+    if(document.getElementById('upd'))return;
+    const o=document.createElement('div');o.id='upd';o.className='update';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');o.setAttribute('aria-labelledby','updT');
+    o.innerHTML=`<div class="update-in"><span class="update-mark">${ico('download',34,2)}</span>
+      <h2 id="updT">גרסה חדשה זמינה</h2><p class="lead">יש עדכון לבאחריות (גרסה 1.${l.build}). צריך להתקין אותו כדי להמשיך לקבל עדכונים ממשק הבית.</p>
+      ${l.notes.length?`<div class="card update-notes"><b>מה חדש</b><ul>${l.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:''}
+      <button class="btn btn-primary btn-block" id="updGo">${ico('download',22,2)} עדכון עכשיו</button>
+      <p class="update-how">אחרי ההורדה פותחים את הקובץ ומאשרים התקנה. כל המוצרים והחשבוניות נשמרים.</p>
+      <button class="btn btn-ghost btn-block btn-sm" id="updLater">תזכיר לי בעוד כמה שעות</button></div>`;
+    document.body.appendChild(o);
+    o.querySelector('#updGo').onclick=()=>{location.href=APK_URL};
+    o.querySelector('#updLater').onclick=async()=>{await DB.setMeta('updateSnooze',{build:l.build,until:Date.now()+6*3600e3});o.remove()};
+    setTimeout(()=>o.querySelector('#updGo').focus(),60);
+  },
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')Updater.check(false)});
+
 /* ---------- settings ---------- */
 function renderSettings(){
+  const ns=Notif.st();
   app.innerHTML=topbar('הגדרות וגיבוי')+`<main id="main">
    <div class="sec-head" style="margin-top:4px"><h2>פרופיל</h2></div>
    <section class="card form-card"><label class="field"><span>השם שלך</span><input id="sName" value="${esc(S.settings.userName)}" placeholder="יופיע בפניות ובשיתוף"></label>
@@ -1239,6 +1349,17 @@ function renderSettings(){
    <div class="skins" role="group" aria-label="עיצוב האפליקציה">${SKINS.map(skinCard).join('')}</div>
    <div class="sec-head"><h2>בהיר או כהה</h2></div>
    ${(SKINS.find(k=>k.id===(S.settings.skin||'forest'))||{}).fixed?`<p class="note">העיצוב הזה כהה תמיד.</p>`:`<div class="seg" role="group" aria-label="בהיר או כהה">${[['auto','לפי המכשיר'],['light','בהיר'],['dark','כהה']].map(([k,l])=>`<button data-t="${k}" aria-pressed="${S.settings.theme===k}">${l}</button>`).join('')}</div>`}
+   <div class="sec-head"><h2>התראות</h2>${Notif.P()?'':'<span class="meta">באפליקציה בטלפון</span>'}</div>
+   <section class="card" style="overflow:hidden">
+    <label class="row-link sw-row"><span class="ri">${ico('bell',20)}</span><div><b>לפני שאחריות מסתיימת</b><span>תזכורת לכל מוצר, גם כשהאפליקציה סגורה</span></div><input type="checkbox" class="sw" id="nExp" ${ns.expiry?'checked':''} aria-label="תזכורת לפני שאחריות מסתיימת"></label>
+    <div class="nopts" ${ns.expiry?'':'hidden'} id="nOpts">
+     <div class="field" style="margin:0 0 6px"><span>כמה זמן מראש</span></div>
+     <div class="seg" role="group" aria-label="כמה זמן מראש">${[[60,'חודשיים'],[30,'חודש'],[14,'שבועיים'],[7,'שבוע'],[1,'יום'],[0,'ביום עצמו']].map(([d,l])=>`<button type="button" data-lead="${d}" aria-pressed="${ns.leads.includes(d)}">${l}</button>`).join('')}</div>
+     <label class="field" style="margin-bottom:4px"><span>באיזו שעה</span><select id="nHour">${Array.from({length:14},(_,i)=>i+8).map(h=>`<option value="${h}" ${ns.hour===h?'selected':''}>${String(h).padStart(2,'0')}:00</option>`).join('')}</select></label>
+    </div>
+    <label class="row-link sw-row"><span class="ri">${ico('users',20)}</span><div><b>כשמישהו במשק הבית מוסיף מוצר</b><span>כשהאפליקציה פתוחה או פעלה לאחרונה</span></div><input type="checkbox" class="sw" id="nPar" ${ns.partner?'checked':''} aria-label="התראה כשמישהו מוסיף מוצר"></label>
+    <button class="row-link" id="nTest"><span class="ri">${ico('sparkle',20)}</span><div><b>שליחת התראת בדיקה</b><span>לראות איך זה נראה</span></div></button>
+   </section>
    <div class="sec-head"><h2>גיבוי</h2></div>
    <section class="card" style="overflow:hidden">
     <button class="row-link" id="bk"><span class="ri">${ico('download',20)}</span><div><b>גיבוי מלא</b><span>קובץ אחד עם כל המוצרים והחשבוניות</span></div></button>
@@ -1249,6 +1370,8 @@ function renderSettings(){
    :`<section class="card form-card"><label class="field"><span>הגדרות Firebase</span><textarea id="fbCfg" dir="ltr" style="text-align:left;font-size:13px;min-height:120px" placeholder="const firebaseConfig = { apiKey: ..., projectId: ... }"></textarea><p class="hint">מדביקים את קטע ההגדרות מ־Firebase: הגדרות הפרויקט > האפליקציות שלך > אפליקציית ווב.</p></label><button class="btn btn-primary btn-block btn-sm" id="fbSave" style="margin-bottom:12px">חיבור</button></section>`}
    <div class="sec-head"><h2>נותני אחריות שמורים</h2><span class="meta">${PROVIDERS.length}</span></div>
    <section class="card" style="overflow:hidden">${PROVIDERS.map(p=>`<div class="row-link" style="cursor:default"><span class="ri">${ico('shield',18)}</span><div style="flex:1;min-width:0"><b>${esc(p.name)}</b><span dir="auto">${esc(p.phone||'')}${p.phone&&p.url?' · ':''}${p.url?esc(new URL(p.url).hostname.replace('www.','')):''}${!p.phone&&!p.url?'זיהוי מותג בלבד':''}</span></div></div>`).join('')}</section>
+   <div class="sec-head"><h2>גרסה</h2><span class="meta">${APP_BUILD?'1.'+APP_BUILD:'גרסת דפדפן'}</span></div>
+   <section class="card" style="overflow:hidden"><button class="row-link" id="vChk"><span class="ri">${ico('download',20)}</span><div><b>בדיקת עדכונים</b><span>עדכון חדש קופץ גם לבד כשהאפליקציה נפתחת</span></div></button></section>
    <p class="note" style="margin-top:14px">זיהוי החשבונית רץ במכשיר עצמו. בלי סנכרון בענן הנתונים נשמרים רק במכשיר; עם סנכרון הם נשמרים גם בפרויקט Firebase שלך ונגישים רק לחברי משק הבית.</p>
   </main>`;
   bindTop();
@@ -1258,6 +1381,13 @@ function renderSettings(){
   const fc=document.getElementById('fbCfg');
   if(fc)document.getElementById('fbSave').onclick=async()=>{const c=parseFbConfig(fc.value);if(!c){toast('לא נמצאו apiKey ו־projectId בטקסט');return}S.settings.firebaseConfig=c;await DB.setMeta('settings',S.settings);toast('Firebase חובר. ממשיכים בלשונית שיתוף');setTimeout(()=>location.reload(),900)};
   const fr=document.getElementById('fbClear');if(fr)fr.onclick=async()=>{delete S.settings.firebaseConfig;await DB.setMeta('settings',S.settings);location.reload()};
+  const saveN=async()=>{await DB.setMeta('settings',S.settings);Notif.soon()};
+  document.getElementById('nExp').onchange=async e=>{ns.expiry=e.target.checked;document.getElementById('nOpts').hidden=!ns.expiry;if(ns.expiry&&Notif.P()&&!(await Notif.perm(true)))toast('צריך לאשר התראות בהגדרות הטלפון');await saveN()};
+  document.getElementById('nPar').onchange=async e=>{ns.partner=e.target.checked;if(ns.partner)await Notif.perm(true);await saveN()};
+  app.querySelectorAll('[data-lead]').forEach(b=>b.onclick=async()=>{const d=+b.dataset.lead;ns.leads=ns.leads.includes(d)?ns.leads.filter(x=>x!==d):[...ns.leads,d].sort((x,y)=>y-x);if(!ns.leads.length){ns.leads=[d];toast('צריך לפחות זמן אחד')}app.querySelectorAll('[data-lead]').forEach(x=>x.setAttribute('aria-pressed',ns.leads.includes(+x.dataset.lead)));await saveN()});
+  document.getElementById('nHour').onchange=async e=>{ns.hour=+e.target.value;await saveN()};
+  document.getElementById('nTest').onclick=()=>Notif.test();
+  document.getElementById('vChk').onclick=()=>Updater.check(true);
   app.querySelectorAll('[data-skin-pick]').forEach(b=>b.onclick=async()=>{S.settings.skin=b.dataset.skinPick;applyTheme();await DB.setMeta('settings',S.settings);const y=scrollY;renderSettings();scrollTo(0,y);toast(`העיצוב הוחלף ל${SKINS.find(k=>k.id===S.settings.skin).name}`)});
   app.querySelectorAll('[data-t]').forEach(b=>b.onclick=async()=>{S.settings.theme=b.dataset.t;await DB.setMeta('settings',S.settings);applyTheme();renderSettings()});
   document.getElementById('bk').onclick=async()=>{const pkg=await buildPackage('editor');await shareFile({base64:b64utf8(JSON.stringify(pkg)),mime:'application/json',filename:`bachrayut-backup-${today()}.json`,title:'גיבוי באחריות',text:'גיבוי של באחריות'}).catch(()=>{})};
@@ -1318,6 +1448,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-open]');if
   applyTheme();route();
   setTimeout(()=>document.body.classList.add('booted'),700);
   Cloud.init();
+  Notif.init();
+  setTimeout(()=>Updater.check(false),2500);
 })();
 </script>
 </body>

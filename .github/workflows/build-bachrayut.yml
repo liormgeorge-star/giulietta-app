@@ -32,12 +32,17 @@ jobs:
           npm install
           bash scripts/vendor.sh
 
+      - name: Stamp the build number (the app compares it with the release to offer updates)
+        run: sed -i "s/__BUILD__/${{ github.run_number }}/" www/index.html
+
       - name: Create Android project
         run: |
           npx cap add android
           npx cap sync android
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <application#' "$M"
+          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' "$M"
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -n "versionCode\|versionName" android/app/build.gradle
           pip install --quiet --break-system-packages pillow 2>/dev/null || pip install --quiet pillow
           python3 scripts/make_icons.py android/app/src/main/res
 
@@ -65,4 +70,5 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk bachrayut.apk
           gh release delete bachrayut-latest --yes --cleanup-tag || true
-          gh release create bachrayut-latest bachrayut.apk --title "באחריות APK (latest)" --notes "Auto-built from commit ${GITHUB_SHA::7}" --target "$GITHUB_SHA"
+          NOTES=$(printf 'build: %s\n%s\n\nAuto-built from commit %s' "${{ github.run_number }}" "$(sed 's/^/- /' whatsnew.txt)" "${GITHUB_SHA::7}")
+          gh release create bachrayut-latest bachrayut.apk --title "באחריות 1.${{ github.run_number }}" --notes "$NOTES" --target "$GITHUB_SHA"

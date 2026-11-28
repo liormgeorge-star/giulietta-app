@@ -24,3 +24,7 @@ Invoice images are stored as Firestore documents (each kept under 1MB).
 2. Firestore Database > Create database, then Rules: paste `firestore.rules` and Publish.
 3. Put the web app config in `www/firebase-config.js` (or paste it in the app: Settings > סנכרון בענן).
 Roles are enforced by the rules: owner and "מוסיף/ה" write, "צפייה" reads only. Invite codes are valid for 7 days.
+
+## Updates
+Every build stamps its run number into the app and the release notes (`build: N`). The app checks the `bachrayut-latest`
+release when it opens and offers the new APK. Write the user-facing "what is new" lines in `whatsnew.txt` before pushing.
