@@ -10,3 +10,6 @@ The default icon is an original design (`icons/`). To use your own icon, add a s
 ## Updating without losing data
 Builds are signed with the fixed key in `signing/debug.keystore`, so a new APK installs over the old one
 and keeps your data (no uninstall needed). Use Settings > Backup before the first switch to this key.
+
+## באחריות
+A second app, the warranty and invoice keeper, lives in `bachrayut/` (see its README). APK tag: `bachrayut-latest`.

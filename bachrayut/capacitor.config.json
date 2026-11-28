@@ -1,0 +1,8 @@
+{
+  "appId": "com.liorg.bachrayut",
+  "appName": "באחריות",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#F3EFE6"
+  }
+}
