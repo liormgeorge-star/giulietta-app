@@ -11,6 +11,10 @@
     "@capacitor/share": "^7.0.0",
     "tesseract.js": "5.1.1",
     "@tesseract.js-data/heb": "^1.0.0",
-    "@tesseract.js-data/eng": "^1.0.0"
+    "@tesseract.js-data/eng": "^1.0.0",
+    "firebase": "13.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }

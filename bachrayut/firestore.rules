@@ -1,0 +1,71 @@
+rules_version = '2';
+// באחריות – Firestore security rules. Paste into Firebase console > Firestore Database > Rules, then Publish.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function hh(hid) { return get(/databases/$(db)/documents/households/$(hid)).data; }
+    function isMember(hid) { return signedIn() && request.auth.uid in hh(hid).memberIds; }
+    function canEdit(hid) { return isMember(hid) && hh(hid).members[request.auth.uid].role in ['owner', 'editor']; }
+
+    // which household a user belongs to
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // invite codes: readable by code only, created by editors, valid for 7 days
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.role in ['editor', 'viewer']
+        && canEdit(request.resource.data.hid);
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
+    match /households/{hid} {
+      function joining() {
+        let inv = get(/databases/$(db)/documents/invites/$(request.resource.data.joinCode)).data;
+        return signedIn()
+          && !(request.auth.uid in resource.data.memberIds)
+          && inv.hid == hid
+          && inv.expiresAt > request.time.toMillis()
+          && request.resource.data.memberIds == resource.data.memberIds.concat([request.auth.uid])
+          && request.resource.data.members[request.auth.uid].role == inv.role
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'joinCode'])
+          && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]);
+      }
+      function leaving() {
+        return signedIn()
+          && request.auth.uid in resource.data.memberIds
+          && request.auth.uid != resource.data.ownerId
+          && request.resource.data.memberIds == resource.data.memberIds.removeAll([request.auth.uid])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members']);
+      }
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.members[request.auth.uid].role == 'owner';
+      allow update: if (signedIn() && resource.data.ownerId == request.auth.uid
+                        && request.resource.data.ownerId == resource.data.ownerId
+                        && request.auth.uid in request.resource.data.memberIds)
+                    || (request.resource.data.get('joinCode', '') is string
+                        && request.resource.data.get('joinCode', '') != ''
+                        && exists(/databases/$(db)/documents/invites/$(request.resource.data.joinCode))
+                        && joining())
+                    || leaving();
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /items/{id} {
+        allow read: if isMember(hid);
+        allow write: if canEdit(hid);
+      }
+      match /files/{id} {
+        allow read: if isMember(hid);
+        allow write: if canEdit(hid) && request.resource.data.data.size() < 1000000;
+        allow delete: if canEdit(hid);
+      }
+    }
+  }
+}

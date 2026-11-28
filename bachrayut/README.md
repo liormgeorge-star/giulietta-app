@@ -14,5 +14,13 @@ A separate app from the Giulietta tracker. Web app in `www/`, packaged as an And
 - Everything stays on the device (IndexedDB). Settings > Backup exports one file with all products and invoices.
 
 ## Build notes
-`scripts/vendor_ocr.sh` copies the OCR engine and language data into `www/vendor/ocr` after `npm install`,
+`scripts/vendor.sh` copies the OCR engine and language data into `www/vendor/ocr` after `npm install`,
 so scanning works offline in the APK. Opened as a plain web page without that folder, the app loads them from jsDelivr.
+
+## Shared household (Firebase)
+Sync uses Firebase Authentication (email + password) and Cloud Firestore; no Cloud Storage, so the free Spark plan is enough.
+Invoice images are stored as Firestore documents (each kept under 1MB).
+1. Firebase console > Authentication > Sign-in method: enable **Email/Password**.
+2. Firestore Database > Create database, then Rules: paste `firestore.rules` and Publish.
+3. Put the web app config in `www/firebase-config.js` (or paste it in the app: Settings > סנכרון בענן).
+Roles are enforced by the rules: owner and "מוסיף/ה" write, "צפייה" reads only. Invite codes are valid for 7 days.

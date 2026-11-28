@@ -27,10 +27,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Install dependencies and bundle the on-device OCR
+      - name: Install dependencies and bundle OCR and Firebase
         run: |
           npm install
-          bash scripts/vendor_ocr.sh
+          bash scripts/vendor.sh
 
       - name: Create Android project
         run: |

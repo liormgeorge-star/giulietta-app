@@ -74,6 +74,7 @@ svg{display:block}
 .stat b{display:block;font-size:20px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
 .stat span{font-size:12px;opacity:.85;white-space:nowrap}
 .m-enter{animation:enter .55s cubic-bezier(.2,.8,.2,1) both}
+body.booted .m-enter{animation:none}
 @keyframes enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
 /* ---------- search & chips ---------- */
@@ -243,7 +244,7 @@ svg{display:block}
 .member .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;flex:none}
 .member b{display:block;font-size:15px}
 .member span{font-size:12.5px;color:var(--muted)}
-.role{margin-inline-start:auto;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.role{white-space:nowrap;flex:none;margin-inline-start:auto;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
 
 .toast{position:fixed;inset:auto 16px calc(var(--safe-b) + 98px) 16px;z-index:90;max-width:520px;margin:0 auto;background:var(--ink);color:var(--bg);padding:13px 16px;border-radius:14px;font-size:14.5px;font-weight:600;box-shadow:var(--shadow-lg);animation:up .25s;display:flex;gap:10px;align-items:center}
 .row-link{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--line);width:100%;text-align:right;min-height:58px;transition:background .2s}
@@ -266,6 +267,7 @@ svg{display:block}
 <input type="file" id="cardInput" accept="image/*" hidden>
 <input type="file" id="importInput" accept=".json,application/json,text/plain,*/*" hidden>
 <div id="layer"></div>
+<script src="firebase-config.js"></script>
 
 <script>
 'use strict';
@@ -604,6 +606,7 @@ function renderCats(){
 /* ---------- capture & add ---------- */
 let draft=null, attachTarget=null;
 function startCapture(){
+  if(Cloud.viewer()){toast('יש לך הרשאת צפייה בלבד. בקשו ממנהל משק הבית הרשאת הוספה');return}
   openSheet(`<div class="grip"></div><h3>חשבונית חדשה</h3><p class="lead">צלמו את החשבונית כשהיא ישרה ומוארת. הזיהוי עובד בעברית ובאנגלית.</p>
   <div class="btn-row"><button class="btn btn-primary" id="cCam">${ico('camera',22,2)} צילום</button><button class="btn btn-ghost" id="cGal">${ico('image',22)} מהגלריה</button></div>
   <button class="btn btn-ghost btn-block" id="cMan" style="margin-top:10px">${ico('edit',20)} הוספה ידנית בלי חשבונית</button>`,(sh)=>{
@@ -619,7 +622,7 @@ function newDraft(){return{id:uid(),name:'',category:'other',store:'',purchaseDa
   const raw=await readFile(f);const img=await compress(raw);
   if(attachTarget){ // photo for a product that already exists: attach it, no re-scan
     const it=S.items.find(x=>x.id===attachTarget);attachTarget=null;if(!it)return;
-    const id='f_'+uid();await DB.put('files',{id,data:img});it.invoiceId=id;it.updatedAt=Date.now();await DB.put('items',it);
+    const id='f_'+uid();await DB.put('files',{id,data:img});it.invoiceId=id;it.updatedAt=Date.now();await DB.put('items',it);Cloud.pushItem(it,true);
     swap(()=>openDetail(it.id));toast('החשבונית צורפה');return;
   }
   draft=newDraft();draft._img=img;
@@ -714,14 +717,17 @@ function openEditor(d,isNew){
   });
 }
 async function saveItem(d,isNew){
+  if(Cloud.viewer()){toast('יש לך הרשאת צפייה בלבד');throw new Error('viewer')}
   if(d._img){const id='f_'+uid();await DB.put('files',{id,data:d._img});d.invoiceId=id}
   if(d._card){const id='f_'+uid();await DB.put('files',{id,data:d._card});d.cardId=id}
+  const newFiles=!!(d._img||d._card);
   delete d._img;delete d._card;
   const now=Date.now();
   const it={...d,updatedAt:now,createdAt:d.createdAt||now,addedBy:d.addedBy||S.settings.userName||''};
   delete it.auto;
   await DB.put('items',it);
   const i=S.items.findIndex(x=>x.id===it.id);if(i>=0)S.items[i]=it;else S.items.push(it);
+  Cloud.pushItem(it,newFiles);
 }
 
 /* ---------- detail ---------- */
@@ -735,7 +741,7 @@ async function openDetail(id){
   const findUrl=`https://www.google.com/search?q=${encodeURIComponent((it.brand||it.providerName||it.name)+' שירות לקוחות אחריות צור קשר')}`;
   const pName=it.providerName||'נותן האחריות';
   const pct=pctLeft(it);
-  const ro=!!it.readOnly;
+  const ro=!!it.readOnly||Cloud.viewer();
   openPage(`<div class="page-bar"><button class="icon-btn" data-close aria-label="חזרה">${ico('back',20)}</button><h1 class="sr">${esc(it.name)}</h1><span style="flex:1"></span>${ro?'':`<button class="icon-btn" id="dEdit" aria-label="עריכה">${ico('edit',20)}</button>`}<button class="icon-btn" id="dShare" aria-label="שיתוף המוצר">${ico('share',20)}</button></div>
   <section class="card d-hero m-enter"><div class="d-top">${catBadge(c,56)}<div style="min-width:0;flex:1"><h2 class="d-title">${esc(it.name)}</h2><div class="d-cat">${c.name}${it.brand?' · '+esc(it.brand):''}</div></div>${ringSvg(it,64)}</div>
    <div class="timeline"><div class="tl-bar" aria-hidden="true"><i style="width:${(1-pct)*100}%;background:${st.k==='exp'?'var(--danger)':st.k==='soon'?'var(--warn)':'var(--accent)'}"></i></div>
@@ -779,7 +785,7 @@ async function openDetail(id){
     if(q('#cCopy'))q('#cCopy').onclick=async()=>{await copy(claimMessage(it));toast('הפנייה הועתקה')};
     if(q('#cMail'))q('#cMail').onclick=()=>sendClaimMail(it,inv);
     if(q('#cShareClaim'))q('#cShareClaim').onclick=()=>inv?sendInvoice(it,inv.data,'claim'):shareText(claimMessage(it),'פנייה למימוש אחריות');
-    if(q('#dDel'))q('#dDel').onclick=()=>confirmSheet('למחוק את המוצר?','המוצר והחשבונית יימחקו מהמכשיר הזה.','מחיקה',async()=>{it.deleted=true;it.updatedAt=Date.now();await DB.put('items',it);if(it.invoiceId)await DB.del('files',it.invoiceId);closePage();render();toast('המוצר נמחק')});
+    if(q('#dDel'))q('#dDel').onclick=()=>confirmSheet('למחוק את המוצר?','המוצר והחשבונית יימחקו מהמכשיר הזה.','מחיקה',async()=>{it.deleted=true;it.updatedAt=Date.now();await DB.put('items',it);Cloud.pushItem(it);if(it.invoiceId)await DB.del('files',it.invoiceId);closePage();render();toast('המוצר נמחק')});
   });
 }
 
@@ -846,6 +852,7 @@ async function importPackage(file){
     if(!l||(r.updatedAt||0)>(l.updatedAt||0)){
       const it={...r,readOnly:pkg.role==='viewer'?true:(l?l.readOnly:false)};
       await DB.put('items',it); if(l){Object.assign(l,it);if(!r.deleted)updated++} else {S.items.push(it);if(!r.deleted)added++}
+      Cloud.pushItem(it,true);
     }
   }
   if(pkg.household&&!S.household){S.household=pkg.household;await DB.setMeta('household',S.household)}
@@ -854,7 +861,234 @@ async function importPackage(file){
 }
 document.getElementById('importInput').addEventListener('change',e=>{const f=e.target.files[0];if(f)importPackage(f)});
 
+/* ---------- cloud household (Firebase Auth + Firestore) ----------
+   households/{hid}            name, ownerId, memberIds[], members{uid:{name,email,role}}
+   households/{hid}/items/{id} the product (same fields as on the device)
+   households/{hid}/files/{id} invoice / warranty image as a data URL (kept under 1MB)
+   invites/{code}              hid, role, householdName, createdBy, expiresAt
+   users/{uid}                 hid
+   Roles are enforced by firestore.rules: owner and editor write, viewer reads. */
+const Cloud = {
+  ready:false, user:null, hid:null, hh:null, role:null, unsubs:[], F:null, auth:null, db:null, state:'off', err:'', pending:0,
+  config(){ const c=window.FIREBASE_CONFIG||S.settings.firebaseConfig; return c&&c.apiKey&&c.projectId?c:null },
+  async init(){
+    const cfg=this.config(); if(!cfg){this.state='off';return false}
+    try{
+      if(!window.FB) await loadScript('vendor/firebase.js');
+      const F=this.F=window.FB;
+      const app=F.initializeApp(cfg);
+      this.auth=F.initializeAuth(app,{persistence:[F.indexedDBLocalPersistence,F.browserLocalPersistence]});
+      this.db=F.initializeFirestore(app,{localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})});
+      if(window.FB_EMULATOR){F.connectAuthEmulator(this.auth,'http://127.0.0.1:9099',{disableWarnings:true});F.connectFirestoreEmulator(this.db,'127.0.0.1',8080)}
+      this.ready=true;this.state='loading';
+      F.onAuthStateChanged(this.auth,u=>this.onUser(u));
+      return true;
+    }catch(e){this.state='error';this.err='לא ניתן לטעון את Firebase';console.error(e);return false}
+  },
+  d(...p){return this.F.doc(this.db,...p)},
+  stop(){this.unsubs.forEach(u=>{try{u()}catch(e){}});this.unsubs=[];this.hid=null;this.hh=null;this.role=null},
+  async onUser(u){
+    this.stop();this.user=u;
+    if(!u){this.state='signedout';refresh();return}
+    try{
+      const us=await this.F.getDoc(this.d('users',u.uid));
+      const hid=us.exists()?us.data().hid:null;
+      if(!hid){this.state='nohousehold';refresh();return}
+      await this.listen(hid);
+    }catch(e){this.fail(e)}
+  },
+  fail(e){console.error(e);this.err=fbError(e);toast(this.err);refresh()},
+  listen(hid){
+    return new Promise((resolve)=>{
+      const F=this.F;this.hid=hid;let first=true;
+      this.unsubs.push(F.onSnapshot(this.d('households',hid),snap=>{
+        if(!snap.exists()||!(snap.data().memberIds||[]).includes(this.user.uid)){this.leaveLocal();return}
+        this.hh=snap.data();this.role=(this.hh.members[this.user.uid]||{}).role||'viewer';
+        S.household={id:hid,name:this.hh.name};DB.setMeta('household',S.household);
+        this.state='on';refresh();
+      },e=>{this.fail(e);resolve()}));
+      this.unsubs.push(F.onSnapshot(F.collection(this.db,'households',hid,'items'),async snap=>{
+        const remoteIds=new Set();let changed=false;
+        for(const ch of snap.docChanges()){
+          const r=ch.doc.data();remoteIds.add(r.id);
+          if(ch.type==='removed')continue;
+          const l=S.items.find(x=>x.id===r.id);
+          if(!l||(r.updatedAt||0)>(l.updatedAt||0)){
+            const it={...r};delete it.readOnly;
+            await DB.put('items',it);if(l)Object.assign(l,it);else S.items.push(it);changed=true;
+            for(const k of ['invoiceId','cardId']) if(it[k]&&!(await DB.get('files',it[k]))) this.pullFile(it[k]);
+          }
+        }
+        if(first){first=false;
+          // first sync after joining or signing in: send what exists only on this device
+          if(this.canEdit()) for(const l of S.items){ if(snap.docs.every(d=>d.id!==l.id) || (l.updatedAt||0)>((snap.docs.find(d=>d.id===l.id)||{data:()=>({})}).data().updatedAt||0)) this.pushItem(l,true) }
+          resolve();
+        }
+        if(changed)refresh();
+      },e=>{this.fail(e);resolve()}));
+    });
+  },
+  canEdit(){return this.state==='on'&&(this.role==='owner'||this.role==='editor')},
+  viewer(){return this.state==='on'&&this.role==='viewer'},
+  clean(it){const o={};for(const [k,v] of Object.entries(it)){if(k.startsWith('_')||k==='auto'||k==='readOnly'||k==='ocrText'||v===undefined)continue;o[k]=v}return o},
+  async pushItem(it,withFiles){
+    if(!this.canEdit())return;
+    this.pending++;refreshSync();
+    try{
+      if(withFiles||it._newFiles) for(const k of ['invoiceId','cardId']) if(it[k]) await this.pushFile(it[k],it.id);
+      await this.F.setDoc(this.d('households',this.hid,'items',it.id),this.clean(it));
+    }catch(e){this.fail(e)}finally{this.pending--;refreshSync()}
+  },
+  async pushFile(id,itemId){
+    const f=await DB.get('files',id);if(!f)return;
+    let data=f.data;
+    for(const [max,q] of [[1700,.84],[1400,.72],[1100,.62],[900,.55]]){ if(data.length<950000)break; data=await compress(f.data,max,q) }
+    await this.F.setDoc(this.d('households',this.hid,'files',id),{data,itemId:itemId||''});
+  },
+  async pullFile(id){try{const s=await this.F.getDoc(this.d('households',this.hid,'files',id));if(s.exists()){await DB.put('files',{id,data:s.data().data})}}catch(e){console.error(e)}},
+  async signUp(name,email,pass){const F=this.F;const c=await F.createUserWithEmailAndPassword(this.auth,email,pass);if(name)await F.updateProfile(c.user,{displayName:name});if(name&&!S.settings.userName){S.settings.userName=name;await DB.setMeta('settings',S.settings)}},
+  signIn(email,pass){return this.F.signInWithEmailAndPassword(this.auth,email,pass)},
+  reset(email){return this.F.sendPasswordResetEmail(this.auth,email)},
+  async signOut(){this.stop();await this.F.signOut(this.auth)},
+  me(){return {name:S.settings.userName||this.user.displayName||this.user.email.split('@')[0],email:this.user.email}},
+  async createHousehold(name){
+    const F=this.F,u=this.user,hid='h_'+uid();
+    await F.setDoc(this.d('households',hid),{name:name||'הבית שלנו',ownerId:u.uid,memberIds:[u.uid],members:{[u.uid]:{...this.me(),role:'owner'}},createdAt:Date.now()});
+    await F.setDoc(this.d('users',u.uid),{hid});
+    await this.listen(hid);
+  },
+  async invite(role){
+    const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let code='';const r=crypto.getRandomValues(new Uint32Array(8));for(const n of r)code+=A[n%A.length];
+    await this.F.setDoc(this.d('invites',code),{hid:this.hid,role,householdName:this.hh.name,createdBy:this.user.uid,createdAt:Date.now(),expiresAt:Date.now()+7*864e5});
+    return code;
+  },
+  async join(code){
+    const F=this.F,u=this.user;code=code.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    const inv=await F.getDoc(this.d('invites',code));
+    if(!inv.exists())throw {code:'bachrayut/no-invite'};
+    const v=inv.data();if(v.expiresAt<Date.now())throw {code:'bachrayut/expired'};
+    await F.updateDoc(this.d('households',v.hid),{memberIds:F.arrayUnion(u.uid),[`members.${u.uid}`]:{...this.me(),role:v.role},joinCode:code});
+    await F.setDoc(this.d('users',u.uid),{hid:v.hid});
+    this.stop();await this.listen(v.hid);
+    return v;
+  },
+  async setRole(muid,role){await this.F.updateDoc(this.d('households',this.hid),{[`members.${muid}.role`]:role})},
+  async removeMember(muid){const F=this.F;await F.updateDoc(this.d('households',this.hid),{memberIds:F.arrayRemove(muid),[`members.${muid}`]:F.deleteField()})},
+  async rename(name){await this.F.updateDoc(this.d('households',this.hid),{name})},
+  async leave(){const F=this.F,u=this.user;await F.updateDoc(this.d('households',this.hid),{memberIds:F.arrayRemove(u.uid),[`members.${u.uid}`]:F.deleteField()});this.leaveLocal()},
+  async leaveLocal(){const u=this.user;this.stop();if(u){try{await this.F.setDoc(this.d('users',u.uid),{hid:null})}catch(e){}}this.state=u?'nohousehold':'signedout';S.household=null;await DB.setMeta('household',null);refresh()},
+};
+function fbError(e){const c=(e&&e.code)||'';return ({
+  'auth/invalid-email':'כתובת המייל לא תקינה','auth/missing-password':'צריך סיסמה','auth/weak-password':'הסיסמה צריכה לפחות 6 תווים',
+  'auth/email-already-in-use':'כבר יש חשבון עם המייל הזה. אפשר להתחבר','auth/invalid-credential':'המייל או הסיסמה לא נכונים',
+  'auth/wrong-password':'המייל או הסיסמה לא נכונים','auth/user-not-found':'אין חשבון עם המייל הזה','auth/too-many-requests':'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות',
+  'auth/network-request-failed':'אין חיבור לאינטרנט','auth/operation-not-allowed':'צריך להפעיל התחברות במייל וסיסמה בקונסולת Firebase',
+  'permission-denied':'אין הרשאה לפעולה הזו','unavailable':'אין חיבור לשרת כרגע. השינויים יישלחו כשיחזור החיבור',
+  'bachrayut/no-invite':'קוד ההזמנה לא נמצא','bachrayut/expired':'תוקף ההזמנה פג. בקשו קוד חדש',
+}[c])||'משהו השתבש: '+(c||e.message||e)}
+function refresh(){ render() }
+function refreshSync(){const el=document.getElementById('syncState');if(el)el.innerHTML=syncLabel()}
+function syncLabel(){return Cloud.pending?'<i></i> מסנכרן…':'<i></i> מסונכרן'}
+
 function renderShare(){
+  if(Cloud.state==='off'||Cloud.state==='error') return renderShareLocal();
+  const head=t=>topbar('ניהול משותף עם המשפחה')+`<main id="main">${t}</main>`;
+  if(Cloud.state==='loading'){app.innerHTML=head(`<div class="card empty"><p style="margin:0">מתחבר…</p></div>`);bindTop();return}
+  if(Cloud.state==='signedout'){
+    app.innerHTML=head(`<section class="summary m-enter" aria-labelledby="shH"><div class="summary-label">משק בית משותף</div><h2 id="shH" class="summary-value" style="font-size:30px">כל המשפחה, אותה רשימה</h2><p style="margin:6px 0 0;opacity:.9;font-size:14.5px">מתחברים פעם אחת, וכל מוצר וחשבונית שמישהו מוסיף מופיעים אצל כולם מיד.</p></section>
+     <form class="card form-card" id="authF" style="margin-top:14px" novalidate><h4 id="authT">חשבון חדש</h4>
+      <label class="field" id="nameF"><span>השם שלך</span><input name="name" autocomplete="name" value="${esc(S.settings.userName)}"></label>
+      <label class="field"><span>מייל</span><input name="email" type="email" autocomplete="email" dir="ltr" style="text-align:right" required></label>
+      <label class="field"><span>סיסמה</span><input name="pass" type="password" autocomplete="new-password" dir="ltr" style="text-align:right" required minlength="6"></label>
+      <p class="hint" id="authErr" role="alert" style="color:var(--danger);font-size:13.5px;margin:-4px 2px 10px"></p>
+      <button class="btn btn-primary btn-block" type="submit" id="authGo">הרשמה</button>
+      <div class="btn-row" style="margin:10px 0 10px"><button type="button" class="btn btn-ghost btn-sm" id="authSw">כבר יש לי חשבון</button><button type="button" class="btn btn-ghost btn-sm" id="authRs">שכחתי סיסמה</button></div>
+     </form>`);
+    bindTop();
+    let mode='up';const f=document.getElementById('authF'),err=document.getElementById('authErr');
+    const setMode=m=>{mode=m;document.getElementById('authT').textContent=m==='up'?'חשבון חדש':'התחברות';document.getElementById('nameF').hidden=m!=='up';document.getElementById('authGo').textContent=m==='up'?'הרשמה':'התחברות';document.getElementById('authSw').textContent=m==='up'?'כבר יש לי חשבון':'פתיחת חשבון חדש';f.pass.autocomplete=m==='up'?'new-password':'current-password';err.textContent=''};
+    document.getElementById('authSw').onclick=()=>setMode(mode==='up'?'in':'up');
+    document.getElementById('authRs').onclick=async()=>{if(!f.email.value){err.textContent='כתבו את המייל ואז לחצו שוב';f.email.focus();return}try{await Cloud.reset(f.email.value.trim());toast('נשלח מייל לאיפוס הסיסמה')}catch(e){err.textContent=fbError(e)}};
+    f.onsubmit=async e=>{e.preventDefault();err.textContent='';const b=document.getElementById('authGo');b.disabled=true;
+      try{if(mode==='up')await Cloud.signUp(f.name.value.trim(),f.email.value.trim(),f.pass.value);else await Cloud.signIn(f.email.value.trim(),f.pass.value)}catch(x){err.textContent=fbError(x)}finally{b.disabled=false}};
+    return;
+  }
+  if(Cloud.state==='nohousehold'){
+    app.innerHTML=head(`<section class="card form-card m-enter"><h4>מחובר/ת בתור ${esc(Cloud.user.email)}</h4>
+      <label class="field"><span>יש לך קוד הזמנה?</span><input id="jCode" dir="ltr" style="text-align:center;letter-spacing:.2em;font-weight:700;text-transform:uppercase" maxlength="12" placeholder="XXXXXXXX" autocomplete="off"></label>
+      <button class="btn btn-primary btn-block" id="jGo">${ico('users',20)} הצטרפות למשק הבית</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 2px;color:var(--muted);font-size:13px"><span style="flex:1;height:1px;background:var(--line)"></span>או<span style="flex:1;height:1px;background:var(--line)"></span></div>
+      <label class="field"><span>משק בית חדש</span><input id="hName" value="${esc(S.settings.userName?`הבית של ${S.settings.userName}`:'הבית שלנו')}"></label>
+      <button class="btn btn-ghost btn-block" id="hGo" style="margin-bottom:12px">${ico('plus',20)} יצירת משק בית</button></section>
+      <button class="btn btn-ghost btn-block btn-sm" id="out" style="margin-top:12px">התנתקות</button>`);
+    bindTop();
+    document.getElementById('jGo').onclick=async()=>{const c=document.getElementById('jCode').value.trim();if(!c){document.getElementById('jCode').focus();return}try{const v=await Cloud.join(c);toast(`הצטרפת ל"${v.householdName}"`)}catch(e){toast(fbError(e))}};
+    document.getElementById('hGo').onclick=async()=>{try{await Cloud.createHousehold(document.getElementById('hName').value.trim());toast('משק הבית נוצר והמוצרים עלו לענן')}catch(e){toast(fbError(e))}};
+    document.getElementById('out').onclick=()=>Cloud.signOut();
+    return;
+  }
+  // signed in and in a household
+  const colors=['#0F6B4F','#B7791F','#1E3A8A','#BE185D','#0E7490'];
+  const hh=Cloud.hh||{members:{},memberIds:[]};const owner=Cloud.role==='owner';
+  const roleName=r=>r==='owner'?'מנהל/ת':r==='editor'?'מוסיף/ה':'צפייה';
+  const rows=(hh.memberIds||[]).map((id,i)=>{const m=hh.members[id]||{name:'?'};const me=id===Cloud.user.uid;
+    return `<div class="member"><span class="av" style="background:${colors[i%colors.length]}">${esc((m.name||'?').trim()[0])}</span><div style="min-width:0"><b>${esc(m.name)}${me?' (את/ה)':''}</b><span>${esc(m.email||'')}</span></div>${owner&&!me?`<button class="role" data-mem="${id}" aria-label="ניהול ${esc(m.name)}">${roleName(m.role)} ▾</button>`:`<span class="role">${roleName(m.role)}</span>`}</div>`}).join('');
+  app.innerHTML=head(`<section class="summary m-enter" aria-labelledby="shH" style="padding-bottom:18px"><div class="summary-label" style="display:flex;justify-content:space-between"><span>משק בית</span><span class="sync-pill" id="syncState" style="color:inherit">${syncLabel()}</span></div><h2 id="shH" class="summary-value" style="font-size:32px">${esc(hh.name)}</h2><p style="margin:6px 0 14px;opacity:.9;font-size:14.5px">${hh.memberIds.length===1?'חבר אחד':hh.memberIds.length+' חברים'} · ${live().length===1?'מוצר אחד':live().length+' מוצרים'}. כל שינוי מגיע לכולם תוך שניות.</p>
+     ${Cloud.canEdit()?`<button class="btn btn-block" id="inv" style="background:#fff;color:#0F3D2E">${ico('wa',22)} הזמנה בוואטסאפ</button>`:`<p class="stat" style="margin:0">הוזמנת לצפייה בלבד</p>`}</section>
+   <div class="sec-head"><h2>חברי משק הבית</h2><span class="meta">${hh.memberIds.length}</span></div>
+   <section class="card">${rows}</section>
+   <div class="sec-head"><h2>החשבון</h2></div>
+   <section class="card" style="overflow:hidden">
+    ${owner?`<button class="row-link" id="ren"><span class="ri">${ico('edit',20)}</span><div><b>שינוי שם משק הבית</b><span>${esc(hh.name)}</span></div></button>`:`<button class="row-link" id="lv"><span class="ri">${ico('close',20)}</span><div><b>יציאה ממשק הבית</b><span>המוצרים נשארים במכשיר</span></div></button>`}
+    <button class="row-link" id="out"><span class="ri">${ico('upload',20)}</span><div><b>התנתקות</b><span>${esc(Cloud.user.email)}</span></div></button>
+   </section>`);
+  bindTop();
+  const q=s=>document.getElementById(s);
+  if(q('inv'))q('inv').onclick=()=>inviteSheet();
+  if(q('ren'))q('ren').onclick=()=>promptSheet('שם משק הבית',hh.name,async v=>{await Cloud.rename(v);toast('נשמר')});
+  if(q('lv'))q('lv').onclick=()=>confirmSheet('לצאת ממשק הבית?','לא תראו יותר את המוצרים שאחרים מוסיפים. מה שכבר במכשיר נשאר.','יציאה',()=>Cloud.leave().catch(e=>toast(fbError(e))));
+  q('out').onclick=()=>confirmSheet('להתנתק?','המוצרים נשארים במכשיר. אחרי התחברות מחדש הסנכרון ממשיך.','התנתקות',()=>Cloud.signOut());
+  app.querySelectorAll('[data-mem]').forEach(b=>b.onclick=()=>memberSheet(b.dataset.mem));
+}
+function memberSheet(muid){
+  const m=Cloud.hh.members[muid];
+  openSheet(`<div class="grip"></div><h3>${esc(m.name)}</h3><p class="lead">${esc(m.email||'')}</p>
+   <div class="seg" role="group" aria-label="הרשאה"><button data-r="editor" aria-pressed="${m.role==='editor'}">צפייה והוספה</button><button data-r="viewer" aria-pressed="${m.role==='viewer'}">צפייה בלבד</button></div>
+   <button class="btn btn-danger btn-block" id="rm">${ico('trash',18)} הסרה ממשק הבית</button>`,sh=>{
+    sh.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{try{await Cloud.setRole(muid,b.dataset.r);closeSheet();toast('ההרשאה עודכנה')}catch(e){toast(fbError(e))}});
+    sh.querySelector('#rm').onclick=async()=>{try{await Cloud.removeMember(muid);closeSheet();toast('הוסר/ה ממשק הבית')}catch(e){toast(fbError(e))}};
+  });
+}
+function promptSheet(title,val,onOk){openSheet(`<div class="grip"></div><h3>${esc(title)}</h3><label class="field" style="margin-top:12px"><span class="sr">${esc(title)}</span><input id="pv" value="${esc(val)}"></label><button class="btn btn-primary btn-block" id="pok">שמירה</button>`,s=>{s.querySelector('#pok').onclick=async()=>{const v=s.querySelector('#pv').value.trim();if(!v)return;closeSheet();try{await onOk(v)}catch(e){toast(fbError(e))}}})}
+function inviteSheet(){
+  let role='editor';
+  const cloud=Cloud.state==='on';
+  openSheet(`<div class="grip"></div><h3>הזמנה למשק הבית</h3><p class="lead">${cloud?'נשלח בוואטסאפ קוד הצטרפות וקישור להתקנה. הקוד בתוקף 7 ימים.':'ההזמנה נשלחת בוואטסאפ עם קישור להתקנה וקובץ של כל המוצרים.'}</p>
+   ${cloud?'':`<label class="field"><span>שם המוזמן/ת</span><input id="invName" placeholder="למשל: דנה"></label>`}
+   <div class="field" style="margin-bottom:6px"><span>הרשאה</span></div>
+   <div class="seg" role="group" aria-label="הרשאה"><button type="button" data-r="editor" aria-pressed="true">צפייה והוספה</button><button type="button" data-r="viewer" aria-pressed="false">צפייה בלבד</button></div>
+   ${S.settings.userName?'':`<label class="field"><span>השם שלך (יופיע בהזמנה)</span><input id="myName"></label>`}
+   <button class="btn btn-wa btn-block" id="goInv">${ico('wa',22)} שליחת ההזמנה</button>`,sh=>{
+    sh.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{role=b.dataset.r;sh.querySelectorAll('[data-r]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+    sh.querySelector('#goInv').onclick=async()=>{
+      const my=sh.querySelector('#myName');if(my&&my.value.trim()){S.settings.userName=my.value.trim();await DB.setMeta('settings',S.settings)}
+      if(cloud){
+        try{
+          const code=await Cloud.invite(role);closeSheet();
+          const name=S.settings.userName||Cloud.me().name;
+          const text=`${name} מזמין/ה אותך לנהל יחד את האחריות של "${Cloud.hh.name}" באפליקציית באחריות.\n\n1. מתקינים: ${APP_LINK}\n2. נכנסים לשיתוף, פותחים חשבון ומקלידים את הקוד:\n\n${code}\n\n${role==='viewer'?'ההזמנה לצפייה בלבד.':'אפשר לראות ולהוסיף מוצרים.'} הקוד בתוקף 7 ימים.`;
+          openExt(waLink(text));
+        }catch(e){toast(fbError(e))}
+        return;
+      }
+      const n=sh.querySelector('#invName').value.trim()||'מוזמן/ת';
+      S.members.push({name:n,role,at:Date.now()});await DB.setMeta('members',S.members);
+      closeSheet();await sendPackage(role,true);renderShare();
+    };
+  });
+}
+
+function renderShareLocal(){
   const colors=['#0F6B4F','#B7791F','#1E3A8A','#BE185D','#0E7490'];
   const me=S.settings.userName||'אני';
   const mem=[{name:me,role:'me'},...S.members];
@@ -868,29 +1102,12 @@ function renderShare(){
     <button class="row-link" id="sendUp"><span class="ri">${ico('upload',20)}</span><div><b>שליחת עדכון</b><span>כל המוצרים והחשבוניות, בקובץ אחד</span></div></button>
     <button class="row-link" id="getUp"><span class="ri">${ico('download',20)}</span><div><b>קבלת עדכון</b><span>פתיחת קובץ שקיבלתם בוואטסאפ או במייל</span></div></button>
    </section>
-   <p class="note" style="margin-top:14px">העדכונים מתמזגים: מוצר שנוסף אצל אחד מופיע אצל השני, והגרסה האחרונה של כל מוצר נשמרת.</p>
+   <p class="note" style="margin-top:14px">העדכונים מתמזגים: מוצר שנוסף אצל אחד מופיע אצל השני, והגרסה האחרונה של כל מוצר נשמרת. לסנכרון אוטומטי בזמן אמת מחברים את Firebase בהגדרות.</p>
   </main>`;
   bindTop();
   document.getElementById('inv').onclick=()=>inviteSheet();
   document.getElementById('sendUp').onclick=()=>sendPackage('editor',false);
   document.getElementById('getUp').onclick=()=>pick('importInput');
-}
-function inviteSheet(){
-  let role='editor';
-  openSheet(`<div class="grip"></div><h3>הזמנה למשק הבית</h3><p class="lead">ההזמנה נשלחת בוואטסאפ עם קישור להתקנה וקובץ של כל המוצרים.</p>
-   <label class="field"><span>שם המוזמן/ת</span><input id="invName" placeholder="למשל: דנה"></label>
-   <div class="field" style="margin-bottom:6px"><span>הרשאה</span></div>
-   <div class="seg" role="group" aria-label="הרשאה"><button type="button" data-r="editor" aria-pressed="true">צפייה והוספה</button><button type="button" data-r="viewer" aria-pressed="false">צפייה בלבד</button></div>
-   ${S.settings.userName?'':`<label class="field"><span>השם שלך (יופיע בהזמנה)</span><input id="myName"></label>`}
-   <button class="btn btn-wa btn-block" id="goInv">${ico('wa',22)} שליחת ההזמנה</button>`,sh=>{
-    sh.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{role=b.dataset.r;sh.querySelectorAll('[data-r]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
-    sh.querySelector('#goInv').onclick=async()=>{
-      const my=sh.querySelector('#myName');if(my&&my.value.trim()){S.settings.userName=my.value.trim();await DB.setMeta('settings',S.settings)}
-      const n=sh.querySelector('#invName').value.trim()||'מוזמן/ת';
-      S.members.push({name:n,role,at:Date.now()});await DB.setMeta('members',S.members);
-      closeSheet();await sendPackage(role,true);renderShare();
-    };
-  });
 }
 
 /* ---------- settings ---------- */
@@ -906,18 +1123,25 @@ function renderSettings(){
     <button class="row-link" id="bk"><span class="ri">${ico('download',20)}</span><div><b>גיבוי מלא</b><span>קובץ אחד עם כל המוצרים והחשבוניות</span></div></button>
     <button class="row-link" id="rs"><span class="ri">${ico('upload',20)}</span><div><b>שחזור מגיבוי</b><span>ממזג עם מה שכבר שמור</span></div></button>
    </section>
+   <div class="sec-head"><h2>סנכרון בענן</h2><span class="meta">${Cloud.state==='on'?'מחובר':Cloud.config()?'מוגדר':'לא מוגדר'}</span></div>
+   ${window.FIREBASE_CONFIG?`<p class="note">הסנכרון מוגדר בתוך האפליקציה (פרויקט ${esc(window.FIREBASE_CONFIG.projectId)}).</p>`:S.settings.firebaseConfig?`<section class="card" style="overflow:hidden"><div class="row-link" style="cursor:default"><span class="ri">${ico('shield',18)}</span><div><b>Firebase: ${esc(S.settings.firebaseConfig.projectId)}</b><span>הוגדר במכשיר הזה</span></div></div><button class="row-link" id="fbClear"><span class="ri">${ico('trash',18)}</span><div><b>ניתוק ההגדרה</b><span>המוצרים נשארים במכשיר</span></div></button></section>`
+   :`<section class="card form-card"><label class="field"><span>הגדרות Firebase</span><textarea id="fbCfg" dir="ltr" style="text-align:left;font-size:13px;min-height:120px" placeholder="const firebaseConfig = { apiKey: ..., projectId: ... }"></textarea><p class="hint">מדביקים את קטע ההגדרות מ־Firebase: הגדרות הפרויקט > האפליקציות שלך > אפליקציית ווב.</p></label><button class="btn btn-primary btn-block btn-sm" id="fbSave" style="margin-bottom:12px">חיבור</button></section>`}
    <div class="sec-head"><h2>נותני אחריות שמורים</h2><span class="meta">${PROVIDERS.length}</span></div>
    <section class="card" style="overflow:hidden">${PROVIDERS.map(p=>`<div class="row-link" style="cursor:default"><span class="ri">${ico('shield',18)}</span><div style="flex:1;min-width:0"><b>${esc(p.name)}</b><span dir="auto">${esc(p.phone||'')}${p.phone&&p.url?' · ':''}${p.url?esc(new URL(p.url).hostname.replace('www.','')):''}${!p.phone&&!p.url?'זיהוי מותג בלבד':''}</span></div></div>`).join('')}</section>
-   <p class="note" style="margin-top:14px">הנתונים נשמרים רק במכשיר הזה. זיהוי החשבונית רץ במכשיר עצמו, והתמונות לא נשלחות לשום שרת.</p>
+   <p class="note" style="margin-top:14px">זיהוי החשבונית רץ במכשיר עצמו. בלי סנכרון בענן הנתונים נשמרים רק במכשיר; עם סנכרון הם נשמרים גם בפרויקט Firebase שלך ונגישים רק לחברי משק הבית.</p>
   </main>`;
   bindTop();
   const sn=document.getElementById('sName'),sh=document.getElementById('sHouse');
   sn.onchange=async()=>{S.settings.userName=sn.value.trim();await DB.setMeta('settings',S.settings);toast('נשמר')};
-  sh.onchange=async()=>{S.household=S.household||{id:uid()};S.household.name=sh.value.trim()||'הבית שלנו';await DB.setMeta('household',S.household);toast('נשמר')};
+  sh.onchange=async()=>{const v=sh.value.trim()||'הבית שלנו';if(Cloud.state==='on'){if(Cloud.role!=='owner'){toast('רק מנהל/ת משק הבית משנה את השם');sh.value=S.household.name;return}try{await Cloud.rename(v)}catch(e){toast(fbError(e));return}}S.household=S.household||{id:uid()};S.household.name=v;await DB.setMeta('household',S.household);toast('נשמר')};
+  const fc=document.getElementById('fbCfg');
+  if(fc)document.getElementById('fbSave').onclick=async()=>{const c=parseFbConfig(fc.value);if(!c){toast('לא נמצאו apiKey ו־projectId בטקסט');return}S.settings.firebaseConfig=c;await DB.setMeta('settings',S.settings);toast('Firebase חובר. ממשיכים בלשונית שיתוף');setTimeout(()=>location.reload(),900)};
+  const fr=document.getElementById('fbClear');if(fr)fr.onclick=async()=>{delete S.settings.firebaseConfig;await DB.setMeta('settings',S.settings);location.reload()};
   app.querySelectorAll('[data-t]').forEach(b=>b.onclick=async()=>{S.settings.theme=b.dataset.t;await DB.setMeta('settings',S.settings);applyTheme();renderSettings()});
   document.getElementById('bk').onclick=async()=>{const pkg=await buildPackage('editor');await shareFile({base64:b64utf8(JSON.stringify(pkg)),mime:'application/json',filename:`bachrayut-backup-${today()}.json`,title:'גיבוי באחריות',text:'גיבוי של באחריות'}).catch(()=>{})};
   document.getElementById('rs').onclick=()=>pick('importInput');
 }
+function parseFbConfig(t){const o={};for(const k of ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId','measurementId']){const m=t.match(new RegExp('["\']?'+k+'["\']?\\s*:\\s*["\']([^"\']+)["\']'));if(m)o[k]=m[1]}return o.apiKey&&o.projectId?o:null}
 function applyTheme(){const t=S.settings.theme;if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
 async function toggleTheme(){const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);S.settings.theme=dark?'light':'dark';applyTheme();await DB.setMeta('settings',S.settings)}
 
@@ -948,6 +1172,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-open]');if
   S.household=await DB.meta('household',null);
   S.members=await DB.meta('members',[]);
   applyTheme();route();
+  setTimeout(()=>document.body.classList.add('booted'),700);
+  Cloud.init();
 })();
 </script>
 </body>
